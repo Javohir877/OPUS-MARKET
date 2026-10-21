@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OPUS MARKET</title>
+  <meta name="description" content="OPUS MARKET — noutbuklar, kompyuterlar, monitorlar va aksessuarlar onlayn do'koni." />
+  <meta name="theme-color" content="#e10f2a" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23e10f2a'/%3E%3Ccircle cx='20' cy='20' r='9' fill='none' stroke='white' stroke-width='5'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Loader -->
+  <div id="loader">
+    <div class="loader-ring"></div>
+    <div class="loader-logo">OPUS<span>MARKET</span></div>
+    <div class="loader-bar"><i></i></div>
+  </div>
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="container topbar-inner">
+      <span>🚚 1 mln so'mdan yuqori xaridlarga <b>bepul yetkazib berish</b></span>
+      <span class="topbar-right">📞 +998 71 200 00 00 · 🕘 09:00 – 21:00</span>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="header" id="header">
+    <div class="container header-inner">
+      <a href="#" class="logo">
+        <span class="logo-mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="none" stroke="#fff" stroke-width="3.4"/></svg></span>
+        <span class="logo-text">OPUS<b>MARKET</b></span>
+      </a>
+
+      <nav class="nav" id="nav">
+        <a href="#hero">Bosh sahifa</a>
+        <a href="#showcase">3D Shou</a>
+        <a href="#categories">Kategoriyalar</a>
+        <a href="#products">Mahsulotlar</a>
+        <a href="#deals">Aksiya</a>
+        <a href="#contact">Aloqa</a>
+      </nav>
+
+      <div class="search" id="searchBox">
+        <svg viewBox="0 0 24 24"><path d="M10 2a8 8 0 105.3 14l5.4 5.4 1.4-1.4-5.4-5.4A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/></svg>
+        <input type="search" id="searchInput" placeholder="Noutbuk, sichqoncha, RTX..." autocomplete="off" />
+        <div class="suggest" id="suggest" hidden></div>
+      </div>
+
+      <div class="header-actions">
+        <button class="icon-btn" id="themeBtn" title="Mavzu">
+          <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 109 9 7 7 0 01-9-9z"/></svg>
+        </button>
+        <button class="icon-btn" id="ordersBtn" title="Buyurtmalarim">
+          <svg viewBox="0 0 24 24"><path d="M6 2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zm2 5v2h8V7H8zm0 4v2h8v-2H8zm0 4v2h5v-2H8z"/></svg>
+        </button>
+        <button class="icon-btn" id="wishBtn" title="Sevimlilar">
+          <svg viewBox="0 0 24 24"><path d="M12 21l-1.4-1.3C5.4 15 2 12 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.5-3.4 6.5-8.6 11.2L12 21z"/></svg>
+          <span class="badge" id="wishCount">0</span>
+        </button>
+        <button class="icon-btn cart-btn" id="cartBtn" title="Savat">
+          <svg viewBox="0 0 24 24"><path d="M7 18a2 2 0 100 4 2 2 0 000-4zm10 0a2 2 0 100 4 2 2 0 000-4zM1 2h3.3l.9 2H21a1 1 0 01.9 1.4l-3.6 6.5A2 2 0 0116.6 13H8.1l-1.1 2H19v2H7a2 2 0 01-1.8-3l1.4-2.5L3 4H1V2z"/></svg>
+          <span class="badge" id="cartCount">0</span>
+        </button>
+        <button class="icon-btn burger" id="burger" title="Menyu">
+          <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero" id="hero">
+    <div class="hero-bg">
+      <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
+      <div class="grid-lines"></div>
+      <div class="particles" id="particles"></div>
+    </div>
+    <div class="container hero-inner">
+      <div class="hero-text reveal">
+        <span class="pill">🔥 Yangi kolleksiya 2026</span>
+        <h1>Kelajak texnologiyasi<br /><span class="gradient-text" id="typed"></span><span class="caret">|</span></h1>
+        <p>Noutbuklar, o'yin kompyuterlari, monitorlar va eng sara aksessuarlar — rasmiy kafolat, tezkor yetkazib berish va 0% bo'lib to'lash bilan.</p>
+        <div class="hero-cta">
+          <a href="#products" class="btn btn-primary">Xarid qilish <span>→</span></a>
+          <a href="#deals" class="btn btn-ghost">Aksiyalar</a>
+        </div>
+        <div class="hero-stats">
+          <div><b data-count="12000">0</b>+<small>Mijozlar</small></div>
+          <div><b data-count="850">0</b>+<small>Mahsulotlar</small></div>
+          <div><b data-count="24">0</b>/7<small>Qo'llab-quvvatlash</small></div>
+        </div>
+      </div>
+      <div class="hero-visual reveal">
+        <div class="device" id="tiltCard">
+          <div class="device-screen">
+            <img id="heroImg" alt="O'yin kompyuteri" />
+            <div class="screen-shine"></div>
+          </div>
+          <div class="device-base"></div>
+        </div>
+        <div class="float-card fc1">⚡ RTX 5090</div>
+        <div class="float-card fc2">🎧 −30%</div>
+        <div class="float-card fc3">🚚 Bepul yetkazish</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Brands marquee -->
+  <div class="marquee">
+    <div class="marquee-track">
+      <span>ASUS</span><span>APPLE</span><span>LENOVO</span><span>MSI</span><span>HP</span><span>DELL</span><span>LOGITECH</span><span>RAZER</span><span>SAMSUNG</span><span>NVIDIA</span><span>AMD</span><span>SONY</span>
+      <span>ASUS</span><span>APPLE</span><span>LENOVO</span><span>MSI</span><span>HP</span><span>DELL</span><span>LOGITECH</span><span>RAZER</span><span>SAMSUNG</span><span>NVIDIA</span><span>AMD</span><span>SONY</span>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <section class="features container">
+    <div class="feature reveal"><div class="f-ic">🚚</div><h4>Tezkor yetkazish</h4><p>Toshkent bo'ylab 24 soatda</p></div>
+    <div class="feature reveal"><div class="f-ic">🛡️</div><h4>Rasmiy kafolat</h4><p>12 oydan 36 oygacha</p></div>
+    <div class="feature reveal"><div class="f-ic">💳</div><h4>Bo'lib to'lash</h4><p>0% ustama, 24 oygacha</p></div>
+    <div class="feature reveal"><div class="f-ic">↩️</div><h4>Qaytarish</h4><p>14 kun ichida bepul</p></div>
+  </section>
+
+  <!-- 3D Showcase -->
+  <section class="showcase" id="showcase">
+    <div class="sc-sticky">
+      <canvas id="showcaseCanvas"></canvas>
+      <div class="sc-vignette"></div>
+      <div class="sc-fallback"><img src="img/hero.jpg" alt="OPUS noutbuk" /></div>
+
+      <div class="container sc-ui">
+        <div class="sc-steps">
+          <div class="sc-step active">
+            <span class="sc-kicker">01 — Dizayn</span>
+            <h2>Mukammallik<br /><span class="gradient-text">har bir detalda</span></h2>
+            <p>Aviatsiya alyuminiyi, ultra-yupqa korpus va qizil RGB yoritgich. Har bir mahsulotimiz ikki marta sifat nazoratidan o'tadi.</p>
+          </div>
+          <div class="sc-step">
+            <span class="sc-kicker">02 — Quvvat</span>
+            <h2>Cheksiz<br /><span class="gradient-text">quvvat</span></h2>
+            <p>RTX 5090, Ryzen 9 va DDR5 — eng og'ir o'yinlar va professional dasturlar uchun eng so'nggi avlod komplektlari.</p>
+          </div>
+          <div class="sc-step">
+            <span class="sc-kicker">03 — OPUS MARKET</span>
+            <h2>Kelajak<br /><span class="gradient-text">bugun boshlanadi</span></h2>
+            <p>Rasmiy kafolat, 24 soatda yetkazish va 0% bo'lib to'lash. Orzuyingizdagi texnikani hoziroq tanlang.</p>
+            <a href="#products" class="btn btn-primary">Katalogni ochish <span>→</span></a>
+          </div>
+        </div>
+        <div class="sc-progress"><i id="scBar"></i></div>
+      </div>
+
+      <div class="sc-chips">
+        <span class="sc-chip" style="--x:46%;--y:14%">⚡ RTX 5090 · 32GB</span>
+        <span class="sc-chip" style="--x:84%;--y:22%">🖥 16" QHD+ 240Hz</span>
+        <span class="sc-chip" style="--x:44%;--y:84%">🧠 64GB DDR5</span>
+        <span class="sc-chip" style="--x:84%;--y:78%">❄️ Ultra sovutish</span>
+      </div>
+      <div class="sc-hint"><span class="mouse-ic"><i></i></span>Aylantiring</div>
+    </div>
+  </section>
+
+  <!-- Categories -->
+  <section class="section container" id="categories">
+    <div class="section-head reveal">
+      <h2>Kategoriyalar</h2>
+      <p>Kerakli bo'limni tanlang</p>
+    </div>
+    <div class="cat-grid" id="catGrid"></div>
+  </section>
+
+  <!-- Deals -->
+  <section class="deals" id="deals">
+    <div class="deals-img" id="dealsImg"></div>
+    <div class="container deals-inner reveal">
+      <div>
+        <span class="pill pill-dark">⏰ Cheklangan vaqt</span>
+        <h2>MEGA CHEGIRMA — 40% gacha!</h2>
+        <p>Promo-kod: <b class="promo" id="copyPromo" title="Nusxa olish">OPUS10</b> — savatda qo'shimcha 10% chegirma.</p>
+        <div class="countdown" id="countdown">
+          <div><b id="cdD">00</b><small>kun</small></div>
+          <div><b id="cdH">00</b><small>soat</small></div>
+          <div><b id="cdM">00</b><small>daqiqa</small></div>
+          <div><b id="cdS">00</b><small>soniya</small></div>
+        </div>
+      </div>
+      <a href="#products" class="btn btn-light" data-filter-deal>Chegirmalarni ko'rish →</a>
+    </div>
+  </section>
+
+  <!-- Products -->
+  <section class="section container" id="products">
+    <div class="section-head reveal">
+      <h2>Mahsulotlar</h2>
+      <p id="resultInfo">Barcha mahsulotlar</p>
+    </div>
+
+    <div class="toolbar reveal">
+      <div class="chips" id="chips"></div>
+      <div class="toolbar-right">
+        <label class="price-filter">
+          Maks. narx: <b id="priceLabel"></b>
+          <input type="range" id="priceRange" min="500000" max="45000000" step="500000" />
+        </label>
+        <select id="sortSelect">
+          <option value="popular">Ommabop</option>
+          <option value="cheap">Arzonroq</option>
+          <option value="expensive">Qimmatroq</option>
+          <option value="rating">Reyting bo'yicha</option>
+          <option value="discount">Chegirma bo'yicha</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="product-grid" id="productGrid"></div>
+    <div class="empty" id="emptyState" hidden>
+      <div class="empty-ic">🔍</div>
+      <h3>Hech narsa topilmadi</h3>
+      <p>Boshqa so'z bilan qidirib ko'ring yoki filtrlarni tozalang.</p>
+      <button class="btn btn-primary" id="resetFilters">Filtrlarni tozalash</button>
+    </div>
+  </section>
+
+  <!-- Recently viewed -->
+  <section class="section container" id="recentSection" hidden>
+    <div class="section-head reveal visible">
+      <h2>Yaqinda ko'rilganlar</h2>
+      <p>Siz qiziqqan mahsulotlar</p>
+    </div>
+    <div class="recent" id="recentList"></div>
+  </section>
+
+  <!-- Payments -->
+  <section class="section container">
+    <div class="section-head reveal">
+      <h2>Qulay to'lov usullari</h2>
+      <p>O'zingizga qulay usulda to'lang</p>
+    </div>
+    <div class="pay-strip reveal" id="payStrip"></div>
+  </section>
+
+  <!-- Testimonials -->
+  <section class="section container">
+    <div class="section-head reveal">
+      <h2>Mijozlar fikri</h2>
+      <p>Bizga ishonganlar</p>
+    </div>
+    <div class="testimonials">
+      <div class="testi reveal"><div class="stars">★★★★★</div><p>"Noutbuk ertasi kuni yetib keldi, qadoqlash a'lo darajada. Rahmat OPUS MARKET!"</p><div class="testi-user"><span class="avatar">AR</span><div><b>Aziz R.</b><small>Toshkent</small></div></div></div>
+      <div class="testi reveal"><div class="stars">★★★★★</div><p>"O'yin kompyuterini bo'lib to'lashga oldim. Konsultantlar juda yaxshi maslahat berishdi."</p><div class="testi-user"><span class="avatar">DK</span><div><b>Dilnoza K.</b><small>Samarqand</small></div></div></div>
+      <div class="testi reveal"><div class="stars">★★★★☆</div><p>"Narxlar boshqa do'konlarga qaraganda arzonroq, aksessuarlar tanlovi katta."</p><div class="testi-user"><span class="avatar">JM</span><div><b>Jasur M.</b><small>Farg'ona</small></div></div></div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section container faq-wrap">
+    <div class="section-head reveal">
+      <h2>Ko'p beriladigan savollar</h2>
+    </div>
+    <div class="faq reveal">
+      <details><summary>Yetkazib berish qancha vaqt oladi?</summary><p>Toshkent bo'ylab 24 soat ichida, viloyatlarga 2–4 ish kunida yetkazamiz. 1 mln so'mdan yuqori xaridlarda yetkazish bepul.</p></details>
+      <details><summary>Bo'lib to'lash qanday ishlaydi?</summary><p>Uzum Nasiya orqali 3, 6, 12 yoki 24 oyga 0% ustama bilan bo'lib to'lashingiz mumkin. Faqat pasport va karta kerak.</p></details>
+      <details><summary>Mahsulotlarga kafolat bormi?</summary><p>Barcha mahsulotlar rasmiy — 12 oydan 36 oygacha ishlab chiqaruvchi kafolati beriladi.</p></details>
+      <details><summary>Mahsulotni qaytarsam bo'ladimi?</summary><p>Ha, 14 kun ichida qadoqlanishi buzilmagan mahsulotni bepul qaytarishingiz mumkin.</p></details>
+    </div>
+  </section>
+
+  <!-- Newsletter -->
+  <section class="newsletter container reveal">
+    <div>
+      <h3>Yangiliklar va aksiyalardan birinchi bo'lib xabardor bo'ling</h3>
+      <p>Obuna bo'ling va birinchi xaridga 5% chegirma oling.</p>
+    </div>
+    <form id="newsForm">
+      <input type="email" required placeholder="Email manzilingiz" />
+      <button class="btn btn-primary">Obuna bo'lish</button>
+    </form>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer" id="contact">
+    <div class="container footer-grid">
+      <div>
+        <a href="#" class="logo"><span class="logo-mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="none" stroke="#fff" stroke-width="3.4"/></svg></span><span class="logo-text">OPUS<b>MARKET</b></span></a>
+        <p class="muted">Kompyuterlar va aksessuarlar bo'yicha ishonchli onlayn do'koningiz.</p>
+        <div class="socials">
+          <a href="#" title="Telegram"><svg viewBox="0 0 24 24"><path d="M21.9 4.3l-3.2 15.1c-.2 1.1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.3-5 9.1-8.2c.4-.4-.1-.6-.6-.2L6.2 13 1.4 11.5c-1-.3-1.1-1 .2-1.5l18.9-7.3c.9-.3 1.6.2 1.4 1.6z"/></svg></a>
+          <a href="#" title="Instagram"><svg viewBox="0 0 24 24"><path d="M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zm0 2a3 3 0 00-3 3v10a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3H7zm5 3.5a4.5 4.5 0 110 9 4.5 4.5 0 010-9zm0 2a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM17.5 5.5a1 1 0 110 2 1 1 0 010-2z"/></svg></a>
+          <a href="#" title="YouTube"><svg viewBox="0 0 24 24"><path d="M23 7.2a3 3 0 00-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 001 7.2 31 31 0 00.5 12a31 31 0 00.5 4.8 3 3 0 002.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 002.1-2.1 31 31 0 00.5-4.8 31 31 0 00-.5-4.8zM9.8 15V9l5.7 3-5.7 3z"/></svg></a>
+        </div>
+      </div>
+      <div>
+        <h5>Bo'limlar</h5>
+        <a href="#categories">Kategoriyalar</a><a href="#products">Mahsulotlar</a><a href="#deals">Aksiyalar</a>
+      </div>
+      <div>
+        <h5>Yordam</h5>
+        <a href="#">Yetkazib berish</a><a href="#">Kafolat</a><a href="#">To'lov usullari</a><a href="#">Qaytarish</a>
+      </div>
+      <div>
+        <h5>Aloqa</h5>
+        <a href="tel:+998712000000">📞 +998 71 200 00 00</a>
+        <a href="#">📍 Toshkent sh., Amir Temur ko'chasi</a>
+        <a href="#">🕘 Har kuni 09:00 – 21:00</a>
+      </div>
+    </div>
+    <div class="container footer-pay" id="footerPay"></div>
+    <div class="container copyright">© <span id="year"></span> OPUS MARKET. Barcha huquqlar himoyalangan.
+      <p class="photo-note">Bezak rasmlari: <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a>. Mahsulot fotosuratlari: <a href="https://commons.wikimedia.org" target="_blank" rel="noopener">Wikimedia Commons</a> mualliflari (CC litsenziyalari) — har bir rasm muallifi mahsulot oynasida ko'rsatilgan.</p>
+    </div>
+  </footer>
+
+  <!-- Overlay -->
+  <div class="overlay" id="overlay"></div>
+
+  <!-- Cart drawer -->
+  <aside class="drawer" id="cartDrawer">
+    <div class="drawer-head">
+      <h3>🛒 Savat</h3>
+      <button class="close" data-close>✕</button>
+    </div>
+    <div class="ship-progress" id="shipProgress">
+      <p id="shipText"></p>
+      <div class="bar"><i id="shipBar"></i></div>
+    </div>
+    <div class="drawer-body" id="cartItems"></div>
+    <div class="drawer-foot" id="cartFoot">
+      <div class="promo-row">
+        <input type="text" id="promoInput" placeholder="Promo-kod" />
+        <button class="btn btn-ghost btn-sm" id="promoBtn">Qo'llash</button>
+      </div>
+      <div class="sum-row"><span>Mahsulotlar</span><span id="subTotal">0</span></div>
+      <div class="sum-row discount-row" id="discountRow" hidden><span>Chegirma</span><span id="discountVal">0</span></div>
+      <div class="sum-row"><span>Yetkazib berish</span><span id="shipVal">Bepul</span></div>
+      <div class="sum-row total"><span>Jami</span><span id="grandTotal">0</span></div>
+      <button class="btn btn-primary btn-block" id="checkoutBtn">Rasmiylashtirish →</button>
+      <div class="mini-pay" id="miniPay"></div>
+    </div>
+  </aside>
+
+  <!-- Wishlist drawer -->
+  <aside class="drawer" id="wishDrawer">
+    <div class="drawer-head">
+      <h3>❤️ Sevimlilar</h3>
+      <button class="close" data-close>✕</button>
+    </div>
+    <div class="drawer-body" id="wishItems"></div>
+  </aside>
+
+  <!-- Orders drawer -->
+  <aside class="drawer" id="ordersDrawer">
+    <div class="drawer-head">
+      <h3>📦 Buyurtmalarim</h3>
+      <button class="close" data-close>✕</button>
+    </div>
+    <div class="drawer-body" id="orderItems"></div>
+  </aside>
+
+  <!-- Product modal -->
+  <div class="modal" id="productModal">
+    <div class="modal-box modal-product">
+      <button class="close" data-close>✕</button>
+      <div id="productModalBody"></div>
+    </div>
+  </div>
+
+  <!-- Checkout modal -->
+  <div class="modal" id="checkoutModal">
+    <div class="modal-box modal-checkout">
+      <button class="close" data-close>✕</button>
+      <div class="steps" id="steps">
+        <div class="step active" data-step="1"><i>1</i>Ma'lumotlar</div>
+        <div class="step" data-step="2"><i>2</i>Yetkazish</div>
+        <div class="step" data-step="3"><i>3</i>To'lov</div>
+      </div>
+      <form id="checkoutForm" novalidate>
+        <div class="step-pane active" data-pane="1">
+          <h3>Shaxsiy ma'lumotlar</h3>
+          <label>Ism familiya<input name="name" required minlength="3" placeholder="Masalan: Aziz Rahimov" /></label>
+          <label>Telefon raqam<input name="phone" required inputmode="tel" placeholder="+998 90 123 45 67" /></label>
+          <label>Email (ixtiyoriy)<input name="email" type="email" placeholder="email@misol.uz" /></label>
+        </div>
+        <div class="step-pane" data-pane="2">
+          <h3>Yetkazib berish</h3>
+          <div class="radio-cards">
+            <label class="rcard"><input type="radio" name="delivery" value="courier" checked /><span><b>🚚 Kuryer</b><small>1 mln so'mdan yuqori — bepul, 24 soat</small></span></label>
+            <label class="rcard"><input type="radio" name="delivery" value="pickup" /><span><b>🏬 Do'kondan olib ketish</b><small>Bepul, bugunoq</small></span></label>
+          </div>
+          <label>Viloyat
+            <select name="region">
+              <option>Toshkent shahri</option><option>Toshkent viloyati</option><option>Samarqand</option><option>Buxoro</option><option>Andijon</option><option>Farg'ona</option><option>Namangan</option><option>Qashqadaryo</option><option>Surxondaryo</option><option>Xorazm</option><option>Navoiy</option><option>Jizzax</option><option>Sirdaryo</option><option>Qoraqalpog'iston</option>
+            </select>
+          </label>
+          <label>Manzil<input name="address" required placeholder="Ko'cha, uy, xonadon" /></label>
+          <label>Izoh (ixtiyoriy)<textarea name="note" rows="2" placeholder="Kuryer uchun izoh"></textarea></label>
+        </div>
+        <div class="step-pane" data-pane="3">
+          <h3>To'lov usuli</h3>
+          <div class="pay-grid" id="payGrid"></div>
+          <div class="installment" id="installBox" hidden>
+            <b>Muddatni tanlang:</b>
+            <div class="months" id="months"></div>
+          </div>
+          <div class="order-summary" id="orderSummary"></div>
+          <p class="secure">🔒 Ma'lumotlaringiz himoyalangan. Bu demo-sayt — haqiqiy to'lov amalga oshirilmaydi.</p>
+        </div>
+        <div class="form-nav">
+          <button type="button" class="btn btn-ghost" id="prevStep">← Orqaga</button>
+          <button type="button" class="btn btn-primary" id="nextStep">Keyingi →</button>
+        </div>
+      </form>
+      <div class="success" id="successPane" hidden>
+        <div class="check-anim"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M14 27l8 8 16-16"/></svg></div>
+        <h3>Buyurtma qabul qilindi!</h3>
+        <p>Buyurtma raqami: <b id="orderId"></b></p>
+        <p class="muted" id="successNote">Operatorimiz tez orada siz bilan bog'lanadi.</p>
+        <button class="btn btn-primary" data-close>Xaridni davom ettirish</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+  <button class="to-top" id="toTop">↑</button>
+  <canvas id="confetti"></canvas>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="showcase.js"></script>
+</body>
+</html>
