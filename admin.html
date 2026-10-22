@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=3" />
-  <link rel="stylesheet" href="admin.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=4" />
+  <link rel="stylesheet" href="admin.css?v=4" />
 </head>
 <body class="admin">
 
@@ -51,9 +51,12 @@
       <nav class="ad-nav" id="adNav">
         <button data-view="dash" class="active"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>Boshqaruv</button>
         <button data-view="products"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v10H4V5zm2 0v8h12V5H6zM1 17h22v1a2 2 0 01-2 2H3a2 2 0 01-2-2v-1z"/></svg>Mahsulotlar <span class="ad-count" id="navProducts"></span></button>
+        <button data-view="news"><svg viewBox="0 0 24 24"><path d="M4 3h13a2 2 0 012 2v1h1a2 2 0 012 2v10a3 3 0 01-3 3H5a3 3 0 01-3-3V5a2 2 0 012-2zm13 3V5H4v13a1 1 0 001 1h12.2a3 3 0 01-.2-1V6zm2 2v10a1 1 0 002 0V8h-2zM6 7h9v4H6V7zm0 6h9v2H6v-2zm0 3h6v2H6v-2z"/></svg>Yangiliklar <span class="ad-count" id="navNews"></span></button>
+        <button data-view="cats"><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm13 0a4 4 0 110 8 4 4 0 010-8z"/></svg>Kategoriyalar</button>
         <button data-view="orders"><svg viewBox="0 0 24 24"><path d="M6 2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zm2 5v2h8V7H8zm0 4v2h8v-2H8zm0 4v2h5v-2H8z"/></svg>Buyurtmalar <span class="ad-count" id="navOrders"></span></button>
         <button data-view="promos"><svg viewBox="0 0 24 24"><path d="M21.4 11.6l-9-9A2 2 0 0011 2H4a2 2 0 00-2 2v7c0 .6.2 1.1.6 1.4l9 9a2 2 0 002.8 0l7-7a2 2 0 000-2.8zM6.5 8A1.5 1.5 0 116.5 5a1.5 1.5 0 010 3z"/></svg>Promo-kodlar</button>
         <button data-view="settings"><svg viewBox="0 0 24 24"><path d="M19.4 13a7.6 7.6 0 000-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 00-1.7-1L15 3.2h-4l-.4 2.7a7.4 7.4 0 00-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 000 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 001.7 1l.4 2.7h4l.4-2.7a7.4 7.4 0 001.7-1l2.5 1 2-3.5-2.1-1.6zM13 15.5a3.5 3.5 0 110-7 3.5 3.5 0 010 7z"/></svg>Sozlamalar</button>
+        <button data-view="history"><svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 00-9 9H1l4 4 4-4H6a7 7 0 112 4.9l-1.4 1.4A9 9 0 1013 3zm-1 5v5l4.2 2.5.8-1.3-3.5-2.1V8H12z"/></svg>Tarix</button>
       </nav>
       <div class="ad-user" id="adUser"></div>
     </aside>
@@ -66,6 +69,7 @@
         </div>
         <div class="ad-top-actions">
           <a class="btn btn-ghost btn-sm" href="./" target="_blank" rel="noopener">Saytni ochish ↗</a>
+          <button class="btn btn-ghost btn-sm" id="previewBtn" hidden title="E'lon qilinmagan o'zgarishlarni saytda ko'rish">👁 Oldindan ko'rish</button>
           <button class="btn btn-ghost btn-sm" id="discardBtn" hidden>Bekor qilish</button>
           <button class="btn btn-primary btn-sm" id="publishBtn" disabled>E'lon qilish <span class="ad-dirty" id="dirtyCount" hidden></span></button>
         </div>
@@ -102,15 +106,56 @@
           <input type="search" id="pSearch" placeholder="Nomi yoki brend bo'yicha qidirish…" />
           <select id="pCat"><option value="">Barcha kategoriyalar</option></select>
           <select id="pStock">
-            <option value="">Har qanday ombor</option>
+            <option value="">Har qanday holat</option>
             <option value="low">Kam qolgan (≤5)</option>
             <option value="out">Tugagan (0)</option>
             <option value="sale">Chegirmada</option>
+            <option value="notorig">Original belgisisiz</option>
           </select>
+          <button class="btn btn-ghost btn-sm" id="csvExport" title="Excel'da ochiladigan CSV fayl">⬇ CSV</button>
+          <label class="btn btn-ghost btn-sm" title="CSV'dagi narx, ombor va boshqa ustunlarni ID bo'yicha yangilaydi">⬆ CSV import<input type="file" id="csvImport" accept=".csv,text/csv" hidden /></label>
           <button class="btn btn-primary btn-sm" id="addProduct">+ Yangi mahsulot</button>
+        </div>
+        <div class="ad-bulk" id="bulkBar" hidden>
+          <b id="bulkCount">0 ta tanlandi</b>
+          <select id="bulkAction" aria-label="Amal">
+            <option value="discount">Chegirma berish, %</option>
+            <option value="price">Narxni o'zgartirish, ± %</option>
+            <option value="stock">Omborni belgilash, dona</option>
+            <option value="badge">Belgi qo'yish</option>
+            <option value="orig1">Original deb belgilash</option>
+            <option value="orig0">Original belgisini olib tashlash</option>
+            <option value="delete">O'chirish</option>
+          </select>
+          <input id="bulkValue" type="number" placeholder="masalan 15" aria-label="Qiymat" />
+          <select id="bulkBadge" aria-label="Belgi" hidden><option value="">Belgisiz</option><option>Yangi</option><option>Xit</option></select>
+          <button class="btn btn-primary btn-sm" id="bulkApply">Qo'llash</button>
+          <button class="btn btn-ghost btn-sm" id="bulkClear">Tanlovni bekor qilish</button>
         </div>
         <div class="ad-table-wrap"><table class="ad-table" id="pTable"></table></div>
         <p class="muted ad-hint">Narx va omborni jadvalning o'zida o'zgartirish mumkin. Barcha o'zgarishlar "E'lon qilish" bosilgandan keyin saytda ko'rinadi.</p>
+      </section>
+
+      <!-- Yangiliklar -->
+      <section class="ad-view" data-view="news" hidden>
+        <div class="ad-toolbar">
+          <input type="search" id="nSearch" placeholder="Sarlavha bo'yicha qidirish…" />
+          <button class="btn btn-primary btn-sm" id="addNews">+ Yangi yangilik</button>
+        </div>
+        <div class="ad-news-list" id="newsList"></div>
+      </section>
+
+      <!-- Kategoriyalar -->
+      <section class="ad-view" data-view="cats" hidden>
+        <p class="muted ad-hint">Kategoriya nomi va rasmini o'zgartirishingiz mumkin. Kategoriya kodi (ID) mahsulotlarga bog'langani uchun o'zgarmaydi.</p>
+        <div class="ad-table-wrap"><table class="ad-table" id="cTable"></table></div>
+      </section>
+
+      <!-- Tarix -->
+      <section class="ad-view" data-view="history" hidden>
+        <div class="ad-note">Har bir "E'lon qilish" GitHub'da saqlanadi. Istalgan avvalgi versiyani ochib, tekshirib, qayta e'lon qilishingiz mumkin — hech narsa yo'qolmaydi.</div>
+        <div class="ad-toolbar"><button class="btn btn-ghost btn-sm" id="historyLoad">↻ Tarixni yuklash</button></div>
+        <div id="historyList"><p class="ad-empty">Tarixni ko'rish uchun "Tarixni yuklash" ni bosing</p></div>
       </section>
 
       <!-- Buyurtmalar -->
@@ -118,6 +163,10 @@
         <div class="ad-note">
           <b>ℹ️ Muhim:</b> sayt hozircha serversiz ishlaydi, shuning uchun buyurtmalar har bir mijozning o'z brauzerida saqlanadi.
           Bu yerda <b>shu brauzer orqali</b> berilgan buyurtmalar ko'rinadi. Barcha mijozlar buyurtmalarini qabul qilish uchun server yoki Telegram bot ulash kerak.
+        </div>
+        <div class="ad-toolbar">
+          <input type="search" id="oSearch" placeholder="Buyurtma raqami, ism yoki telefon…" />
+          <button class="btn btn-ghost btn-sm" id="oExport">⬇ CSV</button>
         </div>
         <div class="ad-table-wrap"><table class="ad-table" id="oTable"></table></div>
       </section>
@@ -194,6 +243,7 @@
         <div><label for="fBadge">Belgi</label><select id="fBadge" name="badge"><option value="">Yo'q</option><option>Yangi</option><option>Xit</option></select></div>
         <div><label for="fPopular">Ommaboplik (0–100)</label><input id="fPopular" name="popular" type="number" min="0" max="100" /></div>
       </div>
+      <label class="ad-check ad-orig-check"><input type="checkbox" id="fOriginal" name="original" checked /> <span><b>Original mahsulot</b> — saytda "✓ Original" belgisi chiqadi (faqat haqiqatan rasmiy yetkazib beruvchidan olingan mahsulotlar uchun)</span></label>
       <label for="fDesc">Tavsif</label>
       <textarea id="fDesc" name="desc" rows="3"></textarea>
       <div class="ad-panel-head"><h3>Xususiyatlar</h3><button type="button" class="ad-link" id="addSpec">+ Qator</button></div>
@@ -205,9 +255,42 @@
     </form>
   </aside>
 
+  <!-- Yangilikni tahrirlash -->
+  <aside class="drawer ad-drawer" id="newsDrawer">
+    <div class="drawer-head">
+      <h3 id="newsTitle">Yangilik</h3>
+      <button class="close" data-close>✕</button>
+    </div>
+    <form class="drawer-body ad-form" id="newsForm">
+      <div class="ad-img-edit">
+        <div class="ad-img-preview" id="nImgPreview"></div>
+        <div>
+          <label class="btn btn-ghost btn-sm ad-upload">📷 Rasm yuklash<input type="file" id="nImgFile" accept="image/*" hidden /></label>
+          <p class="muted ad-hint">Yoki mavjud rasm yo'lini yozing (masalan mahsulot rasmi).</p>
+          <input id="nImg" name="img" placeholder="img/… yoki URL" />
+        </div>
+      </div>
+      <label for="nTitleIn">Sarlavha</label>
+      <input id="nTitleIn" name="title" required maxlength="140" />
+      <div class="ad-grid3">
+        <div><label for="nTag">Turi</label><input id="nTag" name="tag" list="nTags" placeholder="Yangilik" /><datalist id="nTags"><option>Yangilik</option><option>Aksiya</option><option>Yangi kelgan</option><option>Maslahat</option><option>Sharh</option></datalist></div>
+        <div><label for="nDate">Sana</label><input id="nDate" name="date" type="date" required /></div>
+        <div><label class="ad-check" style="margin-top:34px"><input type="checkbox" id="nPinned" name="pinned" /> 📌 Tepada</label></div>
+      </div>
+      <label for="nExcerpt">Qisqa matn (kartochkada ko'rinadi)</label>
+      <textarea id="nExcerpt" name="excerpt" rows="2" maxlength="220"></textarea>
+      <label for="nBody">To'liq matn <small class="muted">— xatboshilarni bo'sh qator bilan ajrating</small></label>
+      <textarea id="nBody" name="body" rows="12"></textarea>
+      <div class="ad-drawer-foot">
+        <button type="button" class="btn btn-ghost ad-danger" id="nDelete">O'chirish</button>
+        <button class="btn btn-primary">Saqlash</button>
+      </div>
+    </form>
+  </aside>
+
   <div class="toasts" id="toasts"></div>
 
-  <script src="assets.js?v=3"></script>
-  <script src="admin.js?v=3"></script>
+  <script src="assets.js?v=4"></script>
+  <script src="admin.js?v=4"></script>
 </body>
 </html>
