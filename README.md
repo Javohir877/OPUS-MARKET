@@ -17,7 +17,7 @@ Hech qanday o'rnatish kerak emas — oddiy statik sayt.
 | `styles.css` | Dizayn va animatsiyalar |
 | `data.js` | Sozlamalar, kategoriyalar, mahsulotlar — **admin panel shu faylni tahrirlaydi** |
 | `assets.js` | O'zgarmas qismlar: rasm yordamchilari, to'lov logotiplari, ikonkalar |
-| `admin.html`, `admin.js`, `admin.css` | Admin panel: mahsulot/narx/ombor/rasm, promo-kodlar, sozlamalar, buyurtmalar; GitHub token orqali bitta commit bilan e'lon qiladi |
+| `admin.html`, `admin.js`, `admin.css` | Admin panel: mahsulot/narx/ombor/rasm, yangiliklar, kategoriyalar, promo-kodlar, sozlamalar, buyurtmalar, ommaviy amallar, CSV, oldindan ko'rish, tarix; GitHub token orqali bitta commit bilan e'lon qiladi |
 | `app.js` | Savat, filtrlar, qidiruv, buyurtma |
 | `showcase.js` | 3D noutbuk shou (Three.js) |
 | `scrollfx.js` | Scroll animatsiyalari: "elektr sxemasi", progress, parallaks, sarlavha effekti |
