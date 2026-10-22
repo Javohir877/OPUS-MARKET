@@ -26,7 +26,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # 2) Yuklanadigan fayllar (.gitignore'dagilar va yordamchi papkalarsiz)
-$skip = @("deploy", ".claude", ".git")
+$skip = @("deploy", ".claude", ".git", "tools", "server\node_modules", "server\.wrangler")
 $files = Get-ChildItem -Path $root -Recurse -File | Where-Object {
   $rel = $_.FullName.Substring($root.Length + 1)
   -not ($skip | Where-Object { $rel -like "$_\*" })
