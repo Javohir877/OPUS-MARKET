@@ -1,9 +1,6 @@
 // ================= OPUS ADMIN =================
-// Do'kon ma'lumotlari (data.js) ni tahrirlaydi va GitHub API orqali bitta commit bilan saytga e'lon qiladi.
-// Token faqat brauzerda saqlanadi va faqat api.github.com ga yuboriladi.
-
-const CFG = { owner: "Javohir877", repo: "OPUS-MARKET", branch: "main", dataPath: "data.js", swPath: "sw.js" };
-const API = "https://api.github.com";
+// Do'kon katalogini (sozlamalar, kategoriyalar, mahsulotlar, yangiliklar), buyurtmalar va mijozlarni boshqaradi.
+// Hammasi OPUS serveri (Cloudflare Worker, API_BASE — assets.js) orqali. Admin tokeni faqat shu brauzer seansida saqlanadi.
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -16,19 +13,23 @@ const ls = {
   set: (k, v) => safe(() => localStorage.setItem(k, JSON.stringify(v))),
   del: (k) => safe(() => localStorage.removeItem(k)),
 };
+const ss = {
+  get: (k) => safe(() => sessionStorage.getItem(k), null),
+  set: (k, v) => safe(() => sessionStorage.setItem(k, v)),
+  del: (k) => safe(() => sessionStorage.removeItem(k)),
+};
 
 const S = {
-  token: null, user: null, demo: false,
-  data: null, baseJSON: "", baseSha: null,
-  uploads: {},          // "img/u-....jpg" → dataURL (hali e'lon qilinmagan rasmlar)
-  published: new Set(), // e'lon qilingan yuklamalar
+  token: ss.get("opus_admin_api"),
+  data: null, baseJSON: "",
+  uploads: {},          // "img/u-....jpg" → dataURL (hali serverga yuklanmagan rasmlar)
+  orders: [], users: [], stats: null,
   view: "dash", editing: null,
 };
 
 // Sayt mavzusini (tun/kun) admin ham ishlatadi
 document.documentElement.dataset.theme = safe(() => JSON.parse(localStorage.getItem("opus_theme")), null) ||
   (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-$("#repoName").textContent = CFG.repo;
 
 // ---------- Umumiy ----------
 function toast(msg) {
@@ -41,36 +42,39 @@ function toast(msg) {
 const srcOf = (img) => (img ? S.uploads[img] || IMG(img) : "");
 const catName = (id) => (S.data.CATEGORIES.find((c) => c.id === id) || {}).name || id;
 const stockChip = (n) => n <= 0 ? `<span class="chip bad">⛔ Tugagan</span>` : n <= 5 ? `<span class="chip warn">⚠ Kam</span>` : `<span class="chip ok">✓ Bor</span>`;
+const fmtPhone = (p) => { const d = String(p || "").replace(/\D/g, "").replace(/^998/, ""); return d ? "+998 " + [d.slice(0, 2), d.slice(2, 5), d.slice(5, 7), d.slice(7, 9)].join(" ") : ""; };
+const dt = (ms) => (ms ? new Date(ms).toLocaleString("ru-RU") : "—");
 
-// ---------- GitHub API ----------
-async function gh(path, opts = {}) {
-  const headers = { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
-  if (S.token) headers.Authorization = "Bearer " + S.token;
-  if (opts.body) headers["Content-Type"] = "application/json";
-  const res = await fetch(API + path, { ...opts, headers, cache: "no-store" });
-  if (!res.ok) {
-    let msg = "HTTP " + res.status;
-    try { msg = (await res.json()).message || msg; } catch {}
-    const e = new Error(msg); e.status = res.status; throw e;
+// ---------- Server API ----------
+async function api(method, path, body) {
+  let res;
+  try {
+    res = await fetch(API_BASE + path, {
+      method, cache: "no-store",
+      headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...(S.token ? { Authorization: "Bearer " + S.token } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw Object.assign(new Error("Server bilan aloqa yo'q. Internetni tekshiring."), { status: 0 });
   }
-  return res.status === 204 ? null : res.json();
+  let data = {};
+  try { data = await res.json(); } catch {}
+  if (res.status === 401 && path.startsWith("/api/admin/") && path !== "/api/admin/login") {
+    // Seans tugagan (12 soat) — qulf ekraniga qaytamiz
+    S.token = null; ss.del("opus_admin_api");
+    showLock("Seans tugadi — parolni qayta kiriting.");
+  }
+  if (!res.ok) throw Object.assign(new Error(data.error || "Xatolik (" + res.status + ")"), { status: res.status });
+  return data;
 }
-const repoPath = (p) => `/repos/${CFG.owner}/${CFG.repo}${p}`;
-const b64ToText = (b64) => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, "")), (c) => c.charCodeAt(0)));
-const bytesToB64 = (bytes) => { let s = ""; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); };
-const textToB64 = (t) => bytesToB64(new TextEncoder().encode(t));
-function apiError(e) {
-  if (e.status === 401) return "Token yaroqsiz yoki muddati o'tgan. Yangi token yarating.";
-  if (e.status === 403 || e.status === 404) return `Token "${CFG.repo}" repozitoriysiga yozish huquqiga ega emas (Contents: Read and write kerak).`;
-  if (e.status === 409 || e.status === 422) return "GitHub o'zgarishni qabul qilmadi: repo boshqa joyda o'zgargan. Sahifani yangilab, qayta urinib ko'ring.";
-  if (e instanceof TypeError) return "Internetga ulanib bo'lmadi. Aloqani tekshiring.";
-  return "Xato: " + e.message;
-}
+const apiError = (e) => e.message || String(e);
 
-// ---------- data.js: o'qish va yozish ----------
-function parseData(text) {
-  const d = new Function(text + "\n;return { SETTINGS: typeof SETTINGS !== 'undefined' ? SETTINGS : {}, CATEGORIES, PRODUCTS, NEWS: typeof NEWS !== 'undefined' ? NEWS : [] };")();
+// ---------- Katalog ----------
+function normalize(d) {
+  d = JSON.parse(JSON.stringify(d));
+  d.CATEGORIES = d.CATEGORIES || []; d.PRODUCTS = d.PRODUCTS || []; d.NEWS = d.NEWS || [];
   d.SETTINGS = { topbar: "", dealTitle: "", freeShipFrom: 1000000, shipPrice: 50000, promos: {}, apk: { url: "", version: "", sizeMB: 0 }, ...d.SETTINGS };
+  delete d.SETTINGS.adminPass; // eski (serversiz) parol xeshi endi kerak emas
   d.SETTINGS.promos = d.SETTINGS.promos || {};
   d.SETTINGS.apk = { url: "", version: "", sizeMB: 0, ...(d.SETTINGS.apk || {}) };
   const pay = d.SETTINGS.pay || {};
@@ -80,41 +84,26 @@ function parseData(text) {
   };
   return d;
 }
-function serializeData(d) {
-  const line = (o) => "  " + JSON.stringify(o);
-  return `// OPUS MARKET — do'kon ma'lumotlari. Bu faylni admin panel (admin.html) tahrirlaydi va qayta yozadi.
-// O'zgarmas narsalar (rasm yordamchilari, to'lov logotiplari, ikonkalar) — assets.js da.
-// Oxirgi tahrir: ${new Date().toLocaleString("ru-RU")} (admin panel)
-
-const SETTINGS = ${JSON.stringify(d.SETTINGS, null, 2)};
-
-const CATEGORIES = [
-${d.CATEGORIES.map(line).join(",\n")}
-];
-
-const PRODUCTS = [
-${d.PRODUCTS.map(line).join(",\n")}
-];
-
-// Yangiliklar. body: xatboshilar bo'sh qator (\\n\\n) bilan ajratiladi.
-const NEWS = [
-${(d.NEWS || []).map(line).join(",\n")}
-];
-`;
+// data.js matnidan (serverda katalog hali bo'lmasa — boshlang'ich ma'lumot)
+function parseData(text) {
+  return normalize(new Function(text + "\n;return { SETTINGS: typeof SETTINGS !== 'undefined' ? SETTINGS : {}, CATEGORIES, PRODUCTS, NEWS: typeof NEWS !== 'undefined' ? NEWS : [] };")());
 }
 async function loadData() {
-  let text;
-  if (S.token) {
-    const f = await gh(repoPath(`/contents/${CFG.dataPath}?ref=${CFG.branch}`));
-    text = b64ToText(f.content);
-    S.baseSha = f.sha;
+  const d = await api("GET", "/api/catalog");
+  if (d.PRODUCTS && d.PRODUCTS.length) {
+    S.data = normalize(d);
+    S.baseJSON = JSON.stringify(S.data);
   } else {
-    text = await (await fetch(`${CFG.dataPath}?nocache=${Date.now()}`, { cache: "no-store" })).text();
-    S.baseSha = "demo";
+    // Server bo'sh: data.js ni qoralama sifatida ochamiz — "E'lon qilish" uni serverga yozadi
+    S.data = parseData(await (await fetch(`data.js?nocache=${Date.now()}`, { cache: "no-store" })).text());
+    S.baseJSON = JSON.stringify({ SETTINGS: {}, CATEGORIES: [], PRODUCTS: [], NEWS: [] });
+    toast("ℹ️ Serverda katalog hali yo'q — data.js yuklandi. Serverga yozish uchun \"E'lon qilish\" ni bosing.");
   }
-  S.data = parseData(text);
-  S.baseJSON = JSON.stringify(S.data);
-  $("#syncInfo").textContent = `Ma'lumotlar yuklandi: ${new Date().toLocaleTimeString("ru-RU")}${S.demo ? " · ko'rish rejimi" : ""}`;
+  $("#syncInfo").textContent = `Ma'lumotlar yuklandi: ${new Date().toLocaleTimeString("ru-RU")}`;
+}
+async function loadServer() {
+  const [st, o, u] = await Promise.all([api("GET", "/api/admin/stats"), api("GET", "/api/admin/orders"), api("GET", "/api/admin/users")]);
+  S.stats = st; S.orders = o.orders; S.users = u.users;
 }
 
 // ---------- O'zgarishlarni kuzatish ----------
@@ -142,49 +131,23 @@ function markDirty() {
   $("#previewBtn").hidden = n === 0;
   $("#dirtyCount").hidden = n === 0;
   $("#dirtyCount").textContent = n;
-  if (n) ls.set("opus_admin_draft", { baseSha: S.baseSha, data: S.data, uploads: S.uploads, at: Date.now() });
+  if (n) ls.set("opus_admin_draft", { data: S.data, uploads: S.uploads, at: Date.now() });
   else ls.del("opus_admin_draft");
 }
 function update() { renderAll(); markDirty(); }
 
 // ---------- Ishga tushirish ----------
-// Token shart emas: panel paroldan keyin darhol ochiladi.
-// GitHub ulanishi — Sozlamalarda, ixtiyoriy (ulansa "E'lon qilish" saytga to'g'ridan-to'g'ri yozadi).
-const TOKEN_KEY = "opus_admin_token";
-async function connectToken(token) {
-  S.token = token.trim();
-  const user = await gh("/user");
-  const repo = await gh(repoPath(""));
-  if (repo.permissions && repo.permissions.push === false) { const e = new Error("no push"); e.status = 403; throw e; }
-  S.user = user; S.demo = false;
-}
-function forgetToken() {
-  S.token = null; S.user = null; S.demo = true;
-  safe(() => { sessionStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY); });
-}
 async function start() {
-  const saved = safe(() => sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY), null);
-  if (saved) { try { await connectToken(saved); } catch { forgetToken(); } }
-  S.demo = !S.token;
-  try { await loadData(); }
-  catch (ex) { toast("❌ " + apiError(ex)); forgetToken(); await loadData(); }
+  await loadData();
+  try { await loadServer(); } catch (ex) { toast("❌ " + apiError(ex)); }
   enterApp();
 }
 function refreshMode() {
-  const on = !!S.token;
-  $("#adUser").innerHTML = (on
-    ? `<span class="ad-mode">GitHub'ga ulangan</span><b>${esc(S.user.login)}</b><span class="muted">"E'lon qilish" saytga to'g'ridan-to'g'ri yozadi</span>`
-    : `<span class="ad-mode demo">Mahalliy rejim</span><span class="muted">"Saqlash" tayyor data.js faylini yuklab beradi</span>`)
-    + `<button class="ad-link" id="lockNowBtn">🔒 Qulflash</button>`;
+  $("#adUser").innerHTML = `<span class="ad-mode">Serverga ulangan</span><span class="muted">"E'lon qilish" o'zgarishlarni saytga darhol yozadi</span>`
+    + `<button class="ad-link" id="lockNowBtn">🔒 Chiqish</button>`;
   $("#lockNowBtn").addEventListener("click", lockNow);
-  $("#publishBtn").firstChild.textContent = on ? "E'lon qilish " : "Saqlash ";
-  $("#publishBtn").title = on ? "Saytga e'lon qilish (Ctrl+S)" : "data.js va yangi rasmlarni yuklab olish (Ctrl+S)";
-  $("#ghState").textContent = on ? "Ulangan: " + S.user.login : "Ulanmagan";
-  $("#ghState").classList.toggle("demo", !on);
-  $("#ghForm").classList.toggle("connected", on);
-  $("#ghDisconnect").hidden = !on;
-  $("#sheetMode").textContent = on ? `GitHub'ga ulangan: ${S.user.login}` : "Mahalliy rejim — \"Saqlash\" tayyor data.js faylini yuklab beradi";
-  $("#syncInfo").textContent = `Ma'lumotlar yuklandi: ${new Date().toLocaleTimeString("ru-RU")}${on ? "" : " · mahalliy rejim"}`;
+  $("#publishBtn").title = "Saytga e'lon qilish (Ctrl+S)";
+  $("#sheetMode").textContent = "Serverga ulangan — o'zgarishlar \"E'lon qilish\" bilan saytga yoziladi";
 }
 function enterApp() {
   $("#app").hidden = false;
@@ -196,34 +159,9 @@ function enterApp() {
   if (draft && JSON.stringify(draft.data) !== S.baseJSON) $("#draftBanner").hidden = false;
 }
 
-// Sozlamalar → GitHub ulanishi (ixtiyoriy)
-$("#ghForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const token = $("#tokenInput").value, err = $("#loginError"), btn = $("#loginBtn");
-  err.hidden = true;
-  if (!token.trim()) { err.textContent = "Tokenni kiriting."; err.hidden = false; return; }
-  btn.disabled = true; btn.textContent = "Tekshirilmoqda…";
-  try {
-    await connectToken(token);
-    safe(() => ($("#rememberInput").checked ? localStorage : sessionStorage).setItem(TOKEN_KEY, S.token));
-    // Saytdagi joriy data.js versiyasi — e'lon qilishda boshqa joydagi o'zgarishlar ustidan yozmaslik uchun
-    const f = await gh(repoPath(`/contents/${CFG.dataPath}?ref=${CFG.branch}`));
-    S.baseSha = f.sha;
-    $("#tokenInput").value = "";
-    refreshMode(); markDirty();
-    toast("✓ GitHub'ga ulandi — endi \"E'lon qilish\" saytga to'g'ridan-to'g'ri yozadi");
-  } catch (ex) { forgetToken(); err.textContent = apiError(ex); err.hidden = false; refreshMode(); }
-  btn.disabled = false; btn.textContent = "Ulash";
-});
-$("#ghDisconnect").addEventListener("click", () => {
-  forgetToken(); S.baseSha = "demo";
-  refreshMode(); markDirty();
-  toast("GitHub ulanishi uzildi — \"Saqlash\" endi faylni yuklab beradi");
-});
-
 $("#draftRestore").addEventListener("click", () => {
   const d = ls.get("opus_admin_draft", null);
-  if (d) { S.data = d.data; S.uploads = d.uploads || {}; update(); toast("💾 Qoralama tiklandi"); }
+  if (d) { S.data = normalize(d.data); S.uploads = d.uploads || {}; update(); toast("💾 Qoralama tiklandi"); }
   $("#draftBanner").hidden = true;
 });
 $("#draftDrop").addEventListener("click", () => { ls.del("opus_admin_draft"); $("#draftBanner").hidden = true; });
@@ -240,8 +178,8 @@ $("#discardBtn").addEventListener("click", () => {
 });
 
 // ---------- Navigatsiya ----------
-const TITLES = { dash: "Boshqaruv", products: "Mahsulotlar", news: "Yangiliklar", cats: "Kategoriyalar", orders: "Buyurtmalar", promos: "Promo-kodlar", settings: "Sozlamalar", history: "O'zgarishlar tarixi" };
-const SHEET_VIEWS = ["cats", "promos", "settings", "history"];
+const TITLES = { dash: "Boshqaruv", products: "Mahsulotlar", news: "Yangiliklar", cats: "Kategoriyalar", orders: "Buyurtmalar", users: "Mijozlar", promos: "Promo-kodlar", settings: "Sozlamalar", history: "O'zgarishlar tarixi" };
+const SHEET_VIEWS = ["news", "cats", "promos", "settings", "history"];
 function go(view) {
   S.view = view;
   closeSheet();
@@ -262,37 +200,39 @@ $("#sheetLock").addEventListener("click", () => lockNow());
 document.addEventListener("click", (e) => { const g = e.target.closest("[data-goto]"); if (g) go(g.dataset.goto); });
 
 // ---------- Ko'rinishlar ----------
-const orders = () => ls.get("opus_orders", []);
 const STATUSES = ["Yangi", "Tasdiqlandi", "Yig'ilmoqda", "Yo'lda", "Yetkazildi", "Bekor qilindi"];
-const statusOf = (id) => ls.get("opus_admin_status", {})[id] || "Yangi";
+const statusChip = (s) => `<span class="chip ${s === "Bekor qilindi" ? "bad" : s === "Yetkazildi" ? "ok" : "warn"}">${esc(s)}</span>`;
 
 function renderAll() {
   const P = S.data.PRODUCTS;
   $("#navProducts").textContent = P.length;
-  $("#navOrders").textContent = orders().length;
+  $("#navOrders").textContent = S.stats ? (S.stats.byStatus || {})["Yangi"] || "" : "";
+  $("#navUsers").textContent = S.stats ? S.stats.users : "";
   $("#navNews").textContent = (S.data.NEWS || []).length;
   renderKpis(); renderLow(); renderRecentOrders(); renderCats();
-  renderProducts(); renderOrders(); renderPromos(); renderSettings();
+  renderProducts(); renderOrders(); renderUsers(); renderPromos(); renderSettings();
   renderNewsList(); renderCatEditor();
 }
 
 function renderKpis() {
-  const P = S.data.PRODUCTS, O = orders();
+  const P = S.data.PRODUCTS, st = S.stats || {};
   const units = P.reduce((s, p) => s + (+p.stock || 0), 0);
   const value = P.reduce((s, p) => s + p.price * (+p.stock || 0), 0);
   const low = P.filter((p) => p.stock <= 5), out = P.filter((p) => p.stock <= 0);
   const sale = P.filter((p) => p.old && p.old > p.price);
   const avgDisc = sale.length ? Math.round(sale.reduce((s, p) => s + (1 - p.price / p.old) * 100, 0) / sale.length) : 0;
   const tiles = [
+    { t: "Bugungi savdo", v: fmt(st.todayRevenue), e: `${st.todayOrders || 0} ta buyurtma bugun`, hot: true },
+    { t: "Buyurtmalar", v: st.orders || 0, e: (st.byStatus || {})["Yangi"] ? `🔔 ${st.byStatus["Yangi"]} tasi yangi` : "Jami: " + fmt(st.revenue), warn: !!(st.byStatus || {})["Yangi"] },
+    { t: "Mijozlar", v: st.users || 0, e: st.newUsers ? `+${st.newUsers} ta oxirgi 7 kunda` : "Ro'yxatdan o'tganlar" },
     { t: "Mahsulotlar", v: P.length, e: `${S.data.CATEGORIES.length} ta kategoriya` },
     { t: "Omborda", v: num(units) + " dona", e: "Qiymati: " + fmt(value) },
     { t: "Kam qolgan", v: low.length, e: out.length ? `⛔ ${out.length} tasi tugagan` : "≤ 5 dona qolganlar", warn: low.length > 0 },
     { t: "Chegirmada", v: sale.length, e: sale.length ? `O'rtacha −${avgDisc}%` : "Chegirma yo'q" },
     { t: "Original belgisi", v: `${P.filter((p) => p.original !== false).length}/${P.length}`, e: "✓ belgili mahsulotlar" },
     { t: "Yangiliklar", v: (S.data.NEWS || []).length, e: (S.data.NEWS || []).length ? "Oxirgisi: " + (S.data.NEWS.map((n) => n.date).sort().pop() || "—") : "Hali yo'q" },
-    { t: "Buyurtmalar", v: O.length, e: O.length ? "Jami: " + fmt(O.reduce((s, o) => s + o.total, 0)) : "Shu brauzerda hali yo'q" },
   ];
-  $("#kpis").innerHTML = tiles.map((k) => `<div class="ad-kpi ${k.warn ? "warn" : ""}"><small>${k.t}</small><b>${k.v}</b><em>${k.e}</em></div>`).join("");
+  $("#kpis").innerHTML = tiles.map((k) => `<div class="ad-kpi ${k.warn ? "warn" : ""} ${k.hot ? "hot" : ""}"><small>${k.t}</small><b>${k.v}</b><em>${k.e}</em></div>`).join("");
 }
 
 function renderLow() {
@@ -307,11 +247,11 @@ function renderLow() {
 }
 
 function renderRecentOrders() {
-  const O = orders().slice(-5).reverse();
+  const O = S.orders.slice(0, 5);
   $("#recentOrders").innerHTML = O.length ? `<table class="ad-table" style="min-width:0">${O.map((o) => `
-    <tr><td><b>#${esc(o.id)}</b><br><small class="muted">${new Date(o.date).toLocaleString("ru-RU")}</small></td>
-    <td>${esc(o.name || "—")}</td><td class="num">${fmt(o.total)}</td><td><span class="chip ${statusOf(o.id) === "Bekor qilindi" ? "bad" : statusOf(o.id) === "Yetkazildi" ? "ok" : "warn"}">${statusOf(o.id)}</span></td></tr>`).join("")}</table>`
-    : `<p class="ad-empty">Bu brauzerda hali buyurtma berilmagan</p>`;
+    <tr><td><b>#${esc(o.id)}</b><br><small class="muted">${dt(o.created_at)}</small></td>
+    <td>${esc(o.user_name || "—")}</td><td class="num">${fmt(o.total)}</td><td>${statusChip(o.status)}</td></tr>`).join("")}</table>`
+    : `<p class="ad-empty">Hali buyurtma yo'q</p>`;
 }
 
 function renderCats() {
@@ -760,18 +700,18 @@ $("#cTable").addEventListener("change", async (e) => {
   }
 });
 
-// ---------- Tarix (GitHub commitlari) ----------
+// ---------- Tarix (serverdagi katalog versiyalari) ----------
 $("#historyLoad").addEventListener("click", loadHistory);
 async function loadHistory() {
   const box = $("#historyList");
   box.innerHTML = `<p class="ad-empty">Yuklanmoqda…</p>`;
   try {
-    const list = await gh(repoPath(`/commits?path=${CFG.dataPath}&sha=${CFG.branch}&per_page=25`));
-    box.innerHTML = list.length ? `<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>Sana</th><th>O'zgarish</th><th>Muallif</th><th></th></tr></thead><tbody>
-      ${list.map((c, i) => `<tr><td class="num" style="text-align:left" data-label="Sana">${new Date(c.commit.author.date).toLocaleString("ru-RU")}${i === 0 ? ` <span class="chip ok">joriy</span>` : ""}</td>
-      <td data-label="O'zgarish">${esc(c.commit.message.split("\n")[0])}</td><td data-label="Muallif">${esc((c.author && c.author.login) || c.commit.author.name)}</td>
-      <td><div class="ad-actions">${i === 0 ? "" : `<button data-restore="${c.sha}">Shu versiyani ochish</button>`}<a class="btn btn-ghost btn-sm" href="${esc(c.html_url)}" target="_blank" rel="noopener">GitHub ↗</a></div></td></tr>`).join("")}
-      </tbody></table></div>` : `<p class="ad-empty">Tarix topilmadi</p>`;
+    const { versions } = await api("GET", "/api/admin/catalog/versions");
+    box.innerHTML = versions.length ? `<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>Saqlangan</th><th>Izoh</th><th></th></tr></thead><tbody>
+      ${versions.map((v) => `<tr><td class="num" style="text-align:left" data-label="Saqlangan">${dt(v.saved_at)}</td>
+      <td data-label="Izoh">${esc(v.note || "—")}</td>
+      <td><div class="ad-actions"><button data-restore="${v.id}">Shu versiyani ochish</button></div></td></tr>`).join("")}
+      </tbody></table></div>` : `<p class="ad-empty">Hali saqlangan versiya yo'q — birinchi "E'lon qilish" dan keyin paydo bo'ladi</p>`;
   } catch (ex) { box.innerHTML = `<p class="ad-empty">${esc(apiError(ex))}</p>`; }
 }
 $("#historyList").addEventListener("click", async (e) => {
@@ -779,8 +719,8 @@ $("#historyList").addEventListener("click", async (e) => {
   if (!b) return;
   b.disabled = true; b.textContent = "Ochilmoqda…";
   try {
-    const f = await gh(repoPath(`/contents/${CFG.dataPath}?ref=${b.dataset.restore}`));
-    S.data = parseData(b64ToText(f.content));
+    const catalog = await api("GET", "/api/admin/catalog/versions/" + b.dataset.restore);
+    S.data = normalize(catalog);
     update(); go("products");
     toast("↩️ Eski versiya qoralama sifatida ochildi. Tekshiring va \"E'lon qilish\" ni bosing (yoki \"Bekor qilish\").");
   } catch (ex) { toast("❌ " + apiError(ex)); b.disabled = false; b.textContent = "Shu versiyani ochish"; }
@@ -794,39 +734,156 @@ $("#previewBtn").addEventListener("click", () => {
   } catch { toast("⚠️ Qoralama juda katta (ko'p rasm). Avval e'lon qiling yoki rasmlar sonini kamaytiring."); }
 });
 
-// ---------- Buyurtmalar ----------
+// ---------- Buyurtmalar (serverdan) ----------
+const payName = (id) => (PAYMENTS.find((p) => p.id === id) || {}).name || id;
+const itemsText = (o) => (o.items || []).map((i) => `${i.name} × ${i.qty}`);
+$("#oStatus").innerHTML += STATUSES.map((s) => `<option>${s}</option>`).join("");
 function renderOrders() {
-  const oq = ($("#oSearch").value || "").trim().toLowerCase();
-  const O = orders().slice().reverse().filter((o) => !oq || [o.id, o.name, o.phone].join(" ").toLowerCase().includes(oq));
-  const payName = (id) => (PAYMENTS.find((p) => p.id === id) || {}).name || id;
+  const oq = ($("#oSearch").value || "").trim().toLowerCase(), os = $("#oStatus").value;
+  const O = S.orders.filter((o) => (!os || o.status === os) && (!oq || [o.id, o.user_name, o.user_phone, fmtPhone(o.user_phone)].join(" ").toLowerCase().includes(oq)));
   $("#oTable").innerHTML = `<thead><tr><th>Buyurtma</th><th>Mijoz</th><th>Manzil</th><th>Mahsulotlar</th><th>To'lov</th><th class="num">Summa</th><th>Holat</th></tr></thead><tbody>
-  ${O.length ? O.map((o) => `<tr>
-    <td data-label="Buyurtma"><span><b>#${esc(o.id)}</b><br><small class="muted">${new Date(o.date).toLocaleString("ru-RU")}</small></span></td>
-    <td data-label="Mijoz"><span>${esc(o.name || "—")}<br><small class="muted">${o.phone ? `<a href="tel:${esc(o.phone.replace(/\s/g, ""))}">${esc(o.phone)}</a>` : ""}</small></span></td>
-    <td data-label="Manzil"><span>${o.delivery === "pickup" ? "🏬 Do'kondan olib ketadi" : `${esc(o.region || "")}<br><small class="muted">${esc(o.address || "")}</small>`}</span></td>
-    <td data-label="Mahsulotlar"><span>${(o.items || []).map((i) => { const p = S.data.PRODUCTS.find((x) => x.id === i.id); return `${esc(p ? p.name : "ID " + i.id)} × ${i.qty}`; }).join("<br>")}</span></td>
-    <td data-label="To'lov"><span>${esc(payName(o.payment))}${o.months ? `<br><small class="muted">${o.months} oy</small>` : ""}</span></td>
-    <td class="num" data-label="Summa"><b>${fmt(o.total)}</b></td>
-    <td data-label="Holat"><select class="ad-status-select" data-order="${esc(o.id)}" aria-label="Holat">${STATUSES.map((s) => `<option ${statusOf(o.id) === s ? "selected" : ""}>${s}</option>`).join("")}</select></td>
-  </tr>`).join("") : `<tr><td colspan="7" class="ad-empty">Bu brauzerda hali buyurtma yo'q. Saytda sinov buyurtmasi bering — u shu yerda paydo bo'ladi.</td></tr>`}</tbody>`;
+  ${O.length ? O.map((o) => `<tr class="${o.status === "Yangi" ? "ad-row-new" : ""}">
+    <td data-label="Buyurtma"><span><b>#${esc(o.id)}</b><br><small class="muted">${dt(o.created_at)}</small></span></td>
+    <td data-label="Mijoz"><span>${o.user_id ? `<button class="ad-link" data-user="${o.user_id}">${esc(o.user_name || "—")}</button>` : "<i>o'chirilgan mijoz</i>"}<br><small class="muted">${o.user_phone ? `<a href="tel:+${esc(o.user_phone)}">${esc(fmtPhone(o.user_phone))}</a>` : ""}</small></span></td>
+    <td data-label="Manzil"><span>${o.delivery === "pickup" ? "🏬 Do'kondan olib ketadi" : `${esc(o.region || "")}<br><small class="muted">${esc(o.address || "")}</small>`}${o.note ? `<br><small class="muted">💬 ${esc(o.note)}</small>` : ""}</span></td>
+    <td data-label="Mahsulotlar"><span>${itemsText(o).map(esc).join("<br>")}</span></td>
+    <td data-label="To'lov"><span>${esc(payName(o.payment))}${o.months ? `<br><small class="muted">${o.months} oy</small>` : ""}${o.promo ? `<br><small class="muted">🎟 ${esc(o.promo)}</small>` : ""}</span></td>
+    <td class="num" data-label="Summa"><b>${fmt(o.total)}</b>${o.discount ? `<br><small class="muted">−${fmt(o.discount)}</small>` : ""}</td>
+    <td data-label="Holat"><select class="ad-status-select" data-order="${esc(o.id)}" aria-label="Holat">${STATUSES.map((s) => `<option ${o.status === s ? "selected" : ""}>${s}</option>`).join("")}</select></td>
+  </tr>`).join("") : `<tr><td colspan="7" class="ad-empty">${S.orders.length ? "Hech narsa topilmadi" : "Hali buyurtma yo'q. Mijozlar saytda ro'yxatdan o'tib buyurtma berishi bilan shu yerda paydo bo'ladi."}</td></tr>`}</tbody>`;
 }
 $("#oSearch").addEventListener("input", renderOrders);
+$("#oStatus").addEventListener("change", renderOrders);
+async function reloadServer(msg) {
+  try { await loadServer(); renderAll(); if (msg) toast(msg); } catch (ex) { toast("❌ " + apiError(ex)); }
+}
+$("#oReload").addEventListener("click", () => reloadServer("↻ Yangilandi"));
+$("#uReload").addEventListener("click", () => reloadServer("↻ Yangilandi"));
 $("#oExport").addEventListener("click", () => {
-  const O = orders();
+  const O = S.orders;
   if (!O.length) { toast("Eksport uchun buyurtma yo'q"); return; }
-  const payName = (id) => (PAYMENTS.find((p) => p.id === id) || {}).name || id;
-  const rows = [["Raqam", "Sana", "Mijoz", "Telefon", "Viloyat", "Manzil", "Mahsulotlar", "To'lov", "Summa", "Holat"].join(";"),
-    ...O.map((o) => [o.id, new Date(o.date).toLocaleString("ru-RU"), o.name, o.phone, o.region, o.delivery === "pickup" ? "Do'kondan" : o.address,
-      (o.items || []).map((i) => { const p = S.data.PRODUCTS.find((x) => x.id === i.id); return `${p ? p.name : "ID " + i.id} x${i.qty}`; }).join(", "),
-      payName(o.payment), Math.round(o.total), statusOf(o.id)].map(csvCell).join(";"))];
+  const rows = [["Raqam", "Sana", "Mijoz", "Telefon", "Viloyat", "Manzil", "Mahsulotlar", "To'lov", "Promo", "Summa", "Holat"].join(";"),
+    ...O.map((o) => [o.id, dt(o.created_at), o.user_name, fmtPhone(o.user_phone), o.region, o.delivery === "pickup" ? "Do'kondan" : o.address,
+      itemsText(o).join(", "), payName(o.payment), o.promo || "", Math.round(o.total), o.status].map(csvCell).join(";"))];
   download(`opus-buyurtmalar-${today()}.csv`, rows.join("\n"));
 });
-$("#oTable").addEventListener("change", (e) => {
+$("#oTable").addEventListener("change", async (e) => {
   const id = e.target.dataset.order;
   if (!id) return;
-  const st = ls.get("opus_admin_status", {}); st[id] = e.target.value; ls.set("opus_admin_status", st);
-  renderRecentOrders(); toast(`Buyurtma #${id}: ${e.target.value}`);
+  const sel = e.target, o = S.orders.find((x) => x.id === id), prev = o.status;
+  sel.disabled = true;
+  try {
+    await api("PATCH", "/api/admin/orders/" + encodeURIComponent(id), { status: sel.value });
+    o.status = sel.value;
+    toast(`Buyurtma #${id}: ${sel.value}`);
+    // Bekor qilish / qayta tiklash ombor qoldig'ini o'zgartiradi — katalog va statistikani yangilaymiz
+    if ((prev === "Bekor qilindi") !== (sel.value === "Bekor qilindi")) await refreshStock();
+    S.stats = await api("GET", "/api/admin/stats");
+    renderAll();
+  } catch (ex) { sel.value = prev; toast("❌ " + apiError(ex)); }
+  sel.disabled = false;
 });
+// Server ombor qoldig'ini o'zi o'zgartirgan — qoralamadagi boshqa o'zgarishlarni saqlagan holda faqat "stock" ni olamiz
+async function refreshStock() {
+  const d = await api("GET", "/api/catalog"), base = JSON.parse(S.baseJSON);
+  const stock = new Map(d.PRODUCTS.map((p) => [p.id, p.stock]));
+  [S.data.PRODUCTS, base.PRODUCTS].forEach((list) => list.forEach((p) => { if (stock.has(p.id)) p.stock = stock.get(p.id); }));
+  S.baseJSON = JSON.stringify(base);
+}
+
+// ---------- Mijozlar ----------
+function renderUsers() {
+  const q = ($("#uSearch").value || "").trim().toLowerCase();
+  const U = S.users.filter((u) => !q || [u.name, u.phone, fmtPhone(u.phone), u.email].join(" ").toLowerCase().includes(q));
+  $("#uTable").innerHTML = `<thead><tr><th>Mijoz</th><th>Telefon / email</th><th>Manzil</th><th class="num">Buyurtmalar</th><th class="num">Xarid summasi</th><th>Ro'yxatdan o'tgan</th><th></th></tr></thead><tbody>
+  ${U.length ? U.map((u) => `<tr class="${u.blocked ? "ad-row-blocked" : ""}">
+    <td data-label="Mijoz"><span class="ad-user-cell"><i class="ad-ava">${esc(initials(u.name))}</i><span><b>${esc(u.name)}</b>${u.blocked ? `<br><span class="chip bad">⛔ Bloklangan</span>` : ""}</span></span></td>
+    <td data-label="Aloqa"><span><a href="tel:+${esc(u.phone)}">${esc(fmtPhone(u.phone))}</a>${u.email ? `<br><small class="muted">${esc(u.email)}</small>` : ""}</span></td>
+    <td data-label="Manzil"><span>${esc(u.region || "—")}${u.address ? `<br><small class="muted">${esc(u.address)}</small>` : ""}</span></td>
+    <td class="num" data-label="Buyurtmalar">${u.orders}</td>
+    <td class="num" data-label="Xarid summasi"><b>${fmt(u.spent)}</b></td>
+    <td data-label="Ro'yxatdan o'tgan"><span>${dt(u.created_at)}<br><small class="muted">Oxirgi kirish: ${dt(u.last_login)}</small></span></td>
+    <td class="num"><button class="btn btn-ghost btn-sm" data-user="${u.id}">Batafsil →</button></td>
+  </tr>`).join("") : `<tr><td colspan="7" class="ad-empty">${S.users.length ? "Hech kim topilmadi" : "Hali ro'yxatdan o'tgan mijoz yo'q"}</td></tr>`}</tbody>`;
+}
+const initials = (n) => String(n || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+$("#uSearch").addEventListener("input", renderUsers);
+$("#uExport").addEventListener("click", () => {
+  if (!S.users.length) { toast("Eksport uchun mijoz yo'q"); return; }
+  const rows = [["ID", "Ism", "Telefon", "Email", "Viloyat", "Manzil", "Buyurtmalar", "Xarid summasi", "Ro'yxatdan o'tgan", "Oxirgi kirish", "Bloklangan"].join(";"),
+    ...S.users.map((u) => [u.id, u.name, fmtPhone(u.phone), u.email || "", u.region || "", u.address || "", u.orders, Math.round(u.spent), dt(u.created_at), dt(u.last_login), u.blocked ? "ha" : ""].map(csvCell).join(";"))];
+  download(`opus-mijozlar-${today()}.csv`, rows.join("\n"));
+});
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-user]"); if (b) openUser(+b.dataset.user); });
+
+async function openUser(id) {
+  const box = $("#uBody");
+  box.innerHTML = `<p class="ad-empty">Yuklanmoqda…</p>`;
+  openDrawer($("#userDrawer"));
+  let r;
+  try { r = await api("GET", "/api/admin/users/" + id); } catch (ex) { box.innerHTML = `<p class="ad-empty">${esc(apiError(ex))}</p>`; return; }
+  const u = r.user, spent = r.orders.filter((o) => o.status !== "Bekor qilindi").reduce((s, o) => s + o.total, 0);
+  $("#uTitle").textContent = u.name;
+  box.innerHTML = `
+    <div class="ad-ucard ${u.blocked ? "blocked" : ""}">
+      <i class="ad-ava lg">${esc(initials(u.name))}</i>
+      <div><b>${esc(u.name)}</b><a href="tel:+${esc(u.phone)}">${esc(fmtPhone(u.phone))}</a>${u.email ? `<a href="mailto:${esc(u.email)}">${esc(u.email)}</a>` : ""}</div>
+    </div>
+    <div class="ad-ustats">
+      <div><small>Buyurtmalar</small><b>${r.orders.length}</b></div>
+      <div><small>Xarid summasi</small><b>${fmt(spent)}</b></div>
+    </div>
+    <dl class="ad-dl">
+      <dt>Viloyat</dt><dd>${esc(u.region || "—")}</dd>
+      <dt>Manzil</dt><dd>${esc(u.address || "—")}</dd>
+      <dt>Ro'yxatdan o'tgan</dt><dd>${dt(u.created_at)}</dd>
+      <dt>Oxirgi kirish</dt><dd>${dt(u.last_login)}</dd>
+      <dt>Parol</dt><dd>🔒 shifrlangan — ko'rib bo'lmaydi</dd>
+    </dl>
+    <div class="ad-uactions">
+      <button class="btn btn-ghost btn-sm" data-uact="reset">🔑 Parolni tiklash</button>
+      <button class="btn btn-ghost btn-sm" data-uact="block">${u.blocked ? "✓ Blokdan chiqarish" : "⛔ Bloklash"}</button>
+      <button class="btn btn-ghost btn-sm ad-danger" data-uact="delete">O'chirish</button>
+    </div>
+    <div id="uTemp"></div>
+    <h4 class="ad-sub">Buyurtmalari</h4>
+    ${r.orders.length ? r.orders.map((o) => `<div class="ad-uorder">
+      <header><b>#${esc(o.id)}</b>${statusChip(o.status)}</header>
+      <small class="muted">${dt(o.created_at)} · ${esc(payName(o.payment))} · ${o.delivery === "pickup" ? "Do'kondan" : esc(o.address || "")}</small>
+      <p>${itemsText(o).map(esc).join("<br>")}</p>
+      <b>${fmt(o.total)}</b>
+    </div>`).join("") : `<p class="ad-empty">Hali buyurtma bermagan</p>`}`;
+  box.onclick = async (e) => {
+    const b = e.target.closest("[data-uact]");
+    if (!b) return;
+    const act = b.dataset.uact;
+    if ((act === "delete" || act === "reset") && !b.classList.contains("confirm")) {
+      b.classList.add("confirm"); const t = b.textContent;
+      b.textContent = act === "delete" ? "Ha, o'chirilsin (buyurtmalar qoladi)" : "Ha, yangi parol berilsin";
+      setTimeout(() => { if (b.isConnected) { b.classList.remove("confirm"); b.textContent = t; } }, 3500);
+      return;
+    }
+    b.disabled = true;
+    try {
+      if (act === "reset") {
+        const { password } = await api("POST", `/api/admin/users/${u.id}/reset-password`);
+        $("#uTemp").innerHTML = `<div class="ad-temp-pass"><small>Vaqtinchalik parol — mijozga ayting (faqat bir marta ko'rsatiladi):</small><code>${esc(password)}</code><button class="ad-link" id="uCopy">Nusxalash</button></div>`;
+        $("#uCopy").onclick = () => navigator.clipboard?.writeText(password).then(() => toast("📋 Nusxalandi"));
+        b.classList.remove("confirm"); b.textContent = "🔑 Parolni tiklash";
+        toast("🔑 Yangi parol yaratildi, mijozning eski seanslari yopildi");
+      } else if (act === "block") {
+        await api("PATCH", `/api/admin/users/${u.id}`, { blocked: !u.blocked });
+        toast(u.blocked ? "✓ Mijoz blokdan chiqarildi" : "⛔ Mijoz bloklandi — endi kira olmaydi");
+        await reloadServer(); return openUser(u.id);
+      } else if (act === "delete") {
+        await api("DELETE", `/api/admin/users/${u.id}`);
+        closeEdit(); toast("Mijoz akkaunti o'chirildi");
+        return reloadServer();
+      }
+    } catch (ex) { toast("❌ " + apiError(ex)); }
+    b.disabled = false;
+  };
+}
 
 // ---------- Promo-kodlar ----------
 function renderPromos() {
@@ -879,66 +936,37 @@ $("#settingsForm").addEventListener("input", () => {
 });
 $("#settingsForm").addEventListener("submit", (e) => e.preventDefault());
 
-// ---------- E'lon qilish (bitta commit) ----------
+// ---------- E'lon qilish (serverga) ----------
 $("#publishBtn").addEventListener("click", publish);
 async function publish() {
-  const btn = $("#publishBtn");
-  if (S.demo) {
-    // Mahalliy rejim: tayyor data.js va yangi yuklangan rasmlarni kompyuterga yuklab beramiz
-    const save = (name, href) => { const a = document.createElement("a"); a.href = href; a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
-    const url = URL.createObjectURL(new Blob([serializeData(S.data)], { type: "text/javascript" }));
-    save("data.js", url);
-    setTimeout(() => URL.revokeObjectURL(url), 3000);
-    const used = new Set([...S.data.PRODUCTS.map((p) => p.img), ...(S.data.NEWS || []).map((n) => n.img), ...S.data.CATEGORIES.map((c) => c.img)]);
-    const imgs = Object.entries(S.uploads).filter(([p]) => used.has(p));
-    imgs.forEach(([path, dataUrl], i) => setTimeout(() => save(path.replace(/^img\//, ""), dataUrl), 400 * (i + 1)));
-    toast(imgs.length
-      ? `⬇️ data.js va ${imgs.length} ta rasm yuklab olindi. data.js ni loyiha papkasiga, rasmlarni img/ papkasiga qo'ying.`
-      : "⬇️ data.js yuklab olindi. Uni loyiha papkasidagi eski data.js o'rniga qo'ying — keyin saytga joylanadi.");
-    return;
-  }
-  const label = btn.firstChild.textContent;
+  const btn = $("#publishBtn"), label = btn.firstChild.textContent;
   btn.disabled = true; btn.firstChild.textContent = "E'lon qilinmoqda… ";
   try {
-    // 1) Boshqa joyda o'zgargan bo'lsa — ustidan yozib yubormaymiz
-    const cur = await gh(repoPath(`/contents/${CFG.dataPath}?ref=${CFG.branch}`));
-    if (cur.sha !== S.baseSha && !S.force) {
-      S.force = true;
-      toast("⚠️ data.js oxirgi yuklashdan keyin boshqa joyda o'zgargan. Ustidan yozish uchun yana bir bor \"E'lon qilish\" ni bosing yoki sahifani yangilang.");
-      return;
+    // 1) Yangi yuklangan rasmlar → server ("srv:..." yo'li bilan almashtiramiz)
+    const all = [...S.data.PRODUCTS, ...(S.data.NEWS || []), ...S.data.CATEGORIES];
+    const used = new Set(all.map((x) => x.img));
+    let imgs = 0;
+    for (const [path, dataUrl] of Object.entries(S.uploads)) {
+      if (!used.has(path)) continue;
+      const r = await api("POST", "/api/admin/images", { data: dataUrl });
+      all.forEach((x) => { if (x.img === path) x.img = r.path; });
+      delete S.uploads[path];
+      imgs++;
     }
-    // 2) Joriy commit va tree
-    const ref = await gh(repoPath(`/git/ref/heads/${CFG.branch}`));
-    const head = await gh(repoPath(`/git/commits/${ref.object.sha}`));
-    // 3) Fayllar: data.js, sw.js (kesh versiyasi +1) va yangi rasmlar
-    const files = [{ path: CFG.dataPath, b64: textToB64(serializeData(S.data)) }];
-    const sw = await gh(repoPath(`/contents/${CFG.swPath}?ref=${CFG.branch}`));
-    const swText = b64ToText(sw.content).replace(/const VERSION = "opus-v(\d+)"/, (_, n) => `const VERSION = "opus-v${+n + 1}"`);
-    files.push({ path: CFG.swPath, b64: textToB64(swText) });
-    const used = new Set([...S.data.PRODUCTS.map((p) => p.img), ...(S.data.NEWS || []).map((n) => n.img), ...S.data.CATEGORIES.map((c) => c.img)]);
-    Object.entries(S.uploads).forEach(([path, url]) => {
-      if (used.has(path) && !S.published.has(path)) files.push({ path, b64: url.split(",")[1], upload: true });
-    });
-    const tree = [];
-    for (const f of files) {
-      const blob = await gh(repoPath("/git/blobs"), { method: "POST", body: JSON.stringify({ content: f.b64, encoding: "base64" }) });
-      tree.push({ path: f.path, mode: "100644", type: "blob", sha: blob.sha });
-      if (f.path === CFG.dataPath) f.sha = blob.sha;
-    }
-    const newTree = await gh(repoPath("/git/trees"), { method: "POST", body: JSON.stringify({ base_tree: head.tree.sha, tree }) });
+    // 2) Ombor qoldig'i: panel ochilgandan beri mijozlar xarid qilgan bo'lishi mumkin.
+    //    Admin o'zgartirmagan mahsulotlarda serverdagi joriy qoldiqni saqlaymiz.
+    const cur = await api("GET", "/api/catalog"), base = JSON.parse(S.baseJSON);
+    const curStock = new Map((cur.PRODUCTS || []).map((p) => [p.id, p.stock]));
+    const baseStock = new Map(base.PRODUCTS.map((p) => [p.id, p.stock]));
+    S.data.PRODUCTS.forEach((p) => { if (curStock.has(p.id) && baseStock.get(p.id) === p.stock) p.stock = curStock.get(p.id); });
+    // 3) Katalogni yozamiz (server oldingi holatni "Tarix" ga saqlaydi)
     const { n } = diff();
-    const commit = await gh(repoPath("/git/commits"), { method: "POST", body: JSON.stringify({
-      message: `Admin panel: ${n} ta o'zgarish${files.some((f) => f.upload) ? `, ${files.filter((f) => f.upload).length} ta rasm` : ""}`,
-      tree: newTree.sha, parents: [head.sha],
-    }) });
-    await gh(repoPath(`/git/refs/heads/${CFG.branch}`), { method: "PATCH", body: JSON.stringify({ sha: commit.sha }) });
-
-    files.filter((f) => f.upload).forEach((f) => S.published.add(f.path));
-    S.baseSha = files[0].sha; S.baseJSON = JSON.stringify(S.data); S.force = false;
+    await api("PUT", "/api/admin/catalog", { ...S.data, note: `Admin panel: ${n} ta o'zgarish${imgs ? `, ${imgs} ta rasm` : ""}` });
+    S.baseJSON = JSON.stringify(S.data);
     ls.del("opus_admin_draft");
-    markDirty(); renderProducts();
-    $("#syncInfo").textContent = `E'lon qilindi: ${new Date().toLocaleTimeString("ru-RU")} · sayt 1–2 daqiqada yangilanadi`;
-    toast("🚀 E'lon qilindi! Sayt 1–2 daqiqada yangilanadi.");
+    renderAll();
+    $("#syncInfo").textContent = `E'lon qilindi: ${new Date().toLocaleTimeString("ru-RU")} · saytda darhol ko'rinadi`;
+    toast("🚀 E'lon qilindi! O'zgarishlar saytda darhol ko'rinadi.");
   } catch (ex) {
     toast("❌ " + apiError(ex));
   } finally {
@@ -946,35 +974,20 @@ async function publish() {
     markDirty();
   }
 }
-addEventListener("beforeunload", (e) => { if (S.data && diff().n && !S.demo) { e.preventDefault(); e.returnValue = ""; } });
+addEventListener("beforeunload", (e) => { if (S.data && S.token && diff().n) { e.preventDefault(); e.returnValue = ""; } });
 
-// ---------- Admin paroli ----------
-// Parolning o'zi hech qayerda saqlanmaydi — faqat PBKDF2-SHA256 xeshi (150 000 takror).
-// Standart parol xeshi shu yerda; admin parolni o'zgartirsa, yangi xesh data.js → SETTINGS.adminPass ga yoziladi.
-const DEFAULT_PASS = { salt: "opus-market-admin-v1", iter: 150000, hash: "d318ded1f0994c0f13405888a3ac6be9e7ee69912a902749d2848f00d2317a57" };
-const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-async function pbkdf2(pw, salt, iter) {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey("raw", enc.encode(pw), "PBKDF2", false, ["deriveBits"]);
-  return hex(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: enc.encode(salt), iterations: iter }, key, 256));
+// ---------- Admin kirishi ----------
+// Parol serverda tekshiriladi (PBKDF2 xeshi D1 bazasida). Brauzerda faqat 12 soatlik seans tokeni (sessionStorage) turadi.
+function showLock(msg) {
+  $("#app").hidden = true;
+  $("#lock").hidden = false;
+  const err = $("#lockError");
+  err.textContent = msg || ""; err.hidden = !msg;
+  setTimeout(() => $("#lockInput").focus(), 100);
 }
-async function currentPass() {
-  try {
-    const d = parseData(await (await fetch(`${CFG.dataPath}?nocache=${Date.now()}`, { cache: "no-store" })).text());
-    if (d.SETTINGS.adminPass && d.SETTINGS.adminPass.hash) return d.SETTINGS.adminPass;
-  } catch {}
-  return DEFAULT_PASS;
-}
-let PASS = DEFAULT_PASS;
-const ss = {
-  get: (k) => safe(() => sessionStorage.getItem(k), null),
-  set: (k, v) => safe(() => sessionStorage.setItem(k, v)),
-  del: (k) => safe(() => sessionStorage.removeItem(k)),
-};
-
 function unlocked() {
   $("#lock").hidden = true;
-  start().catch((ex) => toast("❌ Ma'lumotlarni yuklab bo'lmadi: " + apiError(ex)));
+  start().catch((ex) => { if (ex.status !== 401) { toast("❌ Ma'lumotlarni yuklab bo'lmadi: " + apiError(ex)); showLock(apiError(ex)); } });
 }
 
 $("#lockEye").addEventListener("click", () => {
@@ -986,56 +999,40 @@ $("#lockEye").addEventListener("click", () => {
 $("#lockForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const err = $("#lockError"), btn = $("#lockBtn"), input = $("#lockInput");
-  // Ketma-ket xato urinishlardan keyin kutish vaqti
-  const until = +ss.get("opus_admin_wait") || 0;
-  if (Date.now() < until) {
-    err.textContent = `Juda ko'p xato urinish. ${Math.ceil((until - Date.now()) / 1000)} soniyadan keyin qayta urinib ko'ring.`;
-    err.hidden = false; return;
-  }
   btn.disabled = true; btn.textContent = "Tekshirilmoqda…"; err.hidden = true;
-  let ok = false;
-  try { ok = (await pbkdf2(input.value, PASS.salt, PASS.iter || 150000)) === PASS.hash; }
-  catch { err.textContent = "Brauzer parolni tekshira olmadi (sayt https orqali ochilishi kerak)."; err.hidden = false; }
-  btn.disabled = false; btn.textContent = "Ochish";
-  if (ok) {
-    ss.set("opus_admin_unlock", PASS.hash);
-    ss.del("opus_admin_fails"); ss.del("opus_admin_wait");
+  try {
+    const r = await api("POST", "/api/admin/login", { password: input.value });
+    S.token = r.token; ss.set("opus_admin_api", r.token);
     input.value = "";
     unlocked();
-    return;
+  } catch (ex) {
+    err.textContent = ex.status === 401 ? "Parol noto'g'ri." : apiError(ex);
+    err.hidden = false;
+    input.classList.remove("invalid"); void input.offsetWidth; input.classList.add("invalid");
+    input.select();
   }
-  if (!err.hidden) return;
-  const fails = (+ss.get("opus_admin_fails") || 0) + 1;
-  ss.set("opus_admin_fails", fails);
-  if (fails >= 5) ss.set("opus_admin_wait", Date.now() + 30000 * (fails - 4));
-  err.textContent = fails >= 5 ? "Parol noto'g'ri. Juda ko'p urinish — 30 soniya kuting." : `Parol noto'g'ri (${fails}/5).`;
-  err.hidden = false;
-  input.classList.remove("invalid"); void input.offsetWidth; input.classList.add("invalid");
-  input.select();
+  btn.disabled = false; btn.textContent = "Ochish";
 });
 
-// Parolni o'zgartirish (yangi xesh "E'lon qilish" bilan saytga yoziladi)
+// Parolni o'zgartirish — darhol kuchga kiradi
 $("#passForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const a = $("#pNew").value, b = $("#pNew2").value;
+  const old = $("#pOld").value, a = $("#pNew").value, b = $("#pNew2").value;
   if (a.length < 8) { toast("⚠️ Parol kamida 8 belgidan iborat bo'lsin"); return; }
   if (a !== b) { toast("⚠️ Parollar bir xil emas"); return; }
-  const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
-  S.data.SETTINGS.adminPass = { salt, iter: 150000, hash: await pbkdf2(a, salt, 150000) };
-  e.target.reset();
-  markDirty();
-  toast(`🔒 Yangi parol tayyor — kuchga kirishi uchun "${S.token ? "E'lon qilish" : "Saqlash"}" ni bosing`);
+  try {
+    await api("POST", "/api/admin/password", { old, new: a });
+    e.target.reset();
+    toast("🔒 Admin paroli o'zgartirildi");
+  } catch (ex) { toast("❌ " + apiError(ex)); }
 });
 
-function lockNow() {
-  ss.del("opus_admin_unlock");
+async function lockNow() {
+  try { await api("POST", "/api/admin/logout"); } catch {}
+  S.token = null; ss.del("opus_admin_api");
   location.reload();
 }
 
-// Sahifa ochilganda: parol so'raymiz (shu seansda kiritilgan bo'lsa — o'tkazib yuboramiz)
-(async () => {
-  PASS = await currentPass();
-  if (ss.get("opus_admin_unlock") === PASS.hash) unlocked();
-  else setTimeout(() => $("#lockInput").focus(), 100);
-})();
-
+// Sahifa ochilganda: shu seansda kirilgan bo'lsa — to'g'ridan-to'g'ri panel, aks holda parol
+if (S.token) unlocked();
+else setTimeout(() => $("#lockInput").focus(), 100);
