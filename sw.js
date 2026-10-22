@@ -1,8 +1,8 @@
 // OPUS MARKET — service worker: ilova tez ochilishi va internet sekin/yo'q bo'lganda ham ishlashi uchun kesh.
 // Sayt yangilanganda VERSION ni oshiring.
-const VERSION = "opus-v1";
+const VERSION = "opus-v2";
 const CORE = [
-  "./", "index.html", "styles.css", "data.js", "app.js", "showcase.js", "scrollfx.js",
+  "./", "index.html", "styles.css", "assets.js", "data.js", "app.js", "showcase.js", "scrollfx.js",
   "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "img/hero.jpg", "img/deals.jpg",
 ];
 
@@ -21,6 +21,11 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
+  const url = new URL(req.url);
+  // Keshlanmaydi: admin panel, GitHub API va "nocache" so'rovlari — ular doim yangi bo'lishi kerak
+  if (url.pathname.includes("/admin") || url.searchParams.has("nocache")) return;
+  const CDN = ["fonts.googleapis.com", "fonts.gstatic.com", "cdnjs.cloudflare.com"];
+  if (url.origin !== location.origin && !CDN.includes(url.hostname)) return;
 
   // Sahifaning o'zi: avval internet (yangi versiya), bo'lmasa — kesh
   if (req.mode === "navigate") {
