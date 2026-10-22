@@ -1097,3 +1097,51 @@ select:focus { border-color: var(--primary); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* ---------- Akkaunt ---------- */
+.acc-btn .acc-ini {
+  position: absolute; inset: 5px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; letter-spacing: .02em;
+  background: var(--grad); color: #fff; box-shadow: 0 0 0 2px var(--bg), 0 6px 16px rgba(225,15,42,.35); animation: accPop .5s cubic-bezier(.2,.9,.3,1.4);
+}
+@keyframes accPop { from { transform: scale(.3) rotate(-30deg); opacity: 0; } }
+.modal-auth { width: min(440px, 100%); padding: 34px 30px 26px; overflow-x: hidden; }
+.modal-auth::before {
+  content: ""; position: absolute; width: 340px; height: 340px; top: -210px; left: 50%; transform: translateX(-50%); border-radius: 50%;
+  background: radial-gradient(circle, rgba(225,15,42,.28), transparent 65%); pointer-events: none; animation: authGlow 6s ease-in-out infinite;
+}
+@keyframes authGlow { 50% { transform: translateX(-50%) scale(1.25); opacity: .6; } }
+.auth-head { text-align: center; position: relative; margin-bottom: 20px; }
+.auth-logo {
+  width: 58px; height: 58px; margin: 0 auto 12px; border-radius: 18px; display: grid; place-items: center; font-weight: 900; font-size: 28px; color: #fff;
+  background: var(--grad); box-shadow: 0 12px 30px rgba(225,15,42,.4); animation: float2 3.5s ease-in-out infinite;
+}
+.auth-head h3 { font-size: 24px; margin-bottom: 4px; }
+#authModal.why #authSub { color: var(--primary); font-weight: 600; }
+.auth-tabs { position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); margin-bottom: 20px; }
+.auth-tabs button { position: relative; z-index: 1; padding: 10px; font-weight: 700; font-size: 14px; color: var(--muted); transition: color .3s; }
+.auth-tabs button.active { color: #fff; }
+.auth-tabs-pill { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 10px; background: var(--grad); box-shadow: 0 6px 16px rgba(225,15,42,.35); transition: transform .45s cubic-bezier(.2,.9,.3,1.25); }
+.auth-tabs[data-tab="register"] .auth-tabs-pill { transform: translateX(100%); }
+.auth-form, .acc-form { display: grid; gap: 14px; animation: slideIn .35s both; }
+.auth-form label, .acc-form label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; }
+.auth-form input, .acc-form input, .acc-form select {
+  width: 100%; padding: 13px 14px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); outline: none; font-weight: 400; transition: border-color .2s, box-shadow .2s;
+}
+.auth-form input:focus, .acc-form input:focus, .acc-form select:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(225,15,42,.12); }
+.auth-form small { text-align: center; font-size: 12.5px; line-height: 1.5; }
+.pw { position: relative; display: block; }
+.pw input { padding-right: 46px; }
+.pw-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 10px; opacity: .45; filter: grayscale(1); transition: opacity .2s; }
+.pw-eye.on, .pw-eye:hover { opacity: 1; filter: none; }
+.auth-err { padding: 10px 12px; border-radius: 10px; background: rgba(225,15,42,.1); color: var(--primary); font-size: 13.5px; font-weight: 600; animation: shake .4s; }
+.acc-card { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 18px; background: var(--grad); color: #fff; box-shadow: 0 14px 30px rgba(225,15,42,.3); }
+.acc-card small { display: block; opacity: .85; font-size: 13px; margin-top: 2px; word-break: break-all; }
+.acc-card b { font-size: 17px; }
+.acc-ava { flex: none; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; font-size: 19px; background: rgba(255,255,255,.2); border: 2px solid rgba(255,255,255,.55); }
+.acc-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.acc-form { padding: 16px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
+.acc-form h4 { font-size: 15px; }
+.acc-form .btn { justify-self: start; }
+.order-card.cancelled { opacity: .7; }
+.order-card.cancelled .status { background: rgba(225,15,42,.12); color: var(--primary); }
+#checkoutForm input[readonly] { opacity: .7; cursor: not-allowed; }
