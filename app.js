@@ -301,7 +301,7 @@ function search(q) {
 function filtered() {
   let list = search(state.query).filter((p) =>
     (state.cat === "all" || p.cat === state.cat) &&
-    p.price <= state.maxPrice &&
+    (state.maxPrice >= MAX_PRICE || p.price <= state.maxPrice) && // eng o'ngda — cheklanmagan
     (!state.dealsOnly || p.old)
   );
   const sorters = {
