@@ -336,3 +336,34 @@ body.admin { background: var(--bg); min-height: 100vh; }
   .ad-login-card { padding: 22px; }
   .ad-promo { flex-wrap: wrap; }
 }
+
+/* ---------- Server: buyurtmalar va mijozlar ---------- */
+.ad-kpi.hot { background: var(--grad) !important; color: #fff; border-color: transparent; box-shadow: 0 14px 34px rgba(var(--prgb), .3); }
+.ad-kpi.hot small, .ad-kpi.hot em { color: rgba(255,255,255,.85); }
+.ad-table tr.ad-row-new td:first-child { box-shadow: inset 3px 0 var(--primary); }
+.ad-table tr.ad-row-blocked td { opacity: .6; }
+.ad-user-cell { display: flex; align-items: center; gap: 10px; }
+.ad-ava { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 13px; color: #fff; background: var(--grad); }
+.ad-ava.lg { width: 56px; height: 56px; font-size: 20px; background: rgba(255,255,255,.2); border: 2px solid rgba(255,255,255,.55); }
+.ad-ucard { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 18px; background: var(--grad); color: #fff; box-shadow: 0 14px 30px rgba(var(--prgb), .28); }
+.ad-ucard.blocked { background: linear-gradient(135deg, #555, #222); }
+.ad-ucard b { display: block; font-size: 17px; }
+.ad-ucard a { display: block; color: rgba(255,255,255,.9); font-size: 13.5px; word-break: break-all; }
+.ad-ustats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ad-ustats div { padding: 12px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.ad-ustats small { display: block; color: var(--muted); font-size: 12px; font-weight: 600; }
+.ad-ustats b { font-size: 18px; }
+.ad-dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: 14px; padding: 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.ad-dl dt { color: var(--muted); }
+.ad-dl dd { margin: 0; word-break: break-word; }
+.ad-uactions { display: flex; flex-wrap: wrap; gap: 8px; }
+.ad-uactions .confirm { background: var(--primary); color: #fff; border-color: var(--primary); }
+.ad-temp-pass { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 14px; border-radius: 14px; border: 1.5px dashed var(--gold); background: rgba(255,176,32,.08); }
+.ad-temp-pass small { flex-basis: 100%; color: var(--muted); }
+.ad-temp-pass code { font-size: 20px; font-weight: 800; letter-spacing: .08em; user-select: all; }
+.ad-sub { margin-top: 6px; font-size: 15px; }
+.ad-uorder { padding: 12px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); display: grid; gap: 4px; font-size: 14px; }
+.ad-uorder header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ad-uorder p { color: var(--muted); }
+#userDrawer .drawer-body { display: flex; flex-direction: column; gap: 14px; }
+.ad-table a[href^="tel"] { white-space: nowrap; }
