@@ -69,7 +69,7 @@ function apiError(e) {
 
 // ---------- data.js: o'qish va yozish ----------
 function parseData(text) {
-  const d = new Function(text + "\n;return { SETTINGS: typeof SETTINGS !== 'undefined' ? SETTINGS : {}, CATEGORIES, PRODUCTS };")();
+  const d = new Function(text + "\n;return { SETTINGS: typeof SETTINGS !== 'undefined' ? SETTINGS : {}, CATEGORIES, PRODUCTS, NEWS: typeof NEWS !== 'undefined' ? NEWS : [] };")();
   d.SETTINGS = { topbar: "", dealTitle: "", freeShipFrom: 1000000, shipPrice: 50000, promos: {}, apk: { url: "", version: "", sizeMB: 0 }, ...d.SETTINGS };
   d.SETTINGS.promos = d.SETTINGS.promos || {};
   d.SETTINGS.apk = { url: "", version: "", sizeMB: 0, ...(d.SETTINGS.apk || {}) };
@@ -89,6 +89,11 @@ ${d.CATEGORIES.map(line).join(",\n")}
 
 const PRODUCTS = [
 ${d.PRODUCTS.map(line).join(",\n")}
+];
+
+// Yangiliklar. body: xatboshilar bo'sh qator (\\n\\n) bilan ajratiladi.
+const NEWS = [
+${(d.NEWS || []).map(line).join(",\n")}
 ];
 `;
 }
@@ -118,6 +123,9 @@ function diff() {
   const changed = new Set();
   S.data.PRODUCTS.forEach((p) => { if (bm.get(p.id) !== canon(p)) changed.add(p.id); bm.delete(p.id); });
   let n = changed.size + bm.size;
+  const nm = new Map((base.NEWS || []).map((x) => [x.id, canon(x)]));
+  (S.data.NEWS || []).forEach((x) => { if (nm.get(x.id) !== canon(x)) n++; nm.delete(x.id); });
+  n += nm.size;
   if (canon(base.SETTINGS) !== canon(S.data.SETTINGS)) n++;
   if (canon(base.CATEGORIES) !== canon(S.data.CATEGORIES)) n++;
   return { n, changed };
@@ -126,6 +134,7 @@ function markDirty() {
   const { n } = diff();
   $("#publishBtn").disabled = n === 0;
   $("#discardBtn").hidden = n === 0;
+  $("#previewBtn").hidden = n === 0;
   $("#dirtyCount").hidden = n === 0;
   $("#dirtyCount").textContent = n;
   if (n) ls.set("opus_admin_draft", { baseSha: S.baseSha, data: S.data, uploads: S.uploads, at: Date.now() });
@@ -201,7 +210,7 @@ $("#discardBtn").addEventListener("click", () => {
 });
 
 // ---------- Navigatsiya ----------
-const TITLES = { dash: "Boshqaruv", products: "Mahsulotlar", orders: "Buyurtmalar", promos: "Promo-kodlar", settings: "Sozlamalar" };
+const TITLES = { dash: "Boshqaruv", products: "Mahsulotlar", news: "Yangiliklar", cats: "Kategoriyalar", orders: "Buyurtmalar", promos: "Promo-kodlar", settings: "Sozlamalar", history: "O'zgarishlar tarixi" };
 function go(view) {
   S.view = view;
   $$("#adNav button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
@@ -221,8 +230,10 @@ function renderAll() {
   const P = S.data.PRODUCTS;
   $("#navProducts").textContent = P.length;
   $("#navOrders").textContent = orders().length;
+  $("#navNews").textContent = (S.data.NEWS || []).length;
   renderKpis(); renderLow(); renderRecentOrders(); renderCats();
   renderProducts(); renderOrders(); renderPromos(); renderSettings();
+  renderNewsList(); renderCatEditor();
 }
 
 function renderKpis() {
@@ -237,6 +248,8 @@ function renderKpis() {
     { t: "Omborda", v: num(units) + " dona", e: "Qiymati: " + fmt(value) },
     { t: "Kam qolgan", v: low.length, e: out.length ? `⛔ ${out.length} tasi tugagan` : "≤ 5 dona qolganlar", warn: low.length > 0 },
     { t: "Chegirmada", v: sale.length, e: sale.length ? `O'rtacha −${avgDisc}%` : "Chegirma yo'q" },
+    { t: "Original belgisi", v: `${P.filter((p) => p.original !== false).length}/${P.length}`, e: "✓ belgili mahsulotlar" },
+    { t: "Yangiliklar", v: (S.data.NEWS || []).length, e: (S.data.NEWS || []).length ? "Oxirgisi: " + (S.data.NEWS.map((n) => n.date).sort().pop() || "—") : "Hali yo'q" },
     { t: "Buyurtmalar", v: O.length, e: O.length ? "Jami: " + fmt(O.reduce((s, o) => s + o.total, 0)) : "Shu brauzerda hali yo'q" },
   ];
   $("#kpis").innerHTML = tiles.map((k) => `<div class="ad-kpi ${k.warn ? "warn" : ""}"><small>${k.t}</small><b>${k.v}</b><em>${k.e}</em></div>`).join("");
@@ -288,11 +301,14 @@ function renderProducts() {
   const list = S.data.PRODUCTS.filter((p) =>
     (!q || (p.name + " " + p.brand).toLowerCase().includes(q)) &&
     (!cat || p.cat === cat) &&
-    (!st || (st === "low" && p.stock <= 5) || (st === "out" && p.stock <= 0) || (st === "sale" && p.old && p.old > p.price))
+    (!st || (st === "low" && p.stock <= 5) || (st === "out" && p.stock <= 0) || (st === "sale" && p.old && p.old > p.price) || (st === "notorig" && p.original === false))
   );
-  $("#pTable").innerHTML = `<thead><tr><th></th><th>Mahsulot</th><th>Kategoriya</th><th class="num">Narx</th><th class="num">Eski narx</th><th class="num">Ombor</th><th>Holat</th><th>Belgi</th><th></th></tr></thead>
+  S.visible = list.map((p) => p.id);
+  const allSel = list.length && list.every((p) => S.sel.has(p.id));
+  $("#pTable").innerHTML = `<thead><tr><th><input type="checkbox" class="ad-cb" id="selAll" ${allSel ? "checked" : ""} aria-label="Hammasini tanlash" /></th><th></th><th>Mahsulot</th><th>Kategoriya</th><th class="num">Narx</th><th class="num">Eski narx</th><th class="num">Ombor</th><th>Holat</th><th>Belgi</th><th title="Original mahsulot">Original</th><th></th></tr></thead>
   <tbody>${list.length ? list.map((p) => `
-    <tr data-id="${p.id}" class="${changed.has(p.id) ? "changed" : ""}">
+    <tr data-id="${p.id}" class="${changed.has(p.id) ? "changed" : ""} ${S.sel.has(p.id) ? "selected" : ""}">
+      <td><input type="checkbox" class="ad-cb" data-sel ${S.sel.has(p.id) ? "checked" : ""} aria-label="Tanlash" /></td>
       <td><img class="ad-thumb" src="${esc(srcOf(p.img))}" alt="" loading="lazy" /></td>
       <td class="ad-pname"><b title="${esc(p.name)}">${esc(p.name)}</b><small>${esc(p.brand)} · ID ${p.id}</small></td>
       <td>${esc(catName(p.cat))}</td>
@@ -301,9 +317,126 @@ function renderProducts() {
       <td class="num"><input class="cell sm" type="number" min="0" data-field="stock" value="${p.stock}" aria-label="Ombor" /></td>
       <td>${stockChip(p.stock)}${p.old && p.old > p.price ? ` <span class="chip sale">−${Math.round((1 - p.price / p.old) * 100)}%</span>` : ""}</td>
       <td><select class="ad-status-select" data-field="badge" aria-label="Belgi">${["", "Yangi", "Xit"].map((b) => `<option value="${b}" ${(p.badge || "") === b ? "selected" : ""}>${b || "—"}</option>`).join("")}</select></td>
+      <td><label class="ad-switch" title="Original belgisi"><input type="checkbox" data-field="original" ${p.original !== false ? "checked" : ""} /><span></span></label></td>
       <td><div class="ad-actions"><button data-act="edit">Tahrirlash</button><button data-act="dup" title="Nusxa olish">⧉</button></div></td>
-    </tr>`).join("") : `<tr><td colspan="9" class="ad-empty">Hech narsa topilmadi</td></tr>`}</tbody>`;
+    </tr>`).join("") : `<tr><td colspan="11" class="ad-empty">Hech narsa topilmadi</td></tr>`}</tbody>`;
+  renderBulk();
 }
+
+// ---------- Ommaviy amallar ----------
+S.sel = new Set();
+function renderBulk() {
+  S.sel.forEach((id) => { if (!S.data.PRODUCTS.some((p) => p.id === id)) S.sel.delete(id); });
+  $("#bulkBar").hidden = S.sel.size === 0;
+  $("#bulkCount").textContent = `${S.sel.size} ta tanlandi`;
+  const a = $("#bulkAction").value;
+  $("#bulkValue").hidden = !["discount", "price", "stock"].includes(a);
+  $("#bulkBadge").hidden = a !== "badge";
+  $("#bulkValue").placeholder = a === "discount" ? "chegirma %, 0 — olib tashlash" : a === "price" ? "+10 yoki −5" : "dona";
+}
+$("#pTable").addEventListener("click", (e) => {
+  if (e.target.id === "selAll") {
+    S.visible.forEach((id) => (e.target.checked ? S.sel.add(id) : S.sel.delete(id)));
+    renderProducts();
+  } else if (e.target.matches("[data-sel]")) {
+    const id = +e.target.closest("[data-id]").dataset.id;
+    e.target.checked ? S.sel.add(id) : S.sel.delete(id);
+    e.target.closest("tr").classList.toggle("selected", e.target.checked);
+    renderBulk();
+  }
+});
+$("#bulkAction").addEventListener("change", renderBulk);
+$("#bulkClear").addEventListener("click", () => { S.sel.clear(); renderProducts(); });
+const round1000 = (n) => Math.max(0, Math.round(n / 1000) * 1000);
+$("#bulkApply").addEventListener("click", () => {
+  const a = $("#bulkAction").value, x = parseFloat($("#bulkValue").value);
+  const items = S.data.PRODUCTS.filter((p) => S.sel.has(p.id));
+  if (!items.length) return;
+  if (["discount", "price", "stock"].includes(a) && !isFinite(x)) { toast("⚠️ Qiymatni kiriting"); return; }
+  if (a === "discount" && (x < 0 || x > 90)) { toast("⚠️ Chegirma 0–90% oralig'ida bo'lishi kerak"); return; }
+  if (a === "delete") {
+    const b = $("#bulkApply");
+    if (!b.classList.contains("confirm")) {
+      b.classList.add("confirm"); b.textContent = `Ha, ${items.length} tasini o'chirish`;
+      setTimeout(() => { b.classList.remove("confirm"); b.textContent = "Qo'llash"; }, 3500);
+      return;
+    }
+    b.classList.remove("confirm"); b.textContent = "Qo'llash";
+    S.data.PRODUCTS = S.data.PRODUCTS.filter((p) => !S.sel.has(p.id));
+  }
+  items.forEach((p) => {
+    if (a === "discount") {
+      const base = p.old || p.price;
+      if (x === 0) { p.price = base; p.old = null; }
+      else { p.old = base; p.price = round1000(base * (1 - x / 100)); }
+    }
+    if (a === "price") { p.price = round1000(p.price * (1 + x / 100)); if (p.old && p.old <= p.price) p.old = null; }
+    if (a === "stock") p.stock = Math.max(0, Math.round(x));
+    if (a === "badge") { if ($("#bulkBadge").value) p.badge = $("#bulkBadge").value; else delete p.badge; }
+    if (a === "orig1") p.original = true;
+    if (a === "orig0") p.original = false;
+  });
+  const n = items.length;
+  if (a === "delete") S.sel.clear();
+  update();
+  toast(a === "delete" ? `🗑 ${n} ta mahsulot o'chirildi` : `✓ ${n} ta mahsulotga qo'llandi`);
+});
+
+// ---------- CSV (Excel) eksport / import ----------
+const CSV_COLS = ["id", "name", "brand", "cat", "price", "old", "stock", "badge", "original"];
+const csvCell = (v) => { const s = v == null ? "" : String(v); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+function download(name, text, type = "text/csv;charset=utf-8") {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + text], { type }));
+  a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+$("#csvExport").addEventListener("click", () => {
+  const rows = [CSV_COLS.join(";"), ...S.data.PRODUCTS.map((p) => CSV_COLS.map((c) => csvCell(c === "original" ? (p.original === false ? 0 : 1) : p[c])).join(";"))];
+  download(`opus-mahsulotlar-${new Date().toISOString().slice(0, 10)}.csv`, rows.join("\n"));
+  toast("⬇ CSV yuklab olindi. Excel'da tahrirlab, \"CSV import\" orqali qaytaring.");
+});
+function parseCSV(text) {
+  text = text.replace(/^﻿/, "");
+  const delim = (text.split("\n")[0].match(/;/g) || []).length >= (text.split("\n")[0].match(/,/g) || []).length ? ";" : ",";
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; } else if (c === '"') q = false; else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === delim) { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter((r) => r.some((x) => x.trim()));
+}
+$("#csvImport").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  const rows = parseCSV(await file.text());
+  const head = (rows.shift() || []).map((h) => h.trim().toLowerCase());
+  if (!head.includes("id")) { toast("❌ CSV'da \"id\" ustuni topilmadi. Avval \"⬇ CSV\" orqali namunani yuklab oling."); return; }
+  let ok = 0, skip = 0;
+  const numF = (v) => +String(v).replace(/[^\d.-]/g, "") || 0;
+  rows.forEach((r) => {
+    const v = Object.fromEntries(head.map((h, i) => [h, (r[i] ?? "").trim()]));
+    const p = S.data.PRODUCTS.find((x) => x.id === +v.id);
+    if (!p) { skip++; return; }
+    if ("name" in v && v.name) p.name = v.name;
+    if ("brand" in v && v.brand) p.brand = v.brand;
+    if ("cat" in v && S.data.CATEGORIES.some((c) => c.id === v.cat)) p.cat = v.cat;
+    if ("price" in v && v.price) p.price = numF(v.price);
+    if ("old" in v) p.old = numF(v.old) > p.price ? numF(v.old) : null;
+    if ("stock" in v && v.stock !== "") p.stock = Math.max(0, Math.round(numF(v.stock)));
+    if ("badge" in v) { if (["Yangi", "Xit"].includes(v.badge)) p.badge = v.badge; else delete p.badge; }
+    if ("original" in v && v.original !== "") p.original = !["0", "yo'q", "no", "false"].includes(v.original.toLowerCase());
+    ok++;
+  });
+  update();
+  toast(`⬆ ${ok} ta mahsulot yangilandi${skip ? `, ${skip} ta qator (noma'lum ID) o'tkazib yuborildi` : ""}`);
+});
 ["#pSearch", "#pCat", "#pStock"].forEach((s) => $(s).addEventListener("input", renderProducts));
 
 // Jadvaldagi tezkor tahrir (narx, eski narx, ombor, belgi)
@@ -314,6 +447,7 @@ function onCellChange(e) {
   const p = S.data.PRODUCTS.find((x) => x.id === +row.dataset.id);
   if (!p) return;
   if (f === "badge") { if (e.target.value) p.badge = e.target.value; else delete p.badge; }
+  else if (f === "original") p.original = e.target.checked;
   else if (f === "old") p.old = +e.target.value > 0 ? +e.target.value : null;
   else p[f] = Math.max(0, +e.target.value || 0);
   row.classList.add("changed");
@@ -348,19 +482,50 @@ function openEdit(id) {
   form.elements.price.value = v.price; form.elements.old.value = v.old || ""; form.elements.stock.value = v.stock;
   form.elements.rating.value = v.rating; form.elements.reviews.value = v.reviews; form.elements.popular.value = v.popular;
   form.elements.badge.value = v.badge || ""; form.elements.desc.value = v.desc; form.elements.img.value = v.img || "";
+  form.elements.original.checked = v.original !== false;
   $("#specList").innerHTML = "";
   const specs = Object.entries(v.specs || {});
   (specs.length ? specs : [["", ""]]).forEach(([k, val]) => addSpecRow(k, val));
   showPreview();
   $("#deleteBtn").hidden = !p;
   resetDelete();
-  drawer.classList.add("open"); overlay.classList.add("show"); document.body.classList.add("lock");
+  openDrawer(drawer);
   setTimeout(() => form.elements.name.focus(), 300);
 }
-function closeEdit() { drawer.classList.remove("open"); overlay.classList.remove("show"); document.body.classList.remove("lock"); }
+function openDrawer(d) { d.classList.add("open"); overlay.classList.add("show"); document.body.classList.add("lock"); }
+function closeEdit() { $$(".drawer.open").forEach((d) => d.classList.remove("open")); overlay.classList.remove("show"); document.body.classList.remove("lock"); }
 overlay.addEventListener("click", closeEdit);
-$("[data-close]", drawer).addEventListener("click", closeEdit);
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && drawer.classList.contains("open")) closeEdit(); });
+$$(".drawer [data-close]").forEach((b) => b.addEventListener("click", closeEdit));
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && $(".drawer.open")) closeEdit();
+  // Ctrl+S — e'lon qilish
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s" && S.data) { e.preventDefault(); if (!$("#publishBtn").disabled) publish(); }
+});
+
+// Rasmni brauzerda 800px gacha kichraytirib JPEG qiladi va e'lon qilinguncha xotirada saqlaydi
+function resizeImage(file, prefix) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const im = new Image();
+      im.onerror = () => reject(new Error("rasm emas"));
+      im.onload = () => {
+        const k = Math.min(1, 800 / Math.max(im.width, im.height));
+        const c = document.createElement("canvas");
+        c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+        const g = c.getContext("2d");
+        g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(im, 0, 0, c.width, c.height);
+        const path = `img/${prefix}-${Date.now()}.jpg`;
+        S.uploads[path] = c.toDataURL("image/jpeg", 0.85);
+        resolve({ path, w: c.width, h: c.height });
+      };
+      im.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 $("#addProduct").addEventListener("click", () => openEdit(null));
 
 function addSpecRow(k = "", v = "") {
@@ -379,30 +544,16 @@ function showPreview() {
 form.elements.img.addEventListener("input", showPreview);
 
 // Rasm yuklash: brauzerda 800px gacha kichraytirib JPEG qilamiz
-$("#imgFile").addEventListener("change", (e) => {
+$("#imgFile").addEventListener("change", async (e) => {
   const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    const im = new Image();
-    im.onload = () => {
-      const k = Math.min(1, 800 / Math.max(im.width, im.height));
-      const c = document.createElement("canvas");
-      c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
-      const g = c.getContext("2d");
-      g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
-      g.drawImage(im, 0, 0, c.width, c.height);
-      const path = `img/u-${S.editing || "new"}-${Date.now()}.jpg`;
-      S.uploads[path] = c.toDataURL("image/jpeg", 0.85);
-      form.elements.img.value = path;
-      showPreview();
-      toast(`📷 Rasm tayyor (${c.width}×${c.height}) — "Saqlash" va "E'lon qilish" ni bosing`);
-    };
-    im.onerror = () => toast("❌ Bu faylni rasm sifatida ochib bo'lmadi");
-    im.src = reader.result;
-  };
-  reader.readAsDataURL(file);
   e.target.value = "";
+  if (!file) return;
+  try {
+    const r = await resizeImage(file, `u-${S.editing || "new"}`);
+    form.elements.img.value = r.path;
+    showPreview();
+    toast(`📷 Rasm tayyor (${r.w}×${r.h}) — "Saqlash" va "E'lon qilish" ni bosing`);
+  } catch { toast("❌ Bu faylni rasm sifatida ochib bo'lmadi"); }
 });
 
 form.addEventListener("submit", (e) => {
@@ -418,11 +569,12 @@ form.addEventListener("submit", (e) => {
     price: Math.max(0, +f.price.value || 0), old: +f.old.value > 0 ? +f.old.value : null,
     rating: Math.min(5, Math.max(0, +f.rating.value || 0)), reviews: Math.max(0, +f.reviews.value || 0),
     stock: Math.max(0, +f.stock.value || 0), popular: Math.min(100, Math.max(0, +f.popular.value || 0)),
+    original: f.original.checked,
     img: f.img.value.trim(), desc: f.desc.value.trim(), specs,
   };
   if (!val.name || !val.brand) { toast("⚠️ Nomi va brendni kiriting"); return; }
   if (val.old && val.old <= val.price) { toast("⚠️ Eski narx yangi narxdan katta bo'lishi kerak (yoki bo'sh qoldiring)"); return; }
-  // Maydonlar tartibi data.js dagidek: id, cat, brand, name, price, old, rating, reviews, stock, popular, badge, img, gallery, desc, specs
+  // Maydonlar tartibi data.js dagidek: id, cat, brand, name, price, old, rating, reviews, stock, popular, original, badge, img, gallery, desc, specs
   const build = (id, gallery) => {
     const { desc, specs, img, ...head } = val;
     return { id, ...head, ...(f.badge.value ? { badge: f.badge.value } : {}), img, ...(gallery ? { gallery } : {}), desc, specs };
@@ -459,9 +611,153 @@ $("#deleteBtn").addEventListener("click", () => {
   closeEdit(); update(); toast(`🗑 "${p.name}" o'chirildi`);
 });
 
+// ---------- Yangiliklar ----------
+const newsDrawer = $("#newsDrawer"), nForm = $("#newsForm");
+const today = () => new Date().toISOString().slice(0, 10);
+function renderNewsList() {
+  const q = $("#nSearch").value.trim().toLowerCase();
+  const base = new Map((JSON.parse(S.baseJSON).NEWS || []).map((n) => [n.id, canon(n)]));
+  const list = (S.data.NEWS || []).slice()
+    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || String(b.date).localeCompare(String(a.date)))
+    .filter((n) => !q || n.title.toLowerCase().includes(q));
+  $("#newsList").innerHTML = list.length ? list.map((n) => `
+    <article class="ad-news ${base.get(n.id) !== canon(n) ? "changed" : ""}" data-nid="${n.id}">
+      <img src="${esc(srcOf(n.img))}" alt="" onerror="this.style.visibility='hidden'" />
+      <div>
+        <div class="ad-news-meta">${n.pinned ? `<span class="chip sale">📌 Tepada</span>` : ""}<span class="chip ok">${esc(n.tag || "Yangilik")}</span><span class="muted">${esc(n.date)}</span></div>
+        <b>${esc(n.title)}</b>
+        <p class="muted">${esc(n.excerpt || "")}</p>
+      </div>
+      <div class="ad-actions"><button data-nact="edit">Tahrirlash</button><button data-nact="pin" title="Tepaga mahkamlash">📌</button></div>
+    </article>`).join("") : `<p class="ad-empty">Yangiliklar yo'q. "+ Yangi yangilik" ni bosing.</p>`;
+}
+$("#nSearch").addEventListener("input", renderNewsList);
+$("#newsList").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-nact]");
+  if (!b) return;
+  const id = +b.closest("[data-nid]").dataset.nid;
+  const n = S.data.NEWS.find((x) => x.id === id);
+  if (b.dataset.nact === "edit") openNewsEdit(id);
+  if (b.dataset.nact === "pin") { if (n.pinned) delete n.pinned; else n.pinned = true; update(); }
+});
+$("#addNews").addEventListener("click", () => openNewsEdit(null));
+
+function openNewsEdit(id) {
+  const n = id ? S.data.NEWS.find((x) => x.id === id) : null;
+  S.editingNews = n ? n.id : null;
+  $("#newsTitle").textContent = n ? "Yangilikni tahrirlash" : "Yangi yangilik";
+  const v = n || { title: "", tag: "Yangilik", date: today(), img: "", excerpt: "", body: "" };
+  const f = nForm.elements;
+  f.title.value = v.title; f.tag.value = v.tag || ""; f.date.value = v.date; f.img.value = v.img || "";
+  f.excerpt.value = v.excerpt || ""; f.body.value = v.body || ""; f.pinned.checked = !!v.pinned;
+  showNewsPreview();
+  $("#nDelete").hidden = !n;
+  $("#nDelete").classList.remove("confirm"); $("#nDelete").textContent = "O'chirish";
+  openDrawer(newsDrawer);
+  setTimeout(() => f.title.focus(), 300);
+}
+function showNewsPreview() {
+  const p = nForm.elements.img.value.trim();
+  $("#nImgPreview").innerHTML = p ? `<img src="${esc(srcOf(p))}" alt="" onerror="this.replaceWith(document.createTextNode('Rasm topilmadi'))" />` : "Rasm yo'q";
+}
+nForm.elements.img.addEventListener("input", showNewsPreview);
+$("#nImgFile").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  try { const r = await resizeImage(file, "news"); nForm.elements.img.value = r.path; showNewsPreview(); }
+  catch { toast("❌ Bu faylni rasm sifatida ochib bo'lmadi"); }
+});
+nForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const f = nForm.elements;
+  const v = {
+    date: f.date.value || today(), tag: f.tag.value.trim() || "Yangilik", ...(f.pinned.checked ? { pinned: true } : {}),
+    img: f.img.value.trim(), title: f.title.value.trim(), excerpt: f.excerpt.value.trim(), body: f.body.value.trim(),
+  };
+  if (!v.title) { toast("⚠️ Sarlavhani kiriting"); return; }
+  if (!v.excerpt) v.excerpt = v.body.split(/\n/)[0].slice(0, 180);
+  S.data.NEWS = S.data.NEWS || [];
+  if (S.editingNews) {
+    const i = S.data.NEWS.findIndex((x) => x.id === S.editingNews);
+    S.data.NEWS[i] = { id: S.editingNews, ...v };
+  } else {
+    S.data.NEWS.unshift({ id: Math.max(0, ...S.data.NEWS.map((x) => x.id)) + 1, ...v });
+  }
+  closeEdit(); update();
+  toast("✓ Yangilik saqlandi — saytda ko'rinishi uchun \"E'lon qilish\" ni bosing");
+});
+$("#nDelete").addEventListener("click", () => {
+  const b = $("#nDelete");
+  if (!b.classList.contains("confirm")) {
+    b.classList.add("confirm"); b.textContent = "Ha, o'chirilsin";
+    setTimeout(() => { b.classList.remove("confirm"); b.textContent = "O'chirish"; }, 3500);
+    return;
+  }
+  S.data.NEWS = S.data.NEWS.filter((x) => x.id !== S.editingNews);
+  closeEdit(); update(); toast("🗑 Yangilik o'chirildi");
+});
+
+// ---------- Kategoriyalar ----------
+function renderCatEditor() {
+  $("#cTable").innerHTML = `<thead><tr><th></th><th>Nomi</th><th>Kod (ID)</th><th class="num">Mahsulotlar</th><th></th></tr></thead><tbody>
+  ${S.data.CATEGORIES.map((c) => `<tr data-cid="${esc(c.id)}">
+    <td><img class="ad-thumb" src="${esc(srcOf(c.img))}" alt="" /></td>
+    <td><input class="cell wide" data-cfield="name" value="${esc(c.name)}" aria-label="Kategoriya nomi" /></td>
+    <td><code>${esc(c.id)}</code></td>
+    <td class="num">${S.data.PRODUCTS.filter((p) => p.cat === c.id).length}</td>
+    <td><div class="ad-actions"><label class="btn btn-ghost btn-sm ad-upload" style="margin:0">📷 Rasm<input type="file" data-cimg accept="image/*" hidden /></label></div></td>
+  </tr>`).join("")}</tbody>`;
+}
+$("#cTable").addEventListener("change", async (e) => {
+  const row = e.target.closest("[data-cid]");
+  if (!row) return;
+  const c = S.data.CATEGORIES.find((x) => x.id === row.dataset.cid);
+  if (e.target.dataset.cfield === "name") { c.name = e.target.value.trim() || c.name; markDirty(); fillSelects(); }
+  if (e.target.matches("[data-cimg]") && e.target.files[0]) {
+    try { const r = await resizeImage(e.target.files[0], "cat-" + c.id); c.img = r.path; update(); toast("📷 Kategoriya rasmi yangilandi"); }
+    catch { toast("❌ Bu faylni rasm sifatida ochib bo'lmadi"); }
+  }
+});
+
+// ---------- Tarix (GitHub commitlari) ----------
+$("#historyLoad").addEventListener("click", loadHistory);
+async function loadHistory() {
+  const box = $("#historyList");
+  box.innerHTML = `<p class="ad-empty">Yuklanmoqda…</p>`;
+  try {
+    const list = await gh(repoPath(`/commits?path=${CFG.dataPath}&sha=${CFG.branch}&per_page=25`));
+    box.innerHTML = list.length ? `<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>Sana</th><th>O'zgarish</th><th>Muallif</th><th></th></tr></thead><tbody>
+      ${list.map((c, i) => `<tr><td class="num" style="text-align:left">${new Date(c.commit.author.date).toLocaleString("ru-RU")}${i === 0 ? ` <span class="chip ok">joriy</span>` : ""}</td>
+      <td>${esc(c.commit.message.split("\n")[0])}</td><td>${esc((c.author && c.author.login) || c.commit.author.name)}</td>
+      <td><div class="ad-actions">${i === 0 ? "" : `<button data-restore="${c.sha}">Shu versiyani ochish</button>`}<a class="btn btn-ghost btn-sm" href="${esc(c.html_url)}" target="_blank" rel="noopener">GitHub ↗</a></div></td></tr>`).join("")}
+      </tbody></table></div>` : `<p class="ad-empty">Tarix topilmadi</p>`;
+  } catch (ex) { box.innerHTML = `<p class="ad-empty">${esc(apiError(ex))}</p>`; }
+}
+$("#historyList").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-restore]");
+  if (!b) return;
+  b.disabled = true; b.textContent = "Ochilmoqda…";
+  try {
+    const f = await gh(repoPath(`/contents/${CFG.dataPath}?ref=${b.dataset.restore}`));
+    S.data = parseData(b64ToText(f.content));
+    update(); go("products");
+    toast("↩️ Eski versiya qoralama sifatida ochildi. Tekshiring va \"E'lon qilish\" ni bosing (yoki \"Bekor qilish\").");
+  } catch (ex) { toast("❌ " + apiError(ex)); b.disabled = false; b.textContent = "Shu versiyani ochish"; }
+});
+
+// ---------- Oldindan ko'rish ----------
+$("#previewBtn").addEventListener("click", () => {
+  try {
+    localStorage.setItem("opus_admin_preview", JSON.stringify({ ...S.data, uploads: S.uploads }));
+    window.open("./?preview=1#products", "_blank", "noopener");
+  } catch { toast("⚠️ Qoralama juda katta (ko'p rasm). Avval e'lon qiling yoki rasmlar sonini kamaytiring."); }
+});
+
 // ---------- Buyurtmalar ----------
 function renderOrders() {
-  const O = orders().slice().reverse();
+  const oq = ($("#oSearch").value || "").trim().toLowerCase();
+  const O = orders().slice().reverse().filter((o) => !oq || [o.id, o.name, o.phone].join(" ").toLowerCase().includes(oq));
   const payName = (id) => (PAYMENTS.find((p) => p.id === id) || {}).name || id;
   $("#oTable").innerHTML = `<thead><tr><th>Buyurtma</th><th>Mijoz</th><th>Manzil</th><th>Mahsulotlar</th><th>To'lov</th><th class="num">Summa</th><th>Holat</th></tr></thead><tbody>
   ${O.length ? O.map((o) => `<tr>
@@ -474,6 +770,17 @@ function renderOrders() {
     <td><select class="ad-status-select" data-order="${esc(o.id)}" aria-label="Holat">${STATUSES.map((s) => `<option ${statusOf(o.id) === s ? "selected" : ""}>${s}</option>`).join("")}</select></td>
   </tr>`).join("") : `<tr><td colspan="7" class="ad-empty">Bu brauzerda hali buyurtma yo'q. Saytda sinov buyurtmasi bering — u shu yerda paydo bo'ladi.</td></tr>`}</tbody>`;
 }
+$("#oSearch").addEventListener("input", renderOrders);
+$("#oExport").addEventListener("click", () => {
+  const O = orders();
+  if (!O.length) { toast("Eksport uchun buyurtma yo'q"); return; }
+  const payName = (id) => (PAYMENTS.find((p) => p.id === id) || {}).name || id;
+  const rows = [["Raqam", "Sana", "Mijoz", "Telefon", "Viloyat", "Manzil", "Mahsulotlar", "To'lov", "Summa", "Holat"].join(";"),
+    ...O.map((o) => [o.id, new Date(o.date).toLocaleString("ru-RU"), o.name, o.phone, o.region, o.delivery === "pickup" ? "Do'kondan" : o.address,
+      (o.items || []).map((i) => { const p = S.data.PRODUCTS.find((x) => x.id === i.id); return `${p ? p.name : "ID " + i.id} x${i.qty}`; }).join(", "),
+      payName(o.payment), Math.round(o.total), statusOf(o.id)].map(csvCell).join(";"))];
+  download(`opus-buyurtmalar-${today()}.csv`, rows.join("\n"));
+});
 $("#oTable").addEventListener("change", (e) => {
   const id = e.target.dataset.order;
   if (!id) return;
@@ -549,7 +856,7 @@ async function publish() {
     const sw = await gh(repoPath(`/contents/${CFG.swPath}?ref=${CFG.branch}`));
     const swText = b64ToText(sw.content).replace(/const VERSION = "opus-v(\d+)"/, (_, n) => `const VERSION = "opus-v${+n + 1}"`);
     files.push({ path: CFG.swPath, b64: textToB64(swText) });
-    const used = new Set(S.data.PRODUCTS.map((p) => p.img));
+    const used = new Set([...S.data.PRODUCTS.map((p) => p.img), ...(S.data.NEWS || []).map((n) => n.img), ...S.data.CATEGORIES.map((c) => c.img)]);
     Object.entries(S.uploads).forEach(([path, url]) => {
       if (used.has(path) && !S.published.has(path)) files.push({ path, b64: url.split(",")[1], upload: true });
     });
