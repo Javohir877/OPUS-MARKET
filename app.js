@@ -12,16 +12,52 @@ const store = {
 };
 
 // Sozlamalar data.js dagi SETTINGS dan (admin panel tahrirlaydi)
-const PROMOS = Object.fromEntries(Object.entries(SETTINGS.promos || {}).map(([k, v]) => [k.toUpperCase(), v / 100]));
-const FREE_SHIP_FROM = SETTINGS.freeShipFrom;
-const SHIP_PRICE = SETTINGS.shipPrice;
+// (serverdan yangi katalog kelganda applySettings() qayta hisoblaydi)
+let PROMOS, FREE_SHIP_FROM, SHIP_PRICE;
+function applySettings() {
+  PROMOS = Object.fromEntries(Object.entries(SETTINGS.promos || {}).map(([k, v]) => [k.toUpperCase(), v / 100]));
+  FREE_SHIP_FROM = SETTINGS.freeShipFrom;
+  SHIP_PRICE = SETTINGS.shipPrice;
+}
+applySettings();
+
+// ---------- Server API ----------
+// Xatoda {error} matni bilan Error tashlaydi; err.status — HTTP holati (0 — tarmoq yo'q).
+async function api(method, path, body) {
+  let res;
+  try {
+    res = await fetch(API_BASE + path, {
+      method,
+      headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...(auth.token ? { Authorization: "Bearer " + auth.token } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw Object.assign(new Error("Server bilan aloqa yo'q. Internetni tekshirib, qayta urinib ko'ring."), { status: 0 });
+  }
+  let data = {};
+  try { data = await res.json(); } catch {}
+  if (!res.ok) {
+    if (res.status === 401 && auth.token && !path.startsWith("/api/auth/")) setAuth(null);
+    throw Object.assign(new Error(data.error || "Xatolik yuz berdi (" + res.status + ")"), { status: res.status });
+  }
+  return data;
+}
+const auth = { token: store.get("token", null), user: store.get("user", null) };
+function setAuth(token, user) {
+  auth.token = token || null;
+  auth.user = token ? user : null;
+  store.set("token", auth.token);
+  store.set("user", auth.user);
+  if (!token) state.orders = [];
+  renderAccBtn();
+}
 const MONTHS = [3, 6, 12, 24];
 const MAX_PRICE = 45000000;
 
 const state = {
   cart: store.get("cart", []),          // [{id, qty}]
   wish: store.get("wish", []),          // [id]
-  orders: store.get("orders", []),
+  orders: [],                           // serverdan (GET /api/orders)
   recent: store.get("recent", []),      // [id]
   compare: store.get("compare", []),    // [id], 3 tagacha, bitta kategoriyadan
   promo: store.get("promo", null),
@@ -747,10 +783,20 @@ $("#wishItems").addEventListener("click", (e) => {
 
 // ---------- Orders ----------
 const DELIVERY = { courier: "Kuryer", pickup: "Do'kondan olib ketish" };
-const TRACK = ["Qabul qilindi", "Yig'ilmoqda", "Yo'lda", "Yetkazildi"];
-function orderStage(o) {
-  // Demo: holat vaqt o'tishi bilan o'zgaradi (har 2 daqiqada bir bosqich)
-  return Math.min(TRACK.length - 1, Math.floor((Date.now() - o.date) / 120000));
+// Holatni admin panel o'zgartiradi (server: Yangi → Tasdiqlandi → Yig'ilmoqda → Yo'lda → Yetkazildi)
+const TRACK = ["Yangi", "Tasdiqlandi", "Yig'ilmoqda", "Yo'lda", "Yetkazildi"];
+const TRACK_LABEL = ["Qabul qilindi", "Tasdiqlandi", "Yig'ilmoqda", "Yo'lda", "Yetkazildi"];
+async function loadOrders() {
+  if (!auth.token) { state.orders = []; return; }
+  state.orders = (await api("GET", "/api/orders")).orders;
+}
+async function showOrders() {
+  if (!auth.user) return requireLogin("Buyurtmalaringizni ko'rish uchun akkauntingizga kiring", showOrders);
+  const box = $("#orderItems");
+  box.innerHTML = `<div class="drawer-empty"><div>⏳</div><p>Yuklanmoqda…</p></div>`;
+  openLayer($("#ordersDrawer"));
+  try { await loadOrders(); renderOrders(); }
+  catch (e) { box.innerHTML = `<div class="drawer-empty"><div>⚠️</div><h4>Yuklab bo'lmadi</h4><p>${esc(e.message)}</p></div>`; }
 }
 function renderOrders() {
   const box = $("#orderItems");
@@ -758,17 +804,19 @@ function renderOrders() {
     box.innerHTML = `<div class="drawer-empty"><div>📦</div><h4>Hali buyurtmalar yo'q</h4><p>Birinchi xaridingizni amalga oshiring</p></div>`;
     return;
   }
-  box.innerHTML = state.orders.slice().reverse().map((o) => {
-    const st = orderStage(o);
+  box.innerHTML = state.orders.map((o) => {
+    const cancelled = o.status === "Bekor qilindi";
+    const st = Math.max(0, TRACK.indexOf(o.status));
     const pay = payOf(o.payment);
-    return `<div class="order-card">
-      <header><b>#${o.id}</b><span class="status">${TRACK[st]}</span></header>
-      <small class="muted">${new Date(o.date).toLocaleString("ru-RU")} · ${pay ? pay.name : o.payment}${o.months ? ` (${o.months} oy)` : ""} · ${DELIVERY[o.delivery]}</small>
-      <div class="thumbs">${o.items.map((i) => byId(i.id)).filter(Boolean).map((p) => `<img src="${pImg(p, 80, 80)}" alt="" title="${escapeHtml(p.name)}" />`).join("")}</div>
-      <ul>${o.items.filter((i) => byId(i.id)).map((i) => `<li>${escapeHtml(byId(i.id).name)} × ${i.qty}</li>`).join("")}</ul>
-      <div class="order-track" style="--p:${(st / (TRACK.length - 1)) * 84}%">${TRACK.map((t, i) => `<span class="${i <= st ? "on" : ""}">${t}</span>`).join("")}</div>
+    const items = o.items.map((i) => ({ ...i, p: byId(i.id) }));
+    return `<div class="order-card${cancelled ? " cancelled" : ""}">
+      <header><b>#${esc(o.id)}</b><span class="status">${cancelled ? "Bekor qilindi" : TRACK_LABEL[st]}</span></header>
+      <small class="muted">${new Date(o.created_at).toLocaleString("ru-RU")} · ${pay ? pay.name : esc(o.payment)}${o.months ? ` (${o.months} oy)` : ""} · ${DELIVERY[o.delivery] || ""}</small>
+      <div class="thumbs">${items.map((i) => `<img src="${esc(IMG(i.p ? i.p.img : i.img))}" alt="" title="${esc(i.name)}" onerror="this.remove()" />`).join("")}</div>
+      <ul>${items.map((i) => `<li>${esc(i.name)} × ${i.qty}</li>`).join("")}</ul>
+      ${cancelled ? "" : `<div class="order-track" style="--p:${(st / (TRACK.length - 1)) * 84}%">${TRACK_LABEL.map((t, i) => `<span class="${i <= st ? "on" : ""}">${t}</span>`).join("")}</div>`}
       <b>${fmt(o.total)}</b>
-      ${payLink(o) ? `<button class="btn btn-ghost btn-sm order-pay" data-pay="${esc(o.id)}">💳 ${pay.name} orqali to'lash (QR)</button><div class="pay-slot"></div>` : ""}
+      ${!cancelled && st < 4 && payLink(o) ? `<button class="btn btn-ghost btn-sm order-pay" data-pay="${esc(o.id)}">💳 ${pay.name} orqali to'lash (QR)</button><div class="pay-slot"></div>` : ""}
     </div>`;
   }).join("");
 }
@@ -838,7 +886,7 @@ $("#orderItems").addEventListener("click", (e) => {
 });
 // To'lov tizimidan qaytganda (#orders) — buyurtmalar ro'yxatini ochamiz
 if (location.hash === "#orders") setTimeout(() => {
-  renderOrders(); openLayer($("#ordersDrawer"));
+  showOrders();
   toast("💳 To'lov sahifasidan qaytdingiz. To'lov tasdiqlangach operatorimiz bog'lanadi.");
   history.replaceState(null, "", location.pathname + location.search);
 }, 1600);
@@ -862,7 +910,7 @@ document.addEventListener("click", (e) => { if (e.target.closest("[data-close]")
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAll(); });
 $("#cartBtn").addEventListener("click", () => { renderCart(); openLayer($("#cartDrawer")); });
 $("#wishBtn").addEventListener("click", () => { renderWish(); openLayer($("#wishDrawer")); });
-$("#ordersBtn").addEventListener("click", () => { renderOrders(); openLayer($("#ordersDrawer")); });
+$("#ordersBtn").addEventListener("click", showOrders);
 
 // ---------- Checkout ----------
 let step = 1;
@@ -871,6 +919,15 @@ $("#checkoutBtn").addEventListener("click", openCheckout);
 
 function openCheckout() {
   if (!state.cart.length) return toast("Savat bo'sh");
+  if (!auth.user) return requireLogin("Xarid qilish uchun akkauntingizga kiring yoki ro'yxatdan o'ting", openCheckout);
+  // Ma'lumotlarni akkauntdan to'ldiramiz (telefon — akkauntniki, o'zgarmaydi)
+  const u = auth.user, f = form.elements;
+  f.name.value = u.name || "";
+  f.phone.value = fmtPhone(u.phone);
+  f.phone.readOnly = true;
+  f.email.value = u.email || "";
+  if (u.region) f.region.value = u.region;
+  if (u.address && !f.address.value) f.address.value = u.address;
   step = 1;
   form.hidden = false;
   $("#successPane").hidden = true;
@@ -964,43 +1021,55 @@ $("#nextStep").addEventListener("click", () => {
   placeOrder();
 });
 
-function placeOrder() {
+async function placeOrder() {
   const btn = $("#nextStep");
   btn.disabled = true;
   btn.innerHTML = "⏳ Yuborilmoqda...";
-  setTimeout(() => {
-    const data = Object.fromEntries(new FormData(form));
-    const t = totals();
-    const pay = payOf(data.payment);
-    const order = {
-      id: "OP" + Date.now().toString().slice(-7),
-      date: Date.now(),
-      name: data.name, phone: data.phone, region: data.region, address: data.address,
-      delivery: data.delivery, payment: data.payment, months: data.payment === "uzum" ? state.months : null,
-      items: state.cart.map((x) => ({ ...x })), total: t.total,
-    };
-    state.orders.push(order);
-    store.set("orders", state.orders);
-    state.cart = []; state.promo = null;
-    saveCart(); store.set("promo", null);
-    updateBadges(); renderProducts(); renderCart();
-
-    form.hidden = true;
-    $("#steps").hidden = true;
-    $("#orderId").textContent = "#" + order.id;
-    const online = ["click", "payme"].includes(pay.id);
-    $("#payBox").innerHTML = payBoxHTML(order);
-    mountQR($("#payBox"));
-    $("#successNote").textContent = online
-      ? (payLink(order) ? `Endi ${pay.name} orqali to'lovni amalga oshiring — QR-kodni skanerlang yoki tugmani bosing.` : "Operatorimiz tez orada siz bilan bog'lanadi.")
-      : pay.id === "uzum"
-        ? `Uzum Nasiya: ${order.months} oy davomida oyiga ${fmt(order.total / order.months)}. Operatorimiz tez orada bog'lanadi.`
-        : "Operatorimiz tez orada siz bilan bog'lanadi.";
-    $("#successPane").hidden = false;
-    form.reset();
+  const data = Object.fromEntries(new FormData(form));
+  const pay = payOf(data.payment);
+  let order;
+  try {
+    // Narx, chegirma va yetkazish serverda katalogdan qayta hisoblanadi
+    order = (await api("POST", "/api/orders", {
+      items: state.cart.map(({ id, qty }) => ({ id, qty })),
+      delivery: data.delivery, region: data.region, address: data.address, note: data.note,
+      payment: data.payment, months: data.payment === "uzum" ? state.months : null, promo: state.promo,
+    })).order;
+    // Server manzilni akkauntga eslab qoladi; ism/email o'zgargan bo'lsa — profilni yangilaymiz
+    Object.assign(auth.user, { region: data.region, address: data.address || auth.user.address });
+    store.set("user", auth.user);
+    if (data.name.trim() !== auth.user.name || (data.email || null) !== (auth.user.email || null)) {
+      api("PATCH", "/api/me", { name: data.name, email: data.email }).then((r) => setAuth(auth.token, r.user), () => {});
+    }
+  } catch (e) {
     btn.disabled = false;
-    confetti(240);
-  }, 1200);
+    btn.innerHTML = "Buyurtma berish ✓";
+    if (e.status === 401) { closeAll(); return requireLogin("Seans tugagan — qayta kiring", openCheckout); }
+    if (e.status === 409) loadCatalog();
+    return toast("⚠️ " + e.message);
+  }
+  state.orders.unshift(order);
+  state.cart = []; state.promo = null;
+  saveCart(); store.set("promo", null);
+  // Ombor qoldig'i serverda kamaydi — mahalliy nusxani ham moslaymiz
+  order.items.forEach((i) => { const p = byId(i.id); if (p) p.stock = Math.max(0, (p.stock || 0) - i.qty); });
+  updateBadges(); renderProducts(); renderCart();
+
+  form.hidden = true;
+  $("#steps").hidden = true;
+  $("#orderId").textContent = "#" + order.id;
+  const online = ["click", "payme"].includes(pay.id);
+  $("#payBox").innerHTML = payBoxHTML(order);
+  mountQR($("#payBox"));
+  $("#successNote").textContent = online
+    ? (payLink(order) ? `Endi ${pay.name} orqali to'lovni amalga oshiring — QR-kodni skanerlang yoki tugmani bosing.` : "Operatorimiz tez orada siz bilan bog'lanadi.")
+    : pay.id === "uzum"
+      ? `Uzum Nasiya: ${order.months} oy davomida oyiga ${fmt(order.total / order.months)}. Operatorimiz tez orada bog'lanadi.`
+      : "Operatorimiz tez orada siz bilan bog'lanadi.";
+  $("#successPane").hidden = false;
+  form.reset();
+  btn.disabled = false;
+  confetti(240);
 }
 
 // Newsletter
@@ -1262,6 +1331,166 @@ $("#newsGrid").addEventListener("click", (e) => { const c = e.target.closest("[d
 $("#newsGrid").addEventListener("keydown", (e) => { if (e.key === "Enter") { const c = e.target.closest("[data-news]"); if (c) openNews(+c.dataset.news); } });
 $("#newsBody").addEventListener("click", (e) => { const b = e.target.closest("[data-news-link]"); if (b) openNews(+b.dataset.newsLink); });
 
+// ---------- Akkaunt: kirish, ro'yxatdan o'tish, profil ----------
+// "998901234567" → "+998 90 123 45 67"
+const fmtPhone = (p) => { const d = String(p || "").replace(/\D/g, "").replace(/^998/, ""); return "+998 " + [d.slice(0, 2), d.slice(2, 5), d.slice(5, 7), d.slice(7, 9)].join(" "); };
+const initials = (n) => String(n || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+let afterLogin = null;
+
+function renderAccBtn() {
+  const u = auth.user, ini = $("#accIni");
+  ini.hidden = !u;
+  ini.textContent = u ? initials(u.name) : "";
+  $("#accBtn").classList.toggle("on", !!u);
+  $("#accBtn").title = u ? u.name + " — akkaunt" : "Kirish / Ro'yxatdan o'tish";
+}
+
+// Kirmagan bo'lsa — kirish oynasini ochadi, kirgandan keyin then() ni bajaradi
+function requireLogin(msg, then) {
+  afterLogin = then || null;
+  openAuth("login", msg);
+}
+function openAuth(tab = "login", msg) {
+  $("#authSub").textContent = msg || "Akkauntingizga kiring yoki yangisini oching";
+  $("#authModal").classList.toggle("why", !!msg);
+  authTab(tab);
+  $$(".auth-err").forEach((e) => (e.hidden = true));
+  openLayer($("#authModal"));
+  setTimeout(() => $(tab === "login" ? "#loginForm [name=login]" : "#registerForm [name=name]").focus(), 350);
+}
+function authTab(tab) {
+  $$("[data-auth-tab]").forEach((b) => b.classList.toggle("active", b.dataset.authTab === tab));
+  $(".auth-tabs").dataset.tab = tab;
+  $("#loginForm").hidden = tab !== "login";
+  $("#registerForm").hidden = tab !== "register";
+  $("#authTitle").textContent = tab === "login" ? "Xush kelibsiz!" : "Yangi akkaunt";
+}
+$(".auth-tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-auth-tab]"); if (b) authTab(b.dataset.authTab); });
+$$(".pw-eye").forEach((b) => b.addEventListener("click", () => {
+  const i = b.previousElementSibling;
+  i.type = i.type === "password" ? "text" : "password";
+  b.classList.toggle("on", i.type === "text");
+}));
+
+function phoneMask(input) {
+  input.addEventListener("input", (e) => {
+    let d = e.target.value.replace(/\D/g, "");
+    if (d.startsWith("998")) d = d.slice(3);
+    d = d.slice(0, 9);
+    const parts = [d.slice(0, 2), d.slice(2, 5), d.slice(5, 7), d.slice(7, 9)].filter(Boolean);
+    e.target.value = "+998" + (parts.length ? " " + parts.join(" ") : "");
+  });
+  input.addEventListener("focus", (e) => { if (!e.target.value) e.target.value = "+998 "; });
+}
+phoneMask($("#registerForm [name=phone]"));
+
+function authError(formEl, msg) {
+  const el = $(".auth-err", formEl);
+  el.textContent = msg;
+  el.hidden = !msg;
+}
+async function authSubmit(formEl, path, body) {
+  const btn = $("button.btn", formEl), label = btn.textContent;
+  btn.disabled = true; btn.textContent = "⏳ Kuting...";
+  try {
+    const r = await api("POST", path, body);
+    setAuth(r.token, r.user);
+    formEl.reset();
+    closeAll();
+    toast(path.endsWith("register") ? `🎉 Xush kelibsiz, ${r.user.name}! Akkaunt ochildi.` : `👋 Salom, ${r.user.name}!`);
+    const next = afterLogin; afterLogin = null;
+    if (next) setTimeout(next, 380);
+  } catch (e) {
+    authError(formEl, e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = label;
+  }
+}
+$("#loginForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const f = e.target.elements;
+  if (!f.login.value.trim() || !f.password.value) return authError(e.target, "Telefon (yoki email) va parolni kiriting");
+  authSubmit(e.target, "/api/auth/login", { login: f.login.value.trim(), password: f.password.value });
+});
+$("#registerForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const f = e.target.elements;
+  $$("input", e.target).forEach((i) => i.classList.remove("invalid"));
+  const bad = (el, msg) => { el.classList.add("invalid"); authError(e.target, msg); };
+  if (f.name.value.trim().length < 2) return bad(f.name, "Ism familiyangizni kiriting");
+  if (!/^\+998 \d{2} \d{3} \d{2} \d{2}$/.test(f.phone.value.trim())) return bad(f.phone, "Telefon raqamni to'liq kiriting: +998 90 123 45 67");
+  if (f.email.value && !f.email.checkValidity()) return bad(f.email, "Email noto'g'ri");
+  if (f.password.value.length < 6) return bad(f.password, "Parol kamida 6 ta belgidan iborat bo'lsin");
+  if (f.password.value !== f.password2.value) return bad(f.password2, "Parollar bir xil emas");
+  authSubmit(e.target, "/api/auth/register", { name: f.name.value.trim(), phone: f.phone.value, email: f.email.value.trim() || null, password: f.password.value });
+});
+
+// Profil oynasi
+$("#profileForm [name=region]").innerHTML = $("#checkoutForm [name=region]").innerHTML;
+function openAccount() {
+  if (!auth.user) return openAuth("login");
+  const u = auth.user, f = $("#profileForm").elements;
+  $("#accAva").textContent = initials(u.name);
+  $("#accName").textContent = u.name;
+  $("#accPhone").textContent = fmtPhone(u.phone) + (u.email ? " · " + u.email : "");
+  f.name.value = u.name || ""; f.email.value = u.email || ""; f.address.value = u.address || "";
+  f.region.value = u.region || "Toshkent shahri";
+  $("#passForm").reset();
+  openLayer($("#accDrawer"));
+  // Ma'lumotlar boshqa qurilmada o'zgargan bo'lishi mumkin — yangilab qo'yamiz
+  api("GET", "/api/me").then((r) => setAuth(auth.token, r.user), (e) => { if (e.status === 401) { closeAll(); toast("Seans tugagan — qayta kiring"); } });
+}
+$("#accBtn").addEventListener("click", openAccount);
+$("#accOrders").addEventListener("click", showOrders);
+$("#accLogout").addEventListener("click", async () => {
+  try { await api("POST", "/api/auth/logout"); } catch {}
+  setAuth(null);
+  closeAll();
+  toast("Akkauntdan chiqdingiz");
+});
+$("#profileForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target.elements;
+  if (f.name.value.trim().length < 2) return toast("⚠️ Ism familiyangizni kiriting");
+  try {
+    const r = await api("PATCH", "/api/me", { name: f.name.value.trim(), email: f.email.value.trim() || null, region: f.region.value, address: f.address.value.trim() });
+    setAuth(auth.token, r.user);
+    $("#accName").textContent = r.user.name; $("#accAva").textContent = initials(r.user.name);
+    toast("✅ Ma'lumotlar saqlandi");
+  } catch (err) { toast("⚠️ " + err.message); }
+});
+$("#passForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target.elements;
+  if (f.password.value.length < 6) return toast("⚠️ Yangi parol kamida 6 ta belgi");
+  try {
+    await api("POST", "/api/me/password", { old: f.current.value, new: f.password.value });
+    e.target.reset();
+    toast("🔒 Parol yangilandi. Boshqa qurilmalardagi seanslar yopildi.");
+  } catch (err) { toast("⚠️ " + err.message); }
+});
+
+// ---------- Katalog serverdan ----------
+// Sahifa avval data.js bilan darhol chiziladi, keyin serverdagi eng so'nggi katalog (narx, ombor, yangi mahsulotlar) bilan yangilanadi.
+async function loadCatalog() {
+  if (window.OPUS_PREVIEW) return;
+  try {
+    const d = await api("GET", "/api/catalog");
+    if (!d.PRODUCTS || !d.PRODUCTS.length) return;
+    PRODUCTS.splice(0, PRODUCTS.length, ...d.PRODUCTS);
+    CATEGORIES.splice(0, CATEGORIES.length, ...d.CATEGORIES);
+    if (d.NEWS) NEWS_LIST.splice(0, NEWS_LIST.length, ...d.NEWS);
+    Object.keys(SETTINGS).forEach((k) => delete SETTINGS[k]);
+    Object.assign(SETTINGS, d.SETTINGS);
+    applySettings();
+    state.cart = state.cart.filter((x) => byId(x.id));
+    if (state.promo && !PROMOS[state.promo]) state.promo = null;
+    if (SETTINGS.topbar) $("#topbarText").textContent = SETTINGS.topbar;
+    if (SETTINGS.dealTitle) $("#dealTitle").textContent = SETTINGS.dealTitle;
+    renderCategories(); renderProducts(); renderCart(); renderRecent(); renderCompareBar(); renderNews(); updateBadges();
+  } catch {}
+}
+
 // ---------- Admin: oldindan ko'rish ----------
 if (window.OPUS_PREVIEW) { $("#previewBar").hidden = false; document.body.classList.add("is-preview"); }
 
@@ -1278,5 +1507,9 @@ renderRecent();
 renderCompareBar();
 renderNews();
 updateBadges();
+renderAccBtn();
+loadCatalog();
+// Saqlangan seans hali amaldami (admin bloklagan yoki parolni tiklagan bo'lishi mumkin)
+if (auth.token) api("GET", "/api/me").then((r) => setAuth(auth.token, r.user), () => {});
 // Yangilik havolasi orqali kelganda (#news-3) — maqolani ochamiz
 { const m = location.hash.match(/^#news-(\d+)$/); if (m) setTimeout(() => openNews(+m[1]), 1500); }
