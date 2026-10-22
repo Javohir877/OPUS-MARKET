@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="stylesheet" href="styles.css?v=12" />
 </head>
 <body>
   <!-- Loader -->
@@ -69,16 +69,13 @@
         <button class="icon-btn" id="themeBtn" title="Mavzu">
           <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 109 9 7 7 0 01-9-9z"/></svg>
         </button>
-        <button class="icon-btn acc-btn" id="accBtn" title="Akkaunt" aria-label="Akkaunt">
-          <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 110 10 5 5 0 010-10zm0 2a3 3 0 100 6 3 3 0 000-6zm0 10c4.4 0 8 2.2 8 5v3H4v-3c0-2.8 3.6-5 8-5zm0 2c-3.4 0-6 1.5-6 3v1h12v-1c0-1.5-2.6-3-6-3z"/></svg>
-          <span class="acc-ini" id="accIni" hidden></span>
-        </button>
         <button class="icon-btn" id="ordersBtn" title="Buyurtmalarim">
           <svg viewBox="0 0 24 24"><path d="M6 2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zm2 5v2h8V7H8zm0 4v2h8v-2H8zm0 4v2h5v-2H8z"/></svg>
         </button>
-        <button class="icon-btn" id="wishBtn" title="Sevimlilar">
-          <svg viewBox="0 0 24 24"><path d="M12 21l-1.4-1.3C5.4 15 2 12 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.5-3.4 6.5-8.6 11.2L12 21z"/></svg>
-          <span class="badge" id="wishCount">0</span>
+        <button class="acc-btn" id="accBtn" title="Kirish / Ro'yxatdan o'tish">
+          <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 110 10 5 5 0 010-10zm0 2a3 3 0 100 6 3 3 0 000-6zm0 10c4.4 0 8 2.2 8 5v3H4v-3c0-2.8 3.6-5 8-5zm0 2c-3.4 0-6 1.5-6 3v1h12v-1c0-1.5-2.6-3-6-3z"/></svg>
+          <span class="acc-ini" id="accIni" hidden></span>
+          <span class="acc-label" id="accLabel">Kirish</span>
         </button>
         <button class="icon-btn cart-btn" id="cartBtn" title="Savat">
           <svg viewBox="0 0 24 24"><path d="M7 18a2 2 0 100 4 2 2 0 000-4zm10 0a2 2 0 100 4 2 2 0 000-4zM1 2h3.3l.9 2H21a1 1 0 01.9 1.4l-3.6 6.5A2 2 0 0116.6 13H8.1l-1.1 2H19v2H7a2 2 0 01-1.8-3l1.4-2.5L3 4H1V2z"/></svg>
@@ -473,14 +470,7 @@
     </div>
   </aside>
 
-  <!-- Wishlist drawer -->
-  <aside class="drawer" id="wishDrawer">
-    <div class="drawer-head">
-      <h3>❤️ Sevimlilar</h3>
-      <button class="close" data-close>✕</button>
-    </div>
-    <div class="drawer-body" id="wishItems"></div>
-  </aside>
+
 
   <!-- Orders drawer -->
   <aside class="drawer" id="ordersDrawer">
@@ -654,8 +644,8 @@
   <button class="to-top" id="toTop">↑</button>
   <canvas id="confetti"></canvas>
 
-  <script src="assets.js?v=11"></script>
-  <script src="data.js?v=11"></script>
+  <script src="assets.js?v=12"></script>
+  <script src="data.js?v=12"></script>
   <script>
     // Admin paneldan "Oldindan ko'rish": e'lon qilinmagan qoralamani faqat shu brauzerda ko'rsatamiz
     (function () {
@@ -672,9 +662,9 @@
       } catch (e) {}
     })();
   </script>
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=12"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="showcase.js?v=11"></script>
-  <script src="scrollfx.js?v=11"></script>
+  <script src="showcase.js?v=12"></script>
+  <script src="scrollfx.js?v=12"></script>
 </body>
 </html>
