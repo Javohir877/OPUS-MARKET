@@ -6,8 +6,15 @@
 //               Fayl img/ papkasida saqlangan (nomidagi maxsus belgilar "_" ga almashtirilgan).
 //  • "img/..." — o'zingizning rasmingiz (loyiha ichidagi img/ papkasiga qo'ying), masalan img: "img/hp-victus.jpg"
 //  • "http..." — istalgan to'liq rasm manzili
+// Backend (Cloudflare Worker) manzili. Lokal ishlab chiqishda — wrangler dev.
+const API_BASE = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
+  ? "http://127.0.0.1:8787"
+  : "https://opus-market-api.opus-market-api.workers.dev";
+
 const IMG = (id) => {
   if (!id) return "";
+  // Admin paneldan serverga yuklangan rasm: "srv:u-....jpg"
+  if (id.startsWith("srv:")) return API_BASE + "/img/" + encodeURIComponent(id.slice(4));
   // Admin "oldindan ko'rish": hali e'lon qilinmagan yuklangan rasmlar
   const up = typeof window !== "undefined" && window.OPUS_PREVIEW && window.OPUS_PREVIEW.uploads[id];
   if (up) return up;
