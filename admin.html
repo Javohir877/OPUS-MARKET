@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=10" />
-  <link rel="stylesheet" href="admin.css?v=10" />
+  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="stylesheet" href="admin.css?v=11" />
 </head>
 <body class="admin">
 
@@ -46,6 +46,7 @@
         <button data-view="news"><svg viewBox="0 0 24 24"><path d="M4 3h13a2 2 0 012 2v1h1a2 2 0 012 2v10a3 3 0 01-3 3H5a3 3 0 01-3-3V5a2 2 0 012-2zm13 3V5H4v13a1 1 0 001 1h12.2a3 3 0 01-.2-1V6zm2 2v10a1 1 0 002 0V8h-2zM6 7h9v4H6V7zm0 6h9v2H6v-2zm0 3h6v2H6v-2z"/></svg>Yangiliklar <span class="ad-count" id="navNews"></span></button>
         <button data-view="cats"><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm13 0a4 4 0 110 8 4 4 0 010-8z"/></svg>Kategoriyalar</button>
         <button data-view="orders"><svg viewBox="0 0 24 24"><path d="M6 2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zm2 5v2h8V7H8zm0 4v2h8v-2H8zm0 4v2h5v-2H8z"/></svg>Buyurtmalar <span class="ad-count" id="navOrders"></span></button>
+        <button data-view="users"><svg viewBox="0 0 24 24"><path d="M9 3a4 4 0 110 8 4 4 0 010-8zm0 10c4 0 7 2 7 4.5V20H2v-2.5C2 15 5 13 9 13zm8-9.6a4 4 0 010 7.2A5.5 5.5 0 0017 3.4zM18.5 13.3c2.2.6 3.5 2 3.5 4.2V20h-4v-2.5c0-1.7-.6-3.1-1.6-4.2h2.1z"/></svg>Mijozlar <span class="ad-count" id="navUsers"></span></button>
         <button data-view="promos"><svg viewBox="0 0 24 24"><path d="M21.4 11.6l-9-9A2 2 0 0011 2H4a2 2 0 00-2 2v7c0 .6.2 1.1.6 1.4l9 9a2 2 0 002.8 0l7-7a2 2 0 000-2.8zM6.5 8A1.5 1.5 0 116.5 5a1.5 1.5 0 010 3z"/></svg>Promo-kodlar</button>
         <button data-view="settings"><svg viewBox="0 0 24 24"><path d="M19.4 13a7.6 7.6 0 000-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 00-1.7-1L15 3.2h-4l-.4 2.7a7.4 7.4 0 00-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 000 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 001.7 1l.4 2.7h4l.4-2.7a7.4 7.4 0 001.7-1l2.5 1 2-3.5-2.1-1.6zM13 15.5a3.5 3.5 0 110-7 3.5 3.5 0 010 7z"/></svg>Sozlamalar</button>
         <button data-view="history"><svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 00-9 9H1l4 4 4-4H6a7 7 0 112 4.9l-1.4 1.4A9 9 0 1013 3zm-1 5v5l4.2 2.5.8-1.3-3.5-2.1V8H12z"/></svg>Tarix</button>
@@ -145,22 +146,32 @@
 
       <!-- Tarix -->
       <section class="ad-view" data-view="history" hidden>
-        <div class="ad-note">Har bir "E'lon qilish" GitHub'da saqlanadi. Istalgan avvalgi versiyani ochib, tekshirib, qayta e'lon qilishingiz mumkin — hech narsa yo'qolmaydi.</div>
+        <div class="ad-note">Har bir "E'lon qilish" dan oldingi holat serverda saqlanadi (oxirgi 30 tasi). Istalgan avvalgi versiyani ochib, tekshirib, qayta e'lon qilishingiz mumkin.</div>
         <div class="ad-toolbar"><button class="btn btn-ghost btn-sm" id="historyLoad">↻ Tarixni yuklash</button></div>
         <div id="historyList"><p class="ad-empty">Tarixni ko'rish uchun "Tarixni yuklash" ni bosing</p></div>
       </section>
 
       <!-- Buyurtmalar -->
       <section class="ad-view" data-view="orders" hidden>
-        <div class="ad-note">
-          <b>ℹ️ Muhim:</b> sayt hozircha serversiz ishlaydi, shuning uchun buyurtmalar har bir mijozning o'z brauzerida saqlanadi.
-          Bu yerda <b>shu brauzer orqali</b> berilgan buyurtmalar ko'rinadi. Barcha mijozlar buyurtmalarini qabul qilish uchun server yoki Telegram bot ulash kerak.
-        </div>
         <div class="ad-toolbar">
           <input type="search" id="oSearch" placeholder="Buyurtma raqami, ism yoki telefon…" />
+          <select id="oStatus" aria-label="Holat bo'yicha"><option value="">Barcha holatlar</option></select>
+          <button class="btn btn-ghost btn-sm" id="oReload" title="Yangilash">↻</button>
           <button class="btn btn-ghost btn-sm" id="oExport">⬇ CSV</button>
         </div>
         <div class="ad-table-wrap"><table class="ad-table" id="oTable"></table></div>
+        <p class="muted ad-hint">Holatni o'zgartirsangiz, mijoz uni saytdagi "Buyurtmalarim" bo'limida darhol ko'radi. "Bekor qilindi" — mahsulotlar omborga qaytadi.</p>
+      </section>
+
+      <!-- Mijozlar -->
+      <section class="ad-view" data-view="users" hidden>
+        <div class="ad-toolbar">
+          <input type="search" id="uSearch" placeholder="Ism, telefon yoki email…" />
+          <button class="btn btn-ghost btn-sm" id="uReload" title="Yangilash">↻</button>
+          <button class="btn btn-ghost btn-sm" id="uExport">⬇ CSV</button>
+        </div>
+        <div class="ad-table-wrap"><table class="ad-table" id="uTable"></table></div>
+        <p class="muted ad-hint">🔒 Mijozlar parollari shifrlangan (PBKDF2) holda saqlanadi — ularni hech kim ko'ra olmaydi. Mijoz parolini unutsa, "Parolni tiklash" vaqtinchalik parol beradi.</p>
       </section>
 
       <!-- Promo-kodlar -->
@@ -208,44 +219,31 @@
         </form>
         <form class="ad-panel ad-form" id="passForm" autocomplete="off">
           <div class="ad-panel-head"><h3>🔒 Admin parolini o'zgartirish</h3></div>
-          <p class="muted ad-hint">Yangi parol "Saqlash" qilingan data.js saytga joylangandan keyin kuchga kiradi. Kamida 8 belgi: harf, raqam va belgi aralash bo'lsa yaxshi.</p>
+          <p class="muted ad-hint">Yangi parol darhol kuchga kiradi. Kamida 8 belgi: harf, raqam va belgi aralash bo'lsa yaxshi.</p>
+          <label for="pOld">Hozirgi parol</label>
+          <input id="pOld" type="password" autocomplete="current-password" required />
           <div class="ad-grid2">
             <div><label for="pNew">Yangi parol</label><input id="pNew" type="password" minlength="8" autocomplete="new-password" required /></div>
             <div><label for="pNew2">Yangi parolni takrorlang</label><input id="pNew2" type="password" minlength="8" autocomplete="new-password" required /></div>
           </div>
           <button class="btn btn-ghost btn-sm" style="margin-top:12px;align-self:flex-start">Parolni o'zgartirish</button>
         </form>
-        <details class="ad-panel ad-gh" id="ghPanel">
-          <summary><b>GitHub ulanishi</b> <span class="muted">— ixtiyoriy, bir bosishda e'lon qilish uchun</span> <span class="ad-mode demo" id="ghState">Ulanmagan</span></summary>
-          <p class="muted ad-hint">Ulanmasangiz ham panel to'liq ishlaydi: "Saqlash" tugmasi tayyor <code>data.js</code> (va yangi rasmlar) ni yuklab beradi. Ulansangiz, "E'lon qilish" o'zgarishlarni saytga to'g'ridan-to'g'ri yozadi.</p>
-          <form id="ghForm" autocomplete="off">
-            <label for="tokenInput">GitHub token</label>
-            <input id="tokenInput" type="password" placeholder="github_pat_…" spellcheck="false" />
-            <label class="ad-check"><input type="checkbox" id="rememberInput" /> Shu kompyuterda eslab qolish</label>
-            <p class="ad-error" id="loginError" hidden></p>
-            <div class="ad-top-actions"><button class="btn btn-primary btn-sm" id="loginBtn">Ulash</button><button type="button" class="btn btn-ghost btn-sm" id="ghDisconnect" hidden>Uzish</button></div>
-          </form>
-          <ol class="ad-help-steps">
-            <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-grained token yaratish</a> sahifasini oching.</li>
-            <li><b>Repository access</b> → <em>Only select repositories</em> → <code id="repoName">OPUS-MARKET</code>.</li>
-            <li><b>Permissions → Contents</b>: <em>Read and write</em> → <b>Generate token</b>.</li>
-          </ol>
-        </details>
-      </section>
+     </section>
     </main>
 
     <!-- Telefon: pastki tab paneli -->
     <nav class="ad-tabbar" id="adTabbar" aria-label="Bo'limlar">
       <button data-view="dash" class="active"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg><span>Asosiy</span></button>
       <button data-view="products"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v10H4V5zm2 0v8h12V5H6zM1 17h22v1a2 2 0 01-2 2H3a2 2 0 01-2-2v-1z"/></svg><span>Mahsulot</span></button>
-      <button data-view="news"><svg viewBox="0 0 24 24"><path d="M4 3h13a2 2 0 012 2v1h1a2 2 0 012 2v10a3 3 0 01-3 3H5a3 3 0 01-3-3V5a2 2 0 012-2zm13 3V5H4v13a1 1 0 001 1h12.2a3 3 0 01-.2-1V6zM6 7h9v4H6V7zm0 6h9v2H6v-2z"/></svg><span>Yangilik</span></button>
       <button data-view="orders"><svg viewBox="0 0 24 24"><path d="M6 2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zm2 5v2h8V7H8zm0 4v2h8v-2H8zm0 4v2h5v-2H8z"/></svg><span>Buyurtma</span></button>
+      <button data-view="users"><svg viewBox="0 0 24 24"><path d="M9 3a4 4 0 110 8 4 4 0 010-8zm0 10c4 0 7 2 7 4.5V20H2v-2.5C2 15 5 13 9 13zm8-9.6a4 4 0 010 7.2A5.5 5.5 0 0017 3.4zM18.5 13.3c2.2.6 3.5 2 3.5 4.2V20h-4v-2.5c0-1.7-.6-3.1-1.6-4.2h2.1z"/></svg><span>Mijozlar</span></button>
       <button id="moreBtn" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M5 10a2 2 0 110 4 2 2 0 010-4zm7 0a2 2 0 110 4 2 2 0 010-4zm7 0a2 2 0 110 4 2 2 0 010-4z"/></svg><span>Yana</span></button>
     </nav>
     <div class="ad-sheet-bg" id="sheetBg" hidden></div>
     <div class="ad-sheet" id="adSheet" hidden>
       <div class="ad-sheet-grip"></div>
       <div class="ad-sheet-grid">
+        <button data-view="news"><span>📰</span>Yangiliklar</button>
         <button data-view="cats"><span>🗂</span>Kategoriyalar</button>
         <button data-view="promos"><span>🎟</span>Promo-kodlar</button>
         <button data-view="settings"><span>⚙️</span>Sozlamalar</button>
@@ -337,10 +335,19 @@
     </form>
   </aside>
 
+  <!-- Mijoz -->
+  <aside class="drawer ad-drawer" id="userDrawer">
+    <div class="drawer-head">
+      <h3 id="uTitle">Mijoz</h3>
+      <button class="close" data-close>✕</button>
+    </div>
+    <div class="drawer-body" id="uBody"></div>
+  </aside>
+
   <div class="toasts" id="toasts"></div>
 
-  <script src="assets.js?v=10"></script>
-  <script src="admin.js?v=10"></script>
-  <script src="admin-bg.js?v=10"></script>
+  <script src="assets.js?v=11"></script>
+  <script src="admin.js?v=11"></script>
+  <script src="admin-bg.js?v=11"></script>
 </body>
 </html>
