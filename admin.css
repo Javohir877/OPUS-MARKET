@@ -9,9 +9,30 @@ body.admin { background: var(--bg); min-height: 100vh; }
 .admin label { font-size: 13px; font-weight: 600; color: var(--muted); display: block; margin: 10px 0 5px; }
 .admin :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
+/* Orqa fon: tarmoq canvas + aurora (admin-bg.js) */
+.ad-bg-canvas { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+.ad-aurora { position: fixed; inset: 0; z-index: -2; overflow: hidden; pointer-events: none; }
+.ad-aurora i { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .32; animation: aurora 26s ease-in-out infinite; }
+.ad-aurora i:nth-child(1) { width: 46vmax; height: 46vmax; left: -12vmax; top: -14vmax; background: #e10f2a; }
+.ad-aurora i:nth-child(2) { width: 38vmax; height: 38vmax; right: -10vmax; top: 20vh; background: #ff6a2e; opacity: .2; animation-delay: -9s; animation-duration: 32s; }
+.ad-aurora i:nth-child(3) { width: 34vmax; height: 34vmax; left: 30vw; bottom: -18vmax; background: #7a0b3a; opacity: .28; animation-delay: -17s; animation-duration: 38s; }
+[data-theme="light"] .ad-aurora i { opacity: .14; }
+@keyframes aurora {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(6vw, 4vh) scale(1.12); }
+  66% { transform: translate(-4vw, 7vh) scale(.92); }
+}
+@media (prefers-reduced-motion: reduce) { .ad-aurora i { animation: none; } }
+/* Panel kartalari fon ustida biroz shaffof "shisha" bo'ladi */
+.ad-panel, .ad-kpi, .ad-news, .ad-table-wrap { background: color-mix(in srgb, var(--card) 88%, transparent); backdrop-filter: blur(6px); }
+.ad-side { background: color-mix(in srgb, var(--bg2) 86%, transparent); backdrop-filter: blur(10px); }
+.ad-kpi { transition: transform .3s, border-color .3s, box-shadow .3s; }
+.ad-kpi:hover { transform: translateY(-3px); border-color: rgba(var(--prgb), .4); box-shadow: 0 12px 30px rgba(var(--prgb), .15); }
+
 /* Kirish */
 .ad-login { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
-  background: radial-gradient(circle at 70% 10%, rgba(var(--prgb), .25), transparent 50%), var(--bg); }
+  background: radial-gradient(circle at 70% 10%, rgba(var(--prgb), .18), transparent 50%); }
+.admin .ad-login-card { background: color-mix(in srgb, var(--card) 88%, transparent); backdrop-filter: blur(14px); }
 .ad-login-card { width: min(460px, 100%); background: var(--card); border: 1px solid var(--line); border-radius: 24px; padding: 32px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; gap: 14px; }
 .ad-login-card h1 { font-size: 24px; letter-spacing: -.5px; }
 .ad-login-card form { display: flex; flex-direction: column; gap: 8px; }
