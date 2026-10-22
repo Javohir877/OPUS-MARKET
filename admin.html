@@ -9,13 +9,33 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=4" />
-  <link rel="stylesheet" href="admin.css?v=4" />
+  <link rel="stylesheet" href="styles.css?v=5" />
+  <link rel="stylesheet" href="admin.css?v=5" />
 </head>
 <body class="admin">
 
+  <!-- Parol -->
+  <section class="ad-login" id="lock">
+    <div class="ad-login-card ad-lock-card">
+      <a href="./" class="logo"><span class="logo-mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="none" stroke="#fff" stroke-width="3.4"/></svg></span><span class="logo-text">OPUS<b>ADMIN</b></span></a>
+      <div class="ad-lock-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 1a5 5 0 015 5v3h1a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V11a2 2 0 012-2h1V6a5 5 0 015-5zm0 12a2 2 0 00-1 3.7V19h2v-2.3A2 2 0 0012 13zm0-10a3 3 0 00-3 3v3h6V6a3 3 0 00-3-3z"/></svg></div>
+      <h1>Admin panel himoyalangan</h1>
+      <p class="muted">Davom etish uchun admin parolini kiriting.</p>
+      <form id="lockForm" autocomplete="off">
+        <label for="lockInput">Parol</label>
+        <div class="ad-pass">
+          <input id="lockInput" type="password" autocomplete="current-password" required />
+          <button type="button" class="ad-eye" id="lockEye" aria-label="Parolni ko'rsatish">👁</button>
+        </div>
+        <p class="ad-error" id="lockError" hidden></p>
+        <button class="btn btn-primary btn-block" id="lockBtn">Ochish</button>
+      </form>
+      <a class="ad-link" href="./">← Do'konga qaytish</a>
+    </div>
+  </section>
+
   <!-- Kirish -->
-  <section class="ad-login" id="login">
+  <section class="ad-login" id="login" hidden>
     <div class="ad-login-card">
       <a href="./" class="logo"><span class="logo-mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="none" stroke="#fff" stroke-width="3.4"/></svg></span><span class="logo-text">OPUS<b>ADMIN</b></span></a>
       <h1>Boshqaruv paneliga kirish</h1>
@@ -204,6 +224,15 @@
             <div><label for="sApkS">Hajmi (MB)</label><input id="sApkS" name="apkSize" type="number" step="0.1" min="0" /></div>
           </div>
         </form>
+        <form class="ad-panel ad-form" id="passForm" autocomplete="off">
+          <div class="ad-panel-head"><h3>🔒 Admin parolini o'zgartirish</h3></div>
+          <p class="muted ad-hint">Yangi parol "E'lon qilish" dan keyin kuchga kiradi. Kamida 8 belgi: harf, raqam va belgi aralash bo'lsa yaxshi.</p>
+          <div class="ad-grid2">
+            <div><label for="pNew">Yangi parol</label><input id="pNew" type="password" minlength="8" autocomplete="new-password" required /></div>
+            <div><label for="pNew2">Yangi parolni takrorlang</label><input id="pNew2" type="password" minlength="8" autocomplete="new-password" required /></div>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:12px;align-self:flex-start">Parolni o'zgartirish</button>
+        </form>
       </section>
     </main>
   </div>
@@ -290,7 +319,7 @@
 
   <div class="toasts" id="toasts"></div>
 
-  <script src="assets.js?v=4"></script>
-  <script src="admin.js?v=4"></script>
+  <script src="assets.js?v=5"></script>
+  <script src="admin.js?v=5"></script>
 </body>
 </html>
