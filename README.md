@@ -18,6 +18,10 @@ Hech qanday o'rnatish kerak emas — oddiy statik sayt.
 | `data.js` | Mahsulotlar, kategoriyalar, to'lov usullari — narx va mahsulotlarni shu yerda o'zgartiring |
 | `app.js` | Savat, filtrlar, qidiruv, buyurtma |
 | `showcase.js` | 3D noutbuk shou (Three.js) |
+| `scrollfx.js` | Scroll animatsiyalari: "elektr sxemasi", progress, parallaks, sarlavha effekti |
+| `manifest.webmanifest`, `sw.js`, `icons/` | Ilova (PWA): o'rnatish, ikonkalar, offline kesh |
+| `make-icons.ps1` | Ilova ikonkalarini yasaydi |
+| `publish-github.ps1` | Saytni GitHub'ga yuklaydi (faqat o'zgargan fayllarni) |
 | `img/` | Mahsulot rasmlari |
 | `build-artifact.ps1` | Claude Artifact uchun `deploy/index.html` yasaydi |
 
