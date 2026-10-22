@@ -7,6 +7,10 @@
 //  • "img/..." — o'zingizning rasmingiz (loyiha ichidagi img/ papkasiga qo'ying), masalan img: "img/hp-victus.jpg"
 //  • "http..." — istalgan to'liq rasm manzili
 const IMG = (id) => {
+  if (!id) return "";
+  // Admin "oldindan ko'rish": hali e'lon qilinmagan yuklangan rasmlar
+  const up = typeof window !== "undefined" && window.OPUS_PREVIEW && window.OPUS_PREVIEW.uploads[id];
+  if (up) return up;
   if (id.startsWith("wm:")) return "img/" + id.slice(id.lastIndexOf("/") + 1).replace(/[^A-Za-z0-9._-]/g, "_");
   return id;
 };
