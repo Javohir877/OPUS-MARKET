@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
   <!-- Loader -->
@@ -51,6 +51,7 @@
         <a href="#showcase">3D Shou</a>
         <a href="#categories">Kategoriyalar</a>
         <a href="#products">Mahsulotlar</a>
+        <a href="#news">Yangiliklar</a>
         <a href="#deals">Aksiya</a>
         <a href="#contact">Aloqa</a>
       </nav>
@@ -246,6 +247,17 @@
       <p>Siz qiziqqan mahsulotlar</p>
     </div>
     <div class="recent" id="recentList"></div>
+  </section>
+
+  <!-- News -->
+  <section class="section container" id="news" data-node="Yangilik">
+    <div class="section-head reveal">
+      <h2>Yangiliklar</h2>
+      <p>Do'kon yangiliklari, yangi kelgan mahsulotlar va foydali maslahatlar</p>
+    </div>
+    <div class="news-tabs" id="newsTabs"></div>
+    <div class="news-grid" id="newsGrid"></div>
+    <div class="news-more"><button class="btn btn-ghost" id="newsMore" hidden>Barcha yangiliklar ↓</button></div>
   </section>
 
   <!-- Payments -->
@@ -538,6 +550,20 @@
     </div>
   </div>
 
+  <!-- News article -->
+  <div class="modal" id="newsModal">
+    <div class="modal-box modal-news">
+      <button class="close" data-close>✕</button>
+      <article id="newsBody"></article>
+    </div>
+  </div>
+
+  <!-- Admin: oldindan ko'rish -->
+  <div class="preview-bar" id="previewBar" hidden>
+    <span>👁 <b>Oldindan ko'rish</b> — bu e'lon qilinmagan o'zgarishlar, ularni faqat siz ko'ryapsiz.</span>
+    <a class="btn btn-light btn-sm" href="./">Haqiqiy saytga qaytish</a>
+  </div>
+
   <!-- Compare -->
   <div class="compare-bar" id="compareBar" hidden>
     <div class="cb-items" id="cbItems"></div>
@@ -556,11 +582,27 @@
   <button class="to-top" id="toTop">↑</button>
   <canvas id="confetti"></canvas>
 
-  <script src="assets.js?v=3"></script>
-  <script src="data.js?v=3"></script>
-  <script src="app.js?v=3"></script>
+  <script src="assets.js?v=4"></script>
+  <script src="data.js?v=4"></script>
+  <script>
+    // Admin paneldan "Oldindan ko'rish": e'lon qilinmagan qoralamani faqat shu brauzerda ko'rsatamiz
+    (function () {
+      if (!/[?&]preview\b/.test(location.search)) return;
+      try {
+        var d = JSON.parse(localStorage.getItem("opus_admin_preview"));
+        if (!d) return;
+        PRODUCTS.splice(0, PRODUCTS.length, ...d.PRODUCTS);
+        CATEGORIES.splice(0, CATEGORIES.length, ...d.CATEGORIES);
+        if (d.NEWS && typeof NEWS !== "undefined") NEWS.splice(0, NEWS.length, ...d.NEWS);
+        Object.keys(SETTINGS).forEach(function (k) { delete SETTINGS[k]; });
+        Object.assign(SETTINGS, d.SETTINGS);
+        window.OPUS_PREVIEW = { uploads: d.uploads || {} };
+      } catch (e) {}
+    })();
+  </script>
+  <script src="app.js?v=4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="showcase.js?v=3"></script>
-  <script src="scrollfx.js?v=3"></script>
+  <script src="showcase.js?v=4"></script>
+  <script src="scrollfx.js?v=4"></script>
 </body>
 </html>
