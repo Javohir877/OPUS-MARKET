@@ -176,6 +176,49 @@ function renderPayments() {
 }
 
 // ---------- Categories ----------
+// ---------- Rasmdan asosiy rangni aniqlash ----------
+// Rasm 40×40 ga kichraytiriladi, piksellar 12 ta rang guruhiga (har 30°) bo'linadi va eng "yorqin"
+// ko'p uchraydigan guruh tanlanadi (juda oq/qora/kulranglar hisobga olinmaydi). Rang so'ng chiroyli
+// to'yinganlikka keltiriladi. Qaytaradi: { tint: "r, g, b", deep: "r, g, b" } (deep — to'qroq soya uchun).
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min, s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h * 60, s, l];
+}
+function hslToRgb(h, s, l) {
+  const k = (n) => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
+  const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+  return [f(0), f(8), f(4)].map((v) => Math.round(v * 255));
+}
+function imageTint(img) {
+  try {
+    const S = 40, c = document.createElement("canvas");
+    c.width = c.height = S;
+    const g = c.getContext("2d", { willReadFrequently: true });
+    g.drawImage(img, 0, 0, S, S);
+    const px = g.getImageData(0, 0, S, S).data;
+    const buckets = Array.from({ length: 12 }, () => ({ w: 0, h: 0, s: 0, l: 0 }));
+    let ar = 0, ag = 0, ab = 0, n = 0;
+    for (let i = 0; i < px.length; i += 4) {
+      const [h, s, l] = rgbToHsl(px[i], px[i + 1], px[i + 2]);
+      ar += px[i]; ag += px[i + 1]; ab += px[i + 2]; n++;
+      if (l < 0.1 || l > 0.93 || s < 0.22) continue;
+      // To'yinganlik kvadrati — yorqin ranglar (RGB yoritgich, logotip) xira fondan ustun turadi
+      const w = s * s * (1 - Math.abs(2 * l - 1));
+      const b = buckets[Math.floor(h / 30) % 12];
+      b.w += w; b.h += h * w; b.s += s * w; b.l += l * w;
+    }
+    const best = buckets.reduce((a, b) => (b.w > a.w ? b : a));
+    let h, s;
+    if (best.w > 2.5) { h = best.h / best.w; s = Math.max(0.6, best.s / best.w); }
+    else { [h, s] = rgbToHsl(ar / n, ag / n, ab / n); s = Math.min(s, 0.18); } // deyarli rangsiz rasm — yumshoq kulrang
+    return { tint: hslToRgb(h, s, 0.52).join(", "), deep: hslToRgb(h, Math.min(1, s * 0.9), 0.16).join(", ") };
+  } catch { return null; }
+}
+
 function renderCategories() {
   $("#catGrid").innerHTML = CATEGORIES.map((c) => {
     const n = PRODUCTS.filter((p) => p.cat === c.id).length;
@@ -189,6 +232,10 @@ function renderCategories() {
   $$("#catGrid .cat").forEach((el) => {
     io.observe(el);
     el.addEventListener("click", () => { setCat(el.dataset.cat); $("#products").scrollIntoView(); });
+    // Rasmning asosiy rangini topib, hover gradientini shu rangda qilamiz
+    const im = $("img", el);
+    const apply = () => { const t = imageTint(im); if (t) { el.style.setProperty("--tint", t.tint); el.style.setProperty("--tint-deep", t.deep); el.classList.add("tinted"); } };
+    if (im.complete && im.naturalWidth) apply(); else im.addEventListener("load", apply, { once: true });
   });
 
   $("#chips").innerHTML = [`<button class="chip active" data-cat="all">Barchasi</button>`]
