@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=10" />
+  <link rel="stylesheet" href="styles.css?v=11" />
 </head>
 <body>
   <!-- Loader -->
@@ -68,6 +68,10 @@
         </button>
         <button class="icon-btn" id="themeBtn" title="Mavzu">
           <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 109 9 7 7 0 01-9-9z"/></svg>
+        </button>
+        <button class="icon-btn acc-btn" id="accBtn" title="Akkaunt" aria-label="Akkaunt">
+          <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 110 10 5 5 0 010-10zm0 2a3 3 0 100 6 3 3 0 000-6zm0 10c4.4 0 8 2.2 8 5v3H4v-3c0-2.8 3.6-5 8-5zm0 2c-3.4 0-6 1.5-6 3v1h12v-1c0-1.5-2.6-3-6-3z"/></svg>
+          <span class="acc-ini" id="accIni" hidden></span>
         </button>
         <button class="icon-btn" id="ordersBtn" title="Buyurtmalarim">
           <svg viewBox="0 0 24 24"><path d="M6 2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zm2 5v2h8V7H8zm0 4v2h8v-2H8zm0 4v2h5v-2H8z"/></svg>
@@ -487,6 +491,72 @@
     <div class="drawer-body" id="orderItems"></div>
   </aside>
 
+  <!-- Account drawer -->
+  <aside class="drawer" id="accDrawer">
+    <div class="drawer-head">
+      <h3>👤 Akkauntim</h3>
+      <button class="close" data-close>✕</button>
+    </div>
+    <div class="drawer-body" id="accBody">
+      <div class="acc-card">
+        <div class="acc-ava" id="accAva"></div>
+        <div><b id="accName"></b><small id="accPhone"></small></div>
+      </div>
+      <div class="acc-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="accOrders">📦 Buyurtmalarim</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="accLogout">↪ Chiqish</button>
+      </div>
+      <form id="profileForm" class="acc-form" novalidate>
+        <h4>Shaxsiy ma'lumotlar</h4>
+        <label>Ism familiya<input name="name" required minlength="2" maxlength="60" autocomplete="name" /></label>
+        <label>Email (ixtiyoriy)<input name="email" type="email" maxlength="120" autocomplete="email" /></label>
+        <label>Viloyat<select name="region"></select></label>
+        <label>Manzil<input name="address" maxlength="300" autocomplete="street-address" placeholder="Ko'cha, uy, xonadon" /></label>
+        <button class="btn btn-primary btn-sm">Saqlash</button>
+      </form>
+      <form id="passForm" class="acc-form" novalidate>
+        <h4>Parolni o'zgartirish</h4>
+        <label>Hozirgi parol<input name="current" type="password" required autocomplete="current-password" /></label>
+        <label>Yangi parol<input name="password" type="password" required minlength="6" autocomplete="new-password" placeholder="Kamida 6 ta belgi" /></label>
+        <button class="btn btn-ghost btn-sm">Parolni yangilash</button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- Kirish / Ro'yxatdan o'tish -->
+  <div class="modal" id="authModal">
+    <div class="modal-box modal-auth">
+      <button class="close" data-close>✕</button>
+      <div class="auth-head">
+        <div class="auth-logo">O</div>
+        <h3 id="authTitle">Xush kelibsiz!</h3>
+        <p class="muted" id="authSub">Akkauntingizga kiring yoki yangisini oching</p>
+      </div>
+      <div class="auth-tabs" role="tablist">
+        <button type="button" role="tab" data-auth-tab="login" class="active">Kirish</button>
+        <button type="button" role="tab" data-auth-tab="register">Ro'yxatdan o'tish</button>
+        <span class="auth-tabs-pill"></span>
+      </div>
+      <form id="loginForm" class="auth-form" novalidate>
+        <label>Telefon yoki email<input name="login" required autocomplete="username" placeholder="+998 90 123 45 67 yoki email" /></label>
+        <label>Parol<span class="pw"><input name="password" type="password" required autocomplete="current-password" placeholder="Parolingiz" /><button type="button" class="pw-eye" aria-label="Parolni ko'rsatish">👁</button></span></label>
+        <p class="auth-err" hidden></p>
+        <button class="btn btn-primary btn-block">Kirish</button>
+        <small class="muted">Parolni unutdingizmi? Operatorimizga murojaat qiling — sizga vaqtinchalik parol beriladi.</small>
+      </form>
+      <form id="registerForm" class="auth-form" novalidate hidden>
+        <label>Ism familiya<input name="name" required minlength="2" maxlength="60" autocomplete="name" placeholder="Masalan: Aziz Rahimov" /></label>
+        <label>Telefon raqam<input name="phone" required inputmode="tel" autocomplete="tel" placeholder="+998 90 123 45 67" /></label>
+        <label>Email (ixtiyoriy)<input name="email" type="email" maxlength="120" autocomplete="email" placeholder="email@misol.uz" /></label>
+        <label>Parol<span class="pw"><input name="password" type="password" required minlength="6" maxlength="128" autocomplete="new-password" placeholder="Kamida 6 ta belgi" /><button type="button" class="pw-eye" aria-label="Parolni ko'rsatish">👁</button></span></label>
+        <label>Parolni takrorlang<input name="password2" type="password" required autocomplete="new-password" /></label>
+        <p class="auth-err" hidden></p>
+        <button class="btn btn-primary btn-block">Akkaunt ochish</button>
+        <small class="muted">🔒 Parolingiz shifrlangan holda saqlanadi — uni hech kim, hatto do'kon xodimlari ham ko'ra olmaydi.</small>
+      </form>
+    </div>
+  </div>
+
   <!-- Product modal -->
   <div class="modal" id="productModal">
     <div class="modal-box modal-product">
@@ -534,7 +604,7 @@
           </div>
           <p class="pay-hint" id="payHint" hidden></p>
           <div class="order-summary" id="orderSummary"></div>
-          <p class="secure">🔒 Ma'lumotlaringiz himoyalangan. Bu demo-sayt — haqiqiy to'lov amalga oshirilmaydi.</p>
+          <p class="secure">🔒 Ma'lumotlaringiz himoyalangan. Buyurtma akkauntingizga saqlanadi va holatini «Buyurtmalarim» bo'limida kuzatasiz.</p>
         </div>
         <div class="form-nav">
           <button type="button" class="btn btn-ghost" id="prevStep">← Orqaga</button>
@@ -584,8 +654,8 @@
   <button class="to-top" id="toTop">↑</button>
   <canvas id="confetti"></canvas>
 
-  <script src="assets.js?v=10"></script>
-  <script src="data.js?v=10"></script>
+  <script src="assets.js?v=11"></script>
+  <script src="data.js?v=11"></script>
   <script>
     // Admin paneldan "Oldindan ko'rish": e'lon qilinmagan qoralamani faqat shu brauzerda ko'rsatamiz
     (function () {
@@ -602,9 +672,9 @@
       } catch (e) {}
     })();
   </script>
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=11"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="showcase.js?v=10"></script>
-  <script src="scrollfx.js?v=10"></script>
+  <script src="showcase.js?v=11"></script>
+  <script src="scrollfx.js?v=11"></script>
 </body>
 </html>
