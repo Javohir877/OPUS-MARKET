@@ -187,22 +187,131 @@ body.admin { background: var(--bg); min-height: 100vh; }
 .ad-danger.confirm { background: var(--primary); color: #fff; border-color: var(--primary); }
 
 /* Telefon */
+/* Telefon uchun pastki panel va "Yana" menyusi (kompyuterda yashirin) */
+.ad-tabbar, .ad-sheet, .ad-sheet-bg { display: none; }
+
 @media (max-width: 900px) {
   .ad-app { grid-template-columns: 1fr; }
-  .ad-side { position: sticky; top: 0; z-index: 30; height: auto; flex-direction: row; align-items: center; padding: 10px 12px; border-right: 0; border-bottom: 1px solid var(--line); gap: 10px; overflow-x: auto; }
-  .ad-side .logo-text { display: none; }
-  .ad-nav { flex-direction: row; }
-  .ad-nav button { padding: 9px 10px; font-size: 13px; white-space: nowrap; }
-  .ad-nav button svg { display: none; }
-  .ad-user { display: none; }
-  .ad-top { position: static; margin-top: 0; }
+  .ad-side { display: none; }
+  .ad-main { padding: 0 16px calc(96px + env(safe-area-inset-bottom, 0px)); gap: 16px; }
+
+  /* Ixcham yuqori panel */
+  .ad-top { position: sticky; top: 0; margin: 0 -16px; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; align-items: center; flex-wrap: nowrap; border-bottom: 1px solid var(--line); }
+  .ad-top h2 { font-size: 20px; }
+  .ad-top p { font-size: 11px; }
+  .ad-top > div:first-child { min-width: 0; }
+  .ad-top-actions { flex-wrap: nowrap; flex-shrink: 0; }
+  .ad-top-actions a[href="./"] { display: none; }
+  #previewBtn { font-size: 0; padding: 10px 12px; }
+  #previewBtn::before { content: "👁"; font-size: 16px; }
+  #discardBtn { font-size: 0; padding: 10px 12px; }
+  #discardBtn::before { content: "↩"; font-size: 16px; }
+  #discardBtn.confirm { font-size: 13px; }
+  #discardBtn.confirm::before { content: none; }
+
+  /* Pastki tab paneli */
+  .ad-tabbar {
+    display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 97;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)); background: color-mix(in srgb, var(--bg2) 92%, transparent);
+    backdrop-filter: blur(16px); border-top: 1px solid var(--line);
+  }
+  .ad-tabbar button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 2px; border-radius: 12px; font-size: 11px; font-weight: 600; color: var(--muted); min-height: 52px; }
+  .ad-tabbar svg { width: 22px; height: 22px; }
+  .ad-tabbar button.active { color: var(--primary); background: rgba(var(--prgb), .1); }
+  .ad-sheet-bg { display: block; position: fixed; inset: 0; z-index: 95; background: rgba(15,2,5,.5); }
+  .ad-sheet-bg[hidden], .ad-sheet[hidden] { display: none !important; }
+  .ad-sheet {
+    display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 96; padding: 10px 16px calc(84px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg2); border-radius: 22px 22px 0 0; box-shadow: var(--shadow-lg); transform: translateY(100%); transition: transform .25s cubic-bezier(.2,.8,.2,1);
+  }
+  .ad-sheet.open { transform: none; }
+  .ad-sheet-grip { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 14px; }
+  .ad-sheet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .ad-sheet-grid > * { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 6px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); font-size: 13px; font-weight: 600; text-align: center; }
+  .ad-sheet-grid span { font-size: 22px; }
+  .ad-sheet-grid .active { border-color: var(--primary); color: var(--primary); }
+  .ad-sheet-mode { font-size: 12px; text-align: center; margin-top: 12px; }
+
   .ad-two { grid-template-columns: 1fr; }
+  .ad-kpis { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .ad-kpi { padding: 14px; }
+  .ad-kpi b { font-size: 21px; }
+  .ad-bulk { position: fixed; left: 10px; right: 10px; top: auto; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 80; box-shadow: var(--shadow-lg); }
+  .ad-bulk select, .ad-bulk input { flex: 1 1 140px; }
+  .ad-toolbar input { flex-basis: 100%; }
+  .ad-toolbar select { flex: 1 1 45%; }
+  /* iOS Safari kattalashtirib yubormasligi uchun — 16px */
+  .admin input, .admin select, .admin textarea { font-size: 16px; }
+  .ad-drawer { width: 100%; }
+  .ad-drawer-foot { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .ad-actions button { padding: 9px 12px; }
+  .toasts { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* Jadvallar → kartochkalar */
+@media (max-width: 700px) {
+  .ad-table-wrap { border: 0; background: none; overflow: visible; }
+  .ad-table { min-width: 0 !important; display: block; }
+  .ad-table thead { display: none; }
+  .ad-table tbody { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+  .ad-table td { min-width: 0; }
+  .ad-pname b { white-space: normal; max-width: none; }
+  .ad-table tr { display: block; padding: 12px 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
+  .ad-table td { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 7px 0; border: 0; text-align: right; }
+  .ad-table td[data-label]::before { content: attr(data-label); color: var(--muted); font-size: 12px; font-weight: 600; text-align: left; flex-shrink: 0; }
+  .ad-table td > span { text-align: right; min-width: 0; }
+  .ad-table td:empty { display: none; }
+  .ad-table tr:hover td { background: none; }
+  .ad-table tr.changed { box-shadow: inset 4px 0 var(--gold); }
+  .ad-table tr.changed td:first-child { box-shadow: none; }
+  .ad-table td:has(> .ad-thumb) { width: auto; }
+  .ad-table input.cell, .ad-table input.cell.sm, .ad-table input.cell.wide { width: 150px; }
+
+  /* Mahsulot kartochkasi */
+  #pTable tr {
+    display: grid; grid-template-columns: 26px 56px 1fr 1fr; column-gap: 10px; row-gap: 6px; align-items: center;
+    grid-template-areas: "cb img name name" "price price price old" "stock stock stock badge" "status status orig orig" "act act act act";
+  }
+  #pTable tr.selected { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 6%, var(--card)); }
+  #pTable td { padding: 0; display: block; text-align: left; }
+  #pTable td[data-label]::before { display: block; margin-bottom: 4px; }
+  #pTable .c-cb { grid-area: cb; } #pTable .c-img { grid-area: img; } #pTable .c-name { grid-area: name; min-width: 0; }
+  #pTable .c-cat { display: none; }
+  #pTable .c-price { grid-area: price; } #pTable .c-old { grid-area: old; } #pTable .c-stock { grid-area: stock; }
+  #pTable .c-badge { grid-area: badge; } #pTable .c-status { grid-area: status; } #pTable .c-act { grid-area: act; }
+  #pTable .c-orig { grid-area: orig; display: flex; align-items: center; gap: 8px; }
+  #pTable .c-orig::before { margin: 0 !important; }
+  #pTable .c-price input, #pTable .c-old input, #pTable .c-stock input, #pTable .c-badge select { width: 100% !important; text-align: left; }
+  #pTable .ad-thumb { width: 56px; height: 56px; }
+  #pTable .ad-pname b { max-width: none; white-space: normal; line-height: 1.25; }
+  #pTable .ad-actions { justify-content: stretch; margin-top: 4px; }
+  #pTable .ad-actions button { flex: 1; padding: 11px; }
+  #pTable .ad-actions button[data-act="dup"] { flex: 0 0 52px; }
+  #pTable .c-status { display: flex; gap: 6px; flex-wrap: wrap; }
+  #pTable .c-orig { justify-content: flex-end; }
+  #pTable td.ad-empty { grid-column: 1 / -1; text-align: center; }
+  #pTable tr:has(td.ad-empty) { display: block; }
+
+  /* Kam qolganlar (boshqaruv) */
+  #lowStock tr { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
+  #pTable tr { grid-template-columns: 26px 56px minmax(0, 1fr) minmax(0, 1fr) !important; }
+  #lowStock td { padding: 0; display: block; text-align: left; }
+  #lowStock td:nth-child(3) { grid-column: 2; }
+  #lowStock td:nth-child(4) { grid-column: 3; grid-row: 1 / 3; }
+  #lowStock td:first-child { grid-row: 1 / 3; }
+  #lowStock .ad-thumb { width: 48px; height: 48px; }
+  #lowStock input.cell.sm { width: 76px; }
+  #recentOrders tr { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; }
+  #recentOrders td { padding: 0; display: block; text-align: left; }
+  #recentOrders td:nth-child(3), #recentOrders td:nth-child(4) { text-align: right; }
 }
 @media (max-width: 520px) {
   .ad-grid2, .ad-grid3 { grid-template-columns: 1fr; }
   .ad-img-edit { grid-template-columns: 1fr; }
+  .ad-img-preview { width: 100%; height: 160px; }
   .ad-news { grid-template-columns: 80px 1fr; }
   .ad-news img { width: 80px; height: 60px; }
   .ad-news .ad-actions { grid-column: 1 / -1; justify-content: flex-start; }
   .ad-login-card { padding: 22px; }
+  .ad-promo { flex-wrap: wrap; }
 }
