@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>OPUS Admin</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body class="admin">
+
+  <!-- Kirish -->
+  <section class="ad-login" id="login">
+    <div class="ad-login-card">
+      <a href="./" class="logo"><span class="logo-mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="none" stroke="#fff" stroke-width="3.4"/></svg></span><span class="logo-text">OPUS<b>ADMIN</b></span></a>
+      <h1>Boshqaruv paneliga kirish</h1>
+      <p class="muted">Panel o'zgarishlarni GitHub orqali saytga e'lon qiladi. Kirish uchun faqat shu do'kon repozitoriysiga ruxsatli GitHub kaliti (token) kerak.</p>
+
+      <form id="loginForm" autocomplete="off">
+        <label for="tokenInput">GitHub token</label>
+        <input id="tokenInput" type="password" placeholder="github_pat_…" spellcheck="false" />
+        <label class="ad-check"><input type="checkbox" id="rememberInput" /> Shu kompyuterda eslab qolish</label>
+        <p class="ad-error" id="loginError" hidden></p>
+        <button class="btn btn-primary btn-block" id="loginBtn">Kirish</button>
+        <button class="btn btn-ghost btn-block" type="button" id="demoBtn">Tokensiz ko'rish (e'lon qilib bo'lmaydi)</button>
+      </form>
+
+      <details class="ad-help">
+        <summary>Token qanday olinadi? (bir marta, 2 daqiqa)</summary>
+        <ol>
+          <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com → Fine-grained token yaratish</a> sahifasini oching.</li>
+          <li><b>Token name</b>: <code>OPUS admin</code>, <b>Expiration</b>: masalan 90 kun.</li>
+          <li><b>Repository access</b> → <em>Only select repositories</em> → <code id="repoName">OPUS-MARKET</code>.</li>
+          <li><b>Permissions → Repository → Contents</b>: <em>Read and write</em>.</li>
+          <li><b>Generate token</b> ni bosing va chiqqan kalitni shu yerga joylang.</li>
+        </ol>
+        <p class="muted">Kalit faqat brauzeringizda saqlanadi va faqat <code>api.github.com</code> ga yuboriladi. Uni hech kimga bermang.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- Panel -->
+  <div class="ad-app" id="app" hidden>
+    <aside class="ad-side">
+      <a href="./" class="logo"><span class="logo-mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="none" stroke="#fff" stroke-width="3.4"/></svg></span><span class="logo-text">OPUS<b>ADMIN</b></span></a>
+      <nav class="ad-nav" id="adNav">
+        <button data-view="dash" class="active"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>Boshqaruv</button>
+        <button data-view="products"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v10H4V5zm2 0v8h12V5H6zM1 17h22v1a2 2 0 01-2 2H3a2 2 0 01-2-2v-1z"/></svg>Mahsulotlar <span class="ad-count" id="navProducts"></span></button>
+        <button data-view="orders"><svg viewBox="0 0 24 24"><path d="M6 2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zm2 5v2h8V7H8zm0 4v2h8v-2H8zm0 4v2h5v-2H8z"/></svg>Buyurtmalar <span class="ad-count" id="navOrders"></span></button>
+        <button data-view="promos"><svg viewBox="0 0 24 24"><path d="M21.4 11.6l-9-9A2 2 0 0011 2H4a2 2 0 00-2 2v7c0 .6.2 1.1.6 1.4l9 9a2 2 0 002.8 0l7-7a2 2 0 000-2.8zM6.5 8A1.5 1.5 0 116.5 5a1.5 1.5 0 010 3z"/></svg>Promo-kodlar</button>
+        <button data-view="settings"><svg viewBox="0 0 24 24"><path d="M19.4 13a7.6 7.6 0 000-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 00-1.7-1L15 3.2h-4l-.4 2.7a7.4 7.4 0 00-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 000 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 001.7 1l.4 2.7h4l.4-2.7a7.4 7.4 0 001.7-1l2.5 1 2-3.5-2.1-1.6zM13 15.5a3.5 3.5 0 110-7 3.5 3.5 0 010 7z"/></svg>Sozlamalar</button>
+      </nav>
+      <div class="ad-user" id="adUser"></div>
+    </aside>
+
+    <main class="ad-main">
+      <header class="ad-top">
+        <div>
+          <h2 id="viewTitle">Boshqaruv</h2>
+          <p class="muted" id="syncInfo"></p>
+        </div>
+        <div class="ad-top-actions">
+          <a class="btn btn-ghost btn-sm" href="./" target="_blank" rel="noopener">Saytni ochish ↗</a>
+          <button class="btn btn-ghost btn-sm" id="discardBtn" hidden>Bekor qilish</button>
+          <button class="btn btn-primary btn-sm" id="publishBtn" disabled>E'lon qilish <span class="ad-dirty" id="dirtyCount" hidden></span></button>
+        </div>
+      </header>
+
+      <div class="ad-banner" id="draftBanner" hidden>
+        <span>💾 Oldingi seansdan e'lon qilinmagan qoralama bor.</span>
+        <button class="btn btn-primary btn-sm" id="draftRestore">Tiklash</button>
+        <button class="btn btn-ghost btn-sm" id="draftDrop">O'chirish</button>
+      </div>
+
+      <!-- Boshqaruv -->
+      <section class="ad-view" data-view="dash">
+        <div class="ad-kpis" id="kpis"></div>
+        <div class="ad-two">
+          <div class="ad-panel">
+            <div class="ad-panel-head"><h3>Kam qolgan mahsulotlar</h3><small class="muted">5 dona va undan kam</small></div>
+            <div id="lowStock"></div>
+          </div>
+          <div class="ad-panel">
+            <div class="ad-panel-head"><h3>So'nggi buyurtmalar</h3><button class="ad-link" data-goto="orders">Barchasi →</button></div>
+            <div id="recentOrders"></div>
+          </div>
+        </div>
+        <div class="ad-panel">
+          <div class="ad-panel-head"><h3>Kategoriyalar bo'yicha</h3></div>
+          <div class="ad-table-wrap" id="catTable"></div>
+        </div>
+      </section>
+
+      <!-- Mahsulotlar -->
+      <section class="ad-view" data-view="products" hidden>
+        <div class="ad-toolbar">
+          <input type="search" id="pSearch" placeholder="Nomi yoki brend bo'yicha qidirish…" />
+          <select id="pCat"><option value="">Barcha kategoriyalar</option></select>
+          <select id="pStock">
+            <option value="">Har qanday ombor</option>
+            <option value="low">Kam qolgan (≤5)</option>
+            <option value="out">Tugagan (0)</option>
+            <option value="sale">Chegirmada</option>
+          </select>
+          <button class="btn btn-primary btn-sm" id="addProduct">+ Yangi mahsulot</button>
+        </div>
+        <div class="ad-table-wrap"><table class="ad-table" id="pTable"></table></div>
+        <p class="muted ad-hint">Narx va omborni jadvalning o'zida o'zgartirish mumkin. Barcha o'zgarishlar "E'lon qilish" bosilgandan keyin saytda ko'rinadi.</p>
+      </section>
+
+      <!-- Buyurtmalar -->
+      <section class="ad-view" data-view="orders" hidden>
+        <div class="ad-note">
+          <b>ℹ️ Muhim:</b> sayt hozircha serversiz ishlaydi, shuning uchun buyurtmalar har bir mijozning o'z brauzerida saqlanadi.
+          Bu yerda <b>shu brauzer orqali</b> berilgan buyurtmalar ko'rinadi. Barcha mijozlar buyurtmalarini qabul qilish uchun server yoki Telegram bot ulash kerak.
+        </div>
+        <div class="ad-table-wrap"><table class="ad-table" id="oTable"></table></div>
+      </section>
+
+      <!-- Promo-kodlar -->
+      <section class="ad-view" data-view="promos" hidden>
+        <div class="ad-panel">
+          <div class="ad-panel-head"><h3>Promo-kodlar</h3><small class="muted">Mijoz savatda kiritadi</small></div>
+          <div id="promoList"></div>
+          <form class="ad-inline-form" id="promoForm">
+            <input id="promoCode" placeholder="KOD (masalan YOZ25)" maxlength="20" required />
+            <input id="promoPct" type="number" min="1" max="90" placeholder="%" required />
+            <button class="btn btn-primary btn-sm">Qo'shish</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Sozlamalar -->
+      <section class="ad-view" data-view="settings" hidden>
+        <form class="ad-panel ad-form" id="settingsForm">
+          <div class="ad-panel-head"><h3>Do'kon sozlamalari</h3></div>
+          <label for="sTopbar">Yuqori qator matni</label>
+          <input id="sTopbar" name="topbar" />
+          <label for="sDeal">Aksiya sarlavhasi</label>
+          <input id="sDeal" name="dealTitle" />
+          <div class="ad-grid2">
+            <div><label for="sFree">Bepul yetkazish (so'mdan)</label><input id="sFree" name="freeShipFrom" type="number" min="0" step="10000" /></div>
+            <div><label for="sShip">Yetkazish narxi (so'm)</label><input id="sShip" name="shipPrice" type="number" min="0" step="1000" /></div>
+          </div>
+          <div class="ad-panel-head"><h3>Android ilova (APK)</h3></div>
+          <label for="sApk">APK havolasi</label>
+          <input id="sApk" name="apkUrl" />
+          <div class="ad-grid2">
+            <div><label for="sApkV">Versiya</label><input id="sApkV" name="apkVersion" /></div>
+            <div><label for="sApkS">Hajmi (MB)</label><input id="sApkS" name="apkSize" type="number" step="0.1" min="0" /></div>
+          </div>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <!-- Mahsulotni tahrirlash -->
+  <div class="overlay" id="overlay"></div>
+  <aside class="drawer ad-drawer" id="editDrawer">
+    <div class="drawer-head">
+      <h3 id="editTitle">Mahsulot</h3>
+      <button class="close" data-close>✕</button>
+    </div>
+    <form class="drawer-body ad-form" id="editForm">
+      <div class="ad-img-edit">
+        <div class="ad-img-preview" id="imgPreview"></div>
+        <div>
+          <label class="btn btn-ghost btn-sm ad-upload">📷 Rasm yuklash<input type="file" id="imgFile" accept="image/*" hidden /></label>
+          <p class="muted ad-hint">Rasm avtomatik 800px gacha kichraytiriladi.</p>
+          <input id="fImg" name="img" placeholder="yoki rasm yo'li / URL" />
+        </div>
+      </div>
+      <label for="fName">Nomi</label>
+      <input id="fName" name="name" required />
+      <div class="ad-grid2">
+        <div><label for="fBrand">Brend</label><input id="fBrand" name="brand" required /></div>
+        <div><label for="fCat">Kategoriya</label><select id="fCat" name="cat"></select></div>
+      </div>
+      <div class="ad-grid2">
+        <div><label for="fPrice">Narx (so'm)</label><input id="fPrice" name="price" type="number" min="0" step="1000" required /></div>
+        <div><label for="fOld">Eski narx (chegirma uchun)</label><input id="fOld" name="old" type="number" min="0" step="1000" placeholder="bo'sh — chegirmasiz" /></div>
+      </div>
+      <div class="ad-grid3">
+        <div><label for="fStock">Ombor</label><input id="fStock" name="stock" type="number" min="0" required /></div>
+        <div><label for="fRating">Reyting</label><input id="fRating" name="rating" type="number" min="0" max="5" step="0.1" /></div>
+        <div><label for="fReviews">Sharhlar</label><input id="fReviews" name="reviews" type="number" min="0" /></div>
+      </div>
+      <div class="ad-grid2">
+        <div><label for="fBadge">Belgi</label><select id="fBadge" name="badge"><option value="">Yo'q</option><option>Yangi</option><option>Xit</option></select></div>
+        <div><label for="fPopular">Ommaboplik (0–100)</label><input id="fPopular" name="popular" type="number" min="0" max="100" /></div>
+      </div>
+      <label for="fDesc">Tavsif</label>
+      <textarea id="fDesc" name="desc" rows="3"></textarea>
+      <div class="ad-panel-head"><h3>Xususiyatlar</h3><button type="button" class="ad-link" id="addSpec">+ Qator</button></div>
+      <div id="specList"></div>
+      <div class="ad-drawer-foot">
+        <button type="button" class="btn btn-ghost ad-danger" id="deleteBtn">O'chirish</button>
+        <button class="btn btn-primary">Saqlash</button>
+      </div>
+    </form>
+  </aside>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script src="assets.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
