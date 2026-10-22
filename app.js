@@ -56,7 +56,6 @@ const MAX_PRICE = 45000000;
 
 const state = {
   cart: store.get("cart", []),          // [{id, qty}]
-  wish: store.get("wish", []),          // [id]
   orders: [],                           // serverdan (GET /api/orders)
   recent: store.get("recent", []),      // [id]
   compare: store.get("compare", []),    // [id], 3 tagacha, bitta kategoriyadan
@@ -352,7 +351,6 @@ function filtered() {
 
 function productCard(p, i) {
   const inCart = state.cart.some((x) => x.id === p.id);
-  const wished = state.wish.includes(p.id);
   const tags = [
     p.old ? `<span class="tag">−${discount(p)}%</span>` : "",
     p.badge === "Yangi" ? `<span class="tag new">Yangi</span>` : "",
@@ -368,9 +366,6 @@ function productCard(p, i) {
       <span class="card-brand">${p.brand}</span>
       <span class="quick">👁 Tezkor ko'rish</span>
     </div>
-    <button class="wish ${wished ? "on" : ""}" data-wish title="Sevimlilarga">
-      <svg viewBox="0 0 24 24"><path d="M12 21l-1.4-1.3C5.4 15 2 12 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.5-3.4 6.5-8.6 11.2L12 21z"/></svg>
-    </button>
     <button class="cmp ${compared ? "on" : ""}" data-cmp title="Solishtirish">${CMP_ICON}</button>
     <div class="card-body">
       <h4 data-open>${p.name}</h4>
@@ -432,7 +427,6 @@ $("#productGrid").addEventListener("click", (e) => {
   if (!card) return;
   const id = +card.dataset.id;
   if (e.target.closest("[data-add]")) addToCart(id, 1, e.target.closest("[data-add]"));
-  else if (e.target.closest("[data-wish]")) toggleWish(id);
   else if (e.target.closest("[data-cmp]")) toggleCompare(id);
   else if (e.target.closest("[data-open]")) openProduct(id);
 });
@@ -727,9 +721,8 @@ $("#promoInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("
 
 function updateBadges(bump) {
   const count = state.cart.reduce((s, x) => s + x.qty, 0);
-  const cb = $("#cartCount"), wb = $("#wishCount");
+  const cb = $("#cartCount");
   cb.textContent = count; cb.hidden = !count;
-  wb.textContent = state.wish.length; wb.hidden = !state.wish.length;
   if (bump) { cb.classList.remove("bump"); void cb.offsetWidth; cb.classList.add("bump"); }
 }
 
@@ -749,37 +742,6 @@ function flyToCart(srcEl, p) {
   ], { duration: 750, easing: "cubic-bezier(.5,0,.3,1)" }).onfinish = () => el.remove();
 }
 
-// ---------- Wishlist ----------
-function toggleWish(id) {
-  const p = byId(id);
-  if (state.wish.includes(id)) { state.wish = state.wish.filter((x) => x !== id); toast(`💔 Sevimlilardan olib tashlandi`); }
-  else { state.wish.push(id); toast(`❤️ "${p.name}" sevimlilarga qo'shildi`); }
-  store.set("wish", state.wish);
-  updateBadges(); renderProducts(); renderWish();
-}
-function renderWish() {
-  const box = $("#wishItems");
-  if (!state.wish.length) {
-    box.innerHTML = `<div class="drawer-empty"><div>❤️</div><h4>Sevimlilar ro'yxati bo'sh</h4><p>Yoqqan mahsulotlarni ❤ bilan belgilang</p></div>`;
-    return;
-  }
-  box.innerHTML = state.wish.map((id) => {
-    const p = byId(id);
-    return `<div class="citem" data-id="${id}">
-      ${img(p, 140, 140, "loaded")}
-      <div class="citem-info"><h5>${p.name}</h5><b>${fmt(p.price)}</b></div>
-      <button class="btn btn-primary btn-sm" data-wadd>Savatga</button>
-      <button class="rm" data-wrm title="O'chirish">✕</button>
-    </div>`;
-  }).join("");
-}
-$("#wishItems").addEventListener("click", (e) => {
-  const row = e.target.closest(".citem");
-  if (!row) return;
-  const id = +row.dataset.id;
-  if (e.target.closest("[data-wadd]")) addToCart(id, 1, e.target.closest("[data-wadd]"));
-  if (e.target.closest("[data-wrm]")) toggleWish(id);
-});
 
 // ---------- Orders ----------
 const DELIVERY = { courier: "Kuryer", pickup: "Do'kondan olib ketish" };
@@ -909,7 +871,6 @@ $$(".modal").forEach((m) => m.addEventListener("click", (e) => { if (e.target ==
 document.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) closeAll(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAll(); });
 $("#cartBtn").addEventListener("click", () => { renderCart(); openLayer($("#cartDrawer")); });
-$("#wishBtn").addEventListener("click", () => { renderWish(); openLayer($("#wishDrawer")); });
 $("#ordersBtn").addEventListener("click", showOrders);
 
 // ---------- Checkout ----------
@@ -1341,6 +1302,7 @@ function renderAccBtn() {
   const u = auth.user, ini = $("#accIni");
   ini.hidden = !u;
   ini.textContent = u ? initials(u.name) : "";
+  $("#accLabel").textContent = u ? u.name.split(/\s+/)[0] : "Kirish";
   $("#accBtn").classList.toggle("on", !!u);
   $("#accBtn").title = u ? u.name + " — akkaunt" : "Kirish / Ro'yxatdan o'tish";
 }
