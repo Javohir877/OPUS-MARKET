@@ -38,6 +38,8 @@ const byId = (id) => PRODUCTS.find((p) => p.id === id);
 const catOf = (p) => CATEGORIES.find((c) => c.id === p.cat);
 const payOf = (id) => PAYMENTS.find((p) => p.id === id);
 const CMP_ICON = '<svg viewBox="0 0 24 24"><path d="M7 7h10.2l-2.6-2.6L16 3l5 5-5 5-1.4-1.4L17.2 9H7V7zm10 10H6.8l2.6 2.6L8 21l-5-5 5-5 1.4 1.4L6.8 15H17v2z"/></svg>';
+const ORIG_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1l9 4v6c0 5.6-3.8 10.7-9 12-5.2-1.3-9-6.4-9-12V5l9-4zm-1.4 14.6l6.4-6.4-1.4-1.4-5 5-2.3-2.3-1.4 1.4 3.7 3.7z"/></svg>';
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const svgIcon = (name) => `<svg viewBox="0 0 24 24">${ICONS[name]}</svg>`;
 const stars = (r) => "★".repeat(Math.round(r)) + "☆".repeat(5 - Math.round(r));
 const discount = (p) => (p.old ? Math.round((1 - p.price / p.old) * 100) : 0);
@@ -232,6 +234,7 @@ function productCard(p, i) {
     p.old ? `<span class="tag">−${discount(p)}%</span>` : "",
     p.badge === "Yangi" ? `<span class="tag new">Yangi</span>` : "",
     p.badge === "Xit" ? `<span class="tag hit">🔥 Xit</span>` : "",
+    p.original !== false ? `<span class="tag orig" title="Original mahsulot — rasmiy yetkazib beruvchidan, soxta emas">${ORIG_ICON}Original</span>` : "",
     p.stock <= 5 ? `<span class="tag low">Oz qoldi: ${p.stock}</span>` : "",
   ].join("");
   const compared = state.compare.includes(p.id);
@@ -413,7 +416,7 @@ function openProduct(id) {
       <div class="pm-pay">${PAYMENTS.map(payLogo).join("")}</div>
     </div>
     <div>
-      <span class="pill">${c.name} · ${p.brand}</span>
+      <div class="pm-badges"><span class="pill">${c.name} · ${p.brand}</span>${p.original !== false ? `<span class="tag orig">${ORIG_ICON}Original</span>` : ""}</div>
       <h2>${p.name}</h2>
       <div class="rating">${stars(p.rating)} <small>${p.rating} · ${p.reviews} ta sharh</small></div>
       <p style="margin-top:10px">${p.desc}</p>
@@ -425,6 +428,11 @@ function openProduct(id) {
         <div class="months" id="pmMonths">${MONTHS.map((m) => `<button data-m="${m}" class="${m === months ? "active" : ""}">${m} oy</button>`).join("")}</div>
       </div>
       <div class="stock">✔ Omborda: ${p.stock} dona · 🛡 Rasmiy kafolat</div>
+      ${p.original !== false ? `<div class="orig-box">
+        <span class="orig-seal">${ORIG_ICON}</span>
+        <div><b>100% original mahsulot — soxta emas</b>
+        <span>Rasmiy yetkazib beruvchidan, zavod qadog'ida, seriya raqami va ishlab chiqaruvchi kafolati bilan. Seriya raqamini ${esc(p.brand)} rasmiy saytida tekshirishingiz mumkin.</span></div>
+      </div>` : ""}
       <div class="pm-actions">
         <div class="qty-lg"><button data-q="-1">−</button><span id="pmQty">1</span><button data-q="1">+</button></div>
         <button class="btn btn-primary" id="pmAdd">Savatga qo'shish <span>→</span></button>
@@ -688,6 +696,7 @@ function openLayer(el) {
 function closeAll(keepOverlay) {
   $$(".drawer.open, .modal.open").forEach((x) => x.classList.remove("open"));
   if (!keepOverlay) { overlay.classList.remove("show"); document.body.classList.remove("lock"); }
+  if (location.hash.startsWith("#news-")) history.replaceState(null, "", location.pathname + location.search);
 }
 overlay.addEventListener("click", () => closeAll());
 $$(".modal").forEach((m) => m.addEventListener("click", (e) => { if (e.target === m) closeAll(); }));
@@ -1027,6 +1036,66 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
   addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
 
+// ---------- Yangiliklar ----------
+const NEWS_LIST = typeof NEWS !== "undefined" ? NEWS : [];
+const MONTHS_UZ = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"];
+const fmtDate = (s) => { const d = new Date(s + "T00:00:00"); return isNaN(d) ? esc(s) : `${d.getDate()}-${MONTHS_UZ[d.getMonth()]}, ${d.getFullYear()}`; };
+const sortedNews = () => NEWS_LIST.slice().sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || String(b.date).localeCompare(String(a.date)));
+let newsTag = "all", newsAll = false;
+
+function renderNews() {
+  if (!NEWS_LIST.length) { $("#news").hidden = true; return; }
+  const tags = [...new Set(NEWS_LIST.map((n) => n.tag).filter(Boolean))];
+  $("#newsTabs").innerHTML = ["all", ...tags].map((t) =>
+    `<button class="chip ${t === newsTag ? "active" : ""}" data-tag="${esc(t)}">${t === "all" ? "Barchasi" : esc(t)}</button>`).join("");
+  const list = sortedNews().filter((n) => newsTag === "all" || n.tag === newsTag);
+  $("#newsMore").hidden = newsAll || list.length <= 4;
+  $("#newsGrid").innerHTML = list.slice(0, newsAll ? list.length : 4).map((n, i) => `
+    <article class="news-card ${i === 0 ? "featured" : ""}" data-news="${n.id}" tabindex="0" role="button" aria-label="${esc(n.title)}">
+      <div class="news-img"><img src="${esc(IMG(n.img))}" alt="" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()" />${n.pinned ? `<span class="news-pin">📌 Muhim</span>` : ""}</div>
+      <div class="news-text">
+        <div class="news-meta"><span class="news-tag">${esc(n.tag || "Yangilik")}</span><time datetime="${esc(n.date)}">${fmtDate(n.date)}</time></div>
+        <h3>${esc(n.title)}</h3>
+        <p>${esc(n.excerpt || "")}</p>
+        <span class="news-read">O'qish <span>→</span></span>
+      </div>
+    </article>`).join("");
+}
+
+function openNews(id) {
+  const n = NEWS_LIST.find((x) => x.id === id);
+  if (!n) return;
+  const others = sortedNews().filter((x) => x.id !== id).slice(0, 3);
+  $("#newsBody").innerHTML = `
+    ${n.img ? `<div class="na-img"><img src="${esc(IMG(n.img))}" alt="" onerror="this.parentNode.remove()" /></div>` : ""}
+    <div class="news-meta"><span class="news-tag">${esc(n.tag || "Yangilik")}</span><time datetime="${esc(n.date)}">${fmtDate(n.date)}</time></div>
+    <h2>${esc(n.title)}</h2>
+    <div class="na-body">${String(n.body || n.excerpt || "").split(/\n\s*\n/).map((p) => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`).join("")}</div>
+    <div class="na-foot">
+      <button class="btn btn-ghost btn-sm" id="naShare">🔗 Havolani nusxalash</button>
+      ${others.length ? `<div class="na-others"><b>Boshqa yangiliklar</b>${others.map((o) => `<button data-news-link="${o.id}"><span>${fmtDate(o.date)}</span>${esc(o.title)}</button>`).join("")}</div>` : ""}
+    </div>`;
+  openLayer($("#newsModal"));
+  $("#newsModal .modal-box").scrollTop = 0;
+  history.replaceState(null, "", "#news-" + id);
+  $("#naShare").addEventListener("click", () => {
+    const url = location.origin + location.pathname + "#news-" + id;
+    navigator.clipboard?.writeText(url).then(() => toast("🔗 Havola nusxalandi"), () => toast(url));
+  });
+}
+
+$("#newsTabs").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-tag]");
+  if (b) { newsTag = b.dataset.tag; newsAll = false; renderNews(); }
+});
+$("#newsMore").addEventListener("click", () => { newsAll = true; renderNews(); });
+$("#newsGrid").addEventListener("click", (e) => { const c = e.target.closest("[data-news]"); if (c) openNews(+c.dataset.news); });
+$("#newsGrid").addEventListener("keydown", (e) => { if (e.key === "Enter") { const c = e.target.closest("[data-news]"); if (c) openNews(+c.dataset.news); } });
+$("#newsBody").addEventListener("click", (e) => { const b = e.target.closest("[data-news-link]"); if (b) openNews(+b.dataset.newsLink); });
+
+// ---------- Admin: oldindan ko'rish ----------
+if (window.OPUS_PREVIEW) { $("#previewBar").hidden = false; document.body.classList.add("is-preview"); }
+
 // ---------- Admin sozlamalaridagi matnlar ----------
 if (SETTINGS.topbar) $("#topbarText").textContent = SETTINGS.topbar;
 if (SETTINGS.dealTitle) $("#dealTitle").textContent = SETTINGS.dealTitle;
@@ -1038,4 +1107,7 @@ renderProducts();
 renderCart();
 renderRecent();
 renderCompareBar();
+renderNews();
 updateBadges();
+// Yangilik havolasi orqali kelganda (#news-3) — maqolani ochamiz
+{ const m = location.hash.match(/^#news-(\d+)$/); if (m) setTimeout(() => openNews(+m[1]), 1500); }
