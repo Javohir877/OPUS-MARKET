@@ -6,7 +6,13 @@
   <title>OPUS MARKET</title>
   <meta name="description" content="OPUS MARKET — noutbuklar, kompyuterlar, monitorlar va aksessuarlar onlayn do'koni." />
   <meta name="theme-color" content="#e10f2a" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23e10f2a'/%3E%3Ccircle cx='20' cy='20' r='9' fill='none' stroke='white' stroke-width='5'/%3E%3C/svg%3E" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="OPUS MARKET" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
@@ -19,6 +25,10 @@
     <div class="loader-logo">OPUS<span>MARKET</span></div>
     <div class="loader-bar"><i></i></div>
   </div>
+
+  <!-- Scroll progress + elektr sxemasi -->
+  <div class="scroll-progress" id="scrollProgress" aria-hidden="true"><i></i></div>
+  <div class="circuit-wrap" id="circuitWrap" aria-hidden="true" hidden></div>
 
   <!-- Top bar -->
   <div class="topbar">
@@ -52,6 +62,9 @@
       </div>
 
       <div class="header-actions">
+        <button class="icon-btn install-btn" id="installBtn" title="Ilovani o'rnatish" hidden>
+          <svg viewBox="0 0 24 24"><path d="M7 1h10a2 2 0 012 2v18a2 2 0 01-2 2H7a2 2 0 01-2-2V3a2 2 0 012-2zm0 3v15h10V4H7zm5 16.2a1 1 0 100 2 1 1 0 000-2zM11 6h2v5.2l1.8-1.8 1.4 1.4L12 15l-4.2-4.2 1.4-1.4 1.8 1.8V6z"/></svg>
+        </button>
         <button class="icon-btn" id="themeBtn" title="Mavzu">
           <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 109 9 7 7 0 01-9-9z"/></svg>
         </button>
@@ -74,7 +87,7 @@
   </header>
 
   <!-- Hero -->
-  <section class="hero" id="hero">
+  <section class="hero" id="hero" data-node="Start">
     <div class="hero-bg">
       <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
       <div class="grid-lines"></div>
@@ -127,7 +140,7 @@
   </section>
 
   <!-- 3D Showcase -->
-  <section class="showcase" id="showcase">
+  <section class="showcase" id="showcase" data-node="3D Shou">
     <div class="sc-sticky">
       <canvas id="showcaseCanvas"></canvas>
       <div class="sc-vignette"></div>
@@ -166,7 +179,7 @@
   </section>
 
   <!-- Categories -->
-  <section class="section container" id="categories">
+  <section class="section container" id="categories" data-node="Kategoriya">
     <div class="section-head reveal">
       <h2>Kategoriyalar</h2>
       <p>Kerakli bo'limni tanlang</p>
@@ -175,7 +188,7 @@
   </section>
 
   <!-- Deals -->
-  <section class="deals" id="deals">
+  <section class="deals" id="deals" data-node="Aksiya">
     <div class="deals-img" id="dealsImg"></div>
     <div class="container deals-inner reveal">
       <div>
@@ -194,7 +207,7 @@
   </section>
 
   <!-- Products -->
-  <section class="section container" id="products">
+  <section class="section container" id="products" data-node="Katalog">
     <div class="section-head reveal">
       <h2>Mahsulotlar</h2>
       <p id="resultInfo">Barcha mahsulotlar</p>
@@ -236,7 +249,7 @@
   </section>
 
   <!-- Payments -->
-  <section class="section container">
+  <section class="section container" id="payments" data-node="To'lov">
     <div class="section-head reveal">
       <h2>Qulay to'lov usullari</h2>
       <p>O'zingizga qulay usulda to'lang</p>
@@ -245,7 +258,7 @@
   </section>
 
   <!-- Testimonials -->
-  <section class="section container">
+  <section class="section container" id="reviews" data-node="Fikrlar">
     <div class="section-head reveal">
       <h2>Mijozlar fikri</h2>
       <p>Bizga ishonganlar</p>
@@ -258,7 +271,7 @@
   </section>
 
   <!-- FAQ -->
-  <section class="section container faq-wrap">
+  <section class="section container faq-wrap" id="faq" data-node="Savollar">
     <div class="section-head reveal">
       <h2>Ko'p beriladigan savollar</h2>
     </div>
@@ -267,6 +280,47 @@
       <details><summary>Bo'lib to'lash qanday ishlaydi?</summary><p>Uzum Nasiya orqali 3, 6, 12 yoki 24 oyga 0% ustama bilan bo'lib to'lashingiz mumkin. Faqat pasport va karta kerak.</p></details>
       <details><summary>Mahsulotlarga kafolat bormi?</summary><p>Barcha mahsulotlar rasmiy — 12 oydan 36 oygacha ishlab chiqaruvchi kafolati beriladi.</p></details>
       <details><summary>Mahsulotni qaytarsam bo'ladimi?</summary><p>Ha, 14 kun ichida qadoqlanishi buzilmagan mahsulotni bepul qaytarishingiz mumkin.</p></details>
+    </div>
+  </section>
+
+  <!-- App (PWA) -->
+  <section class="section container app-promo" id="app" data-node="Ilova">
+    <div class="app-card reveal">
+      <div class="app-text">
+        <span class="pill">📲 Yangi</span>
+        <h2>OPUS MARKET endi <span class="gradient-text">ilova</span></h2>
+        <p>Do'konni telefoningiz bosh ekraniga qo'shing: bir bosishda ochiladi, brauzer panelisiz ishlaydi va internet sekin bo'lsa ham katalog tez yuklanadi.</p>
+        <ul class="app-perks">
+          <li><b>0 MB</b><span>Play Market shart emas</span></li>
+          <li><b>1 soniya</b><span>ochilish tezligi</span></li>
+          <li><b>Offline</b><span>katalog keshda saqlanadi</span></li>
+        </ul>
+        <div class="app-actions">
+          <button class="btn btn-primary" id="appInstall">Ilovani o'rnatish <span>→</span></button>
+          <span class="app-installed" id="appInstalled" hidden>✓ Ilova o'rnatilgan</span>
+        </div>
+        <div class="app-howto" id="appHowto" hidden>
+          <div><b>Android (Chrome)</b><span>Menyu <kbd>⋮</kbd> → <em>Ilovani o'rnatish</em> yoki <em>Bosh ekranga qo'shish</em></span></div>
+          <div><b>iPhone (Safari)</b><span>Ulashish <kbd>⬆</kbd> → <em>Bosh ekranga qo'shish</em> (На экран «Домой»)</span></div>
+          <div><b>Kompyuter (Chrome / Edge)</b><span>Manzil qatoridagi <kbd>⊕</kbd> o'rnatish belgisini bosing</span></div>
+        </div>
+      </div>
+      <div class="app-visual" aria-hidden="true">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="phone-time">09:41</div>
+            <div class="phone-grid">
+              <i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i>
+              <span class="phone-app"><img src="icons/icon-192.png" alt="" /><small>OPUS</small></span>
+              <i></i><i></i><i></i>
+            </div>
+            <div class="phone-dock"><i></i><i></i><i></i><i></i></div>
+          </div>
+        </div>
+        <img class="app-icon-big" src="icons/icon-512.png" alt="" />
+      </div>
     </div>
   </section>
 
@@ -283,7 +337,7 @@
   </section>
 
   <!-- Footer -->
-  <footer class="footer" id="contact">
+  <footer class="footer" id="contact" data-node="Aloqa">
     <div class="container footer-grid">
       <div>
         <a href="#" class="logo"><span class="logo-mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="none" stroke="#fff" stroke-width="3.4"/></svg></span><span class="logo-text">OPUS<b>MARKET</b></span></a>
@@ -424,6 +478,20 @@
     </div>
   </div>
 
+  <!-- Compare -->
+  <div class="compare-bar" id="compareBar" hidden>
+    <div class="cb-items" id="cbItems"></div>
+    <div class="cb-info"><b id="cbCount">0/3</b><small>solishtirishda</small></div>
+    <button class="btn btn-primary btn-sm" id="cbOpen">Solishtirish →</button>
+    <button class="btn btn-ghost btn-sm" id="cbClear" title="Tozalash" aria-label="Ro'yxatni tozalash">✕</button>
+  </div>
+  <div class="modal" id="compareModal">
+    <div class="modal-box modal-compare">
+      <button class="close" data-close>✕</button>
+      <div id="compareBody"></div>
+    </div>
+  </div>
+
   <div class="toasts" id="toasts"></div>
   <button class="to-top" id="toTop">↑</button>
   <canvas id="confetti"></canvas>
@@ -432,5 +500,6 @@
   <script src="app.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="showcase.js"></script>
+  <script src="scrollfx.js"></script>
 </body>
 </html>
