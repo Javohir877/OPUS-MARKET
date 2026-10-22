@@ -22,6 +22,7 @@ const state = {
   wish: store.get("wish", []),          // [id]
   orders: store.get("orders", []),
   recent: store.get("recent", []),      // [id]
+  compare: store.get("compare", []),    // [id], 3 tagacha, bitta kategoriyadan
   promo: store.get("promo", null),
   cat: "all",
   query: "",
@@ -35,6 +36,7 @@ const fmt = (n) => Math.round(n).toLocaleString("ru-RU").replace(/[\s,]/g, " ") 
 const byId = (id) => PRODUCTS.find((p) => p.id === id);
 const catOf = (p) => CATEGORIES.find((c) => c.id === p.cat);
 const payOf = (id) => PAYMENTS.find((p) => p.id === id);
+const CMP_ICON = '<svg viewBox="0 0 24 24"><path d="M7 7h10.2l-2.6-2.6L16 3l5 5-5 5-1.4-1.4L17.2 9H7V7zm10 10H6.8l2.6 2.6L8 21l-5-5 5-5 1.4 1.4L6.8 15H17v2z"/></svg>';
 const svgIcon = (name) => `<svg viewBox="0 0 24 24">${ICONS[name]}</svg>`;
 const stars = (r) => "★".repeat(Math.round(r)) + "☆".repeat(5 - Math.round(r));
 const discount = (p) => (p.old ? Math.round((1 - p.price / p.old) * 100) : 0);
@@ -231,7 +233,8 @@ function productCard(p, i) {
     p.badge === "Xit" ? `<span class="tag hit">🔥 Xit</span>` : "",
     p.stock <= 5 ? `<span class="tag low">Oz qoldi: ${p.stock}</span>` : "",
   ].join("");
-  return `<article class="card" style="animation-delay:${Math.min(i, 12) * 0.05}s" data-id="${p.id}">
+  const compared = state.compare.includes(p.id);
+  return `<article class="card" data-id="${p.id}">
     <div class="card-img skeleton" data-open>
       ${img(p, 500, 400)}
       <div class="tags">${tags}</div>
@@ -241,6 +244,7 @@ function productCard(p, i) {
     <button class="wish ${wished ? "on" : ""}" data-wish title="Sevimlilarga">
       <svg viewBox="0 0 24 24"><path d="M12 21l-1.4-1.3C5.4 15 2 12 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.5-3.4 6.5-8.6 11.2L12 21z"/></svg>
     </button>
+    <button class="cmp ${compared ? "on" : ""}" data-cmp title="Solishtirish">${CMP_ICON}</button>
     <div class="card-body">
       <h4 data-open>${p.name}</h4>
       <div class="rating">${stars(p.rating)} <small>${p.rating} (${p.reviews})</small></div>
@@ -260,9 +264,31 @@ function productCard(p, i) {
   </article>`;
 }
 
+// Kartochkalar faqat filtr o'zgarganda (yoki birinchi marta) 3D animatsiya bilan chiqadi,
+// savatga qo'shish kabi qayta chizishlarda emas
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let lastSig = null;
+const cardIO = new IntersectionObserver((entries) => entries.forEach((en) => {
+  if (!en.isIntersecting) return;
+  en.target.classList.remove("pre");
+  en.target.classList.add("in");
+  cardIO.unobserve(en.target);
+}), { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
+
 function renderProducts() {
   const list = filtered();
-  $("#productGrid").innerHTML = list.map(productCard).join("");
+  const grid = $("#productGrid");
+  grid.innerHTML = list.map(productCard).join("");
+  const sig = [state.cat, state.query, state.maxPrice, state.sort, state.dealsOnly].join("|");
+  if (sig !== lastSig && !reduceMotion) {
+    const cols = getComputedStyle(grid).gridTemplateColumns.split(" ").length || 1;
+    $$(".card", grid).forEach((c, i) => {
+      c.classList.add("pre");
+      c.style.setProperty("--d", (i % cols) * 0.09 + "s");
+      cardIO.observe(c);
+    });
+  }
+  lastSig = sig;
   $$("#productGrid img").forEach((im) => {
     const box = im.closest(".card-img");
     const done = () => box.classList.remove("skeleton");
@@ -280,6 +306,7 @@ $("#productGrid").addEventListener("click", (e) => {
   const id = +card.dataset.id;
   if (e.target.closest("[data-add]")) addToCart(id, 1, e.target.closest("[data-add]"));
   else if (e.target.closest("[data-wish]")) toggleWish(id);
+  else if (e.target.closest("[data-cmp]")) toggleCompare(id);
   else if (e.target.closest("[data-open]")) openProduct(id);
 });
 
@@ -401,6 +428,7 @@ function openProduct(id) {
         <div class="qty-lg"><button data-q="-1">−</button><span id="pmQty">1</span><button data-q="1">+</button></div>
         <button class="btn btn-primary" id="pmAdd">Savatga qo'shish <span>→</span></button>
         <button class="btn btn-ghost" id="pmBuy">Hozir sotib olish</button>
+        <button class="btn btn-ghost" id="pmCmp">${CMP_ICON.replace("<svg", '<svg width="18" height="18"')} ${state.compare.includes(p.id) ? "Solishtirishda ✓" : "Solishtirish"}</button>
       </div>
     </div>
   </div>`;
@@ -431,6 +459,10 @@ function openProduct(id) {
     if (im) im.style.transformOrigin = `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`;
   });
   $("#pmAdd").addEventListener("click", (e) => addToCart(id, qty, e.currentTarget));
+  $("#pmCmp").addEventListener("click", (e) => {
+    toggleCompare(id);
+    e.currentTarget.lastChild.textContent = state.compare.includes(id) ? " Solishtirishda ✓" : " Solishtirish";
+  });
   $("#pmBuy").addEventListener("click", () => {
     if (addToCart(id, qty, null, true) === false) return;
     closeAll(); openCheckout();
@@ -847,10 +879,124 @@ function confetti(n = 150) {
   })();
 }
 
+// ---------- Solishtirish ----------
+const MAX_COMPARE = 3;
+function toggleCompare(id) {
+  const p = byId(id);
+  if (state.compare.includes(id)) {
+    state.compare = state.compare.filter((x) => x !== id);
+  } else {
+    const first = byId(state.compare[0]);
+    if (first && first.cat !== p.cat) {
+      toast(`⚠️ Faqat bitta kategoriyadagi mahsulotlar solishtiriladi (${catOf(first).name}). Avval ro'yxatni tozalang.`);
+      return;
+    }
+    if (state.compare.length >= MAX_COMPARE) { toast(`⚠️ Bir vaqtda ${MAX_COMPARE} tagacha mahsulot solishtiriladi`); return; }
+    state.compare.push(id);
+    toast(`⇄ "${p.name}" solishtirishga qo'shildi`);
+  }
+  store.set("compare", state.compare);
+  $$("#productGrid .card").forEach((c) => $("[data-cmp]", c)?.classList.toggle("on", state.compare.includes(+c.dataset.id)));
+  renderCompareBar();
+}
+
+function renderCompareBar() {
+  state.compare = state.compare.filter(byId);
+  const n = state.compare.length;
+  $("#compareBar").hidden = !n;
+  document.body.classList.toggle("has-compare", n > 0);
+  $("#cbItems").innerHTML = Array.from({ length: MAX_COMPARE }, (_, i) => {
+    const p = byId(state.compare[i]);
+    return p ? `<span class="cb-slot filled" title="${escapeHtml(p.name)}"><img src="${pImg(p)}" alt="" /></span>` : `<span class="cb-slot"></span>`;
+  }).join("");
+  $("#cbCount").textContent = `${n}/${MAX_COMPARE}`;
+  $("#cbOpen").disabled = n < 2;
+  $("#cbOpen").title = n < 2 ? "Kamida 2 ta mahsulot tanlang" : "";
+}
+
+function renderCompare() {
+  const list = state.compare.map(byId).filter(Boolean);
+  if (list.length < 2) { closeAll(); return; }
+  const keys = [...new Set(list.flatMap((p) => Object.keys(p.specs)))];
+  const minPrice = Math.min(...list.map((p) => p.price));
+  const maxRating = Math.max(...list.map((p) => p.rating));
+  const row = (label, cells) => {
+    const diff = new Set(cells.map((c) => c.v)).size > 1;
+    return `<tr class="${diff ? "diff" : ""}"><th scope="row">${label}</th>${cells.map((c) => `<td class="${c.best ? "best" : ""}">${c.v}</td>`).join("")}</tr>`;
+  };
+  $("#compareBody").innerHTML = `
+    <h3 class="cmp-title">Solishtirish: ${catOf(list[0]).name}</h3>
+    <p class="cmp-sub">${list.length} ta mahsulot yonma-yon. Eng arzon narx va eng yuqori reyting yashil rangda.</p>
+    <div class="cmp-scroll">
+      <table class="cmp-table">
+        <thead><tr><th></th>${list.map((p) => `<th><div class="cmp-head">
+          <img src="${pImg(p)}" alt="${escapeHtml(p.name)}" />
+          <b>${p.name}</b>
+          <button data-cmp-rm="${p.id}">Olib tashlash</button>
+        </div></th>`).join("")}</tr></thead>
+        <tbody>
+          ${row("Narx", list.map((p) => ({ v: fmt(p.price), best: p.price === minPrice })))}
+          ${row("Bo'lib to'lash", list.map((p) => ({ v: fmt(p.price / 12) + "/oy" })))}
+          ${row("Reyting", list.map((p) => ({ v: "★ " + p.rating, best: p.rating === maxRating })))}
+          ${row("Sharhlar", list.map((p) => ({ v: p.reviews + " ta" })))}
+          ${row("Omborda", list.map((p) => ({ v: p.stock + " dona" })))}
+          ${keys.map((k) => row(k, list.map((p) => ({ v: p.specs[k] || "—" })))).join("")}
+          <tr><th></th>${list.map((p) => `<td><button class="btn btn-primary btn-sm" data-cmp-add="${p.id}">Savatga</button></td>`).join("")}</tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="cmp-legend"><span>●</span> belgisi — qiymatlari farq qiladigan qatorlar</p>`;
+}
+
+$("#cbOpen").addEventListener("click", () => { renderCompare(); openLayer($("#compareModal")); });
+$("#cbClear").addEventListener("click", () => {
+  state.compare = []; store.set("compare", []);
+  $$("#productGrid [data-cmp]").forEach((b) => b.classList.remove("on"));
+  renderCompareBar();
+});
+$("#compareBody").addEventListener("click", (e) => {
+  const rm = e.target.closest("[data-cmp-rm]");
+  const add = e.target.closest("[data-cmp-add]");
+  if (rm) { toggleCompare(+rm.dataset.cmpRm); renderCompare(); }
+  if (add) addToCart(+add.dataset.cmpAdd, 1, add);
+});
+
+// ---------- Ilova (PWA) ----------
+const isStandalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+let installPrompt = null;
+function updateInstallUI() {
+  $("#installBtn").hidden = !installPrompt || isStandalone;
+  $("#appInstall").hidden = isStandalone;
+  $("#appInstalled").hidden = !isStandalone;
+}
+async function installApp() {
+  if (installPrompt) {
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    installPrompt = null;
+    updateInstallUI();
+    if (outcome === "accepted") { toast("📲 OPUS MARKET bosh ekranga qo'shildi"); confetti(120); }
+  } else {
+    // Brauzer avtomatik o'rnatishni taklif qilmasa (iPhone Safari va h.k.) — qo'lda qilish yo'riqnomasi
+    $("#appHowto").hidden = !$("#appHowto").hidden;
+  }
+}
+addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; updateInstallUI(); });
+addEventListener("appinstalled", () => { installPrompt = null; updateInstallUI(); });
+$("#installBtn").addEventListener("click", installApp);
+$("#appInstall").addEventListener("click", installApp);
+updateInstallUI();
+
+// Faqat haqiqiy saytda (https) — lokal ishlab chiqishda kesh eski fayllarni ko'rsatib qo'ymasligi uchun
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+
 // ---------- Init ----------
 renderPayments();
 renderCategories();
 renderProducts();
 renderCart();
 renderRecent();
+renderCompareBar();
 updateBadges();
