@@ -16,6 +16,14 @@ body.admin { background: var(--bg); min-height: 100vh; }
 .ad-login-card h1 { font-size: 24px; letter-spacing: -.5px; }
 .ad-login-card form { display: flex; flex-direction: column; gap: 8px; }
 .ad-login-card label:first-child { margin-top: 0; }
+.ad-lock-card { text-align: center; align-items: center; }
+.ad-lock-card form { width: 100%; text-align: left; }
+.ad-lock-icon { width: 72px; height: 72px; border-radius: 22px; display: grid; place-items: center; background: var(--grad); color: #fff; box-shadow: 0 14px 30px rgba(var(--prgb), .4); animation: glow 3s ease-in-out infinite; }
+.ad-lock-icon svg { width: 34px; fill: currentColor; }
+.ad-pass { position: relative; }
+.ad-pass input { padding-right: 46px; }
+.ad-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 8px; opacity: .7; }
+.ad-eye:hover { opacity: 1; background: var(--bg); }
 .ad-check { display: flex !important; align-items: center; gap: 8px; font-weight: 500 !important; }
 .ad-check input { width: auto; }
 .ad-error { color: var(--primary); font-size: 14px; font-weight: 600; }
