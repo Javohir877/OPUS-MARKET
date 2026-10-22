@@ -73,6 +73,11 @@ function parseData(text) {
   d.SETTINGS = { topbar: "", dealTitle: "", freeShipFrom: 1000000, shipPrice: 50000, promos: {}, apk: { url: "", version: "", sizeMB: 0 }, ...d.SETTINGS };
   d.SETTINGS.promos = d.SETTINGS.promos || {};
   d.SETTINGS.apk = { url: "", version: "", sizeMB: 0, ...(d.SETTINGS.apk || {}) };
+  const pay = d.SETTINGS.pay || {};
+  d.SETTINGS.pay = {
+    payme: { merchantId: "", account: "order_id", ...(pay.payme || {}) },
+    click: { serviceId: "", merchantId: "", ...(pay.click || {}) },
+  };
   return d;
 }
 function serializeData(d) {
@@ -178,6 +183,7 @@ function refreshMode() {
   $("#ghState").classList.toggle("demo", !on);
   $("#ghForm").classList.toggle("connected", on);
   $("#ghDisconnect").hidden = !on;
+  $("#sheetMode").textContent = on ? `GitHub'ga ulangan: ${S.user.login}` : "Mahalliy rejim — \"Saqlash\" tayyor data.js faylini yuklab beradi";
   $("#syncInfo").textContent = `Ma'lumotlar yuklandi: ${new Date().toLocaleTimeString("ru-RU")}${on ? "" : " · mahalliy rejim"}`;
 }
 function enterApp() {
@@ -235,14 +241,24 @@ $("#discardBtn").addEventListener("click", () => {
 
 // ---------- Navigatsiya ----------
 const TITLES = { dash: "Boshqaruv", products: "Mahsulotlar", news: "Yangiliklar", cats: "Kategoriyalar", orders: "Buyurtmalar", promos: "Promo-kodlar", settings: "Sozlamalar", history: "O'zgarishlar tarixi" };
+const SHEET_VIEWS = ["cats", "promos", "settings", "history"];
 function go(view) {
   S.view = view;
-  $$("#adNav button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
+  closeSheet();
+  $$("button[data-view]").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
+  $("#moreBtn").classList.toggle("active", SHEET_VIEWS.includes(view));
   $$(".ad-view").forEach((v) => (v.hidden = v.dataset.view !== view));
   $("#viewTitle").textContent = TITLES[view];
   scrollTo({ top: 0 });
 }
-$("#adNav").addEventListener("click", (e) => { const b = e.target.closest("[data-view]"); if (b) go(b.dataset.view); });
+["#adNav", "#adTabbar", "#adSheet"].forEach((s) => $(s).addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (b) go(b.dataset.view); }));
+
+// Telefon: "Yana" menyusi (pastdan chiqadigan oyna)
+function openSheet() { $("#adSheet").hidden = false; $("#sheetBg").hidden = false; requestAnimationFrame(() => $("#adSheet").classList.add("open")); $("#moreBtn").setAttribute("aria-expanded", "true"); }
+function closeSheet() { $("#adSheet").classList.remove("open"); $("#sheetBg").hidden = true; $("#moreBtn").setAttribute("aria-expanded", "false"); setTimeout(() => { if (!$("#adSheet").classList.contains("open")) $("#adSheet").hidden = true; }, 250); }
+$("#moreBtn").addEventListener("click", () => ($("#adSheet").classList.contains("open") ? closeSheet() : openSheet()));
+$("#sheetBg").addEventListener("click", closeSheet);
+$("#sheetLock").addEventListener("click", () => lockNow());
 document.addEventListener("click", (e) => { const g = e.target.closest("[data-goto]"); if (g) go(g.dataset.goto); });
 
 // ---------- Ko'rinishlar ----------
@@ -304,8 +320,8 @@ function renderCats() {
     return { c, n: ps.length, units: ps.reduce((s, p) => s + (+p.stock || 0), 0), min: ps.length ? Math.min(...ps.map((p) => p.price)) : 0, max: ps.length ? Math.max(...ps.map((p) => p.price)) : 0 };
   });
   $("#catTable").innerHTML = `<table class="ad-table"><thead><tr><th>Kategoriya</th><th class="num">Mahsulotlar</th><th class="num">Omborda</th><th class="num">Narxlar oralig'i</th><th></th></tr></thead><tbody>
-    ${rows.map((r) => `<tr><td><b>${esc(r.c.name)}</b></td><td class="num">${r.n}</td><td class="num">${num(r.units)} dona</td>
-    <td class="num">${r.n ? `${fmt(r.min)} — ${fmt(r.max)}` : "—"}</td><td class="num"><button class="ad-link" data-filter-cat="${r.c.id}">Ko'rish →</button></td></tr>`).join("")}</tbody></table>`;
+    ${rows.map((r) => `<tr><td data-label="Kategoriya"><b>${esc(r.c.name)}</b></td><td class="num" data-label="Mahsulotlar">${r.n}</td><td class="num" data-label="Omborda">${num(r.units)} dona</td>
+    <td class="num" data-label="Narxlar">${r.n ? `${fmt(r.min)} — ${fmt(r.max)}` : "—"}</td><td class="num"><button class="ad-link" data-filter-cat="${r.c.id}">Ko'rish →</button></td></tr>`).join("")}</tbody></table>`;
 }
 $("#catTable").addEventListener("click", (e) => {
   const b = e.target.closest("[data-filter-cat]");
@@ -332,17 +348,17 @@ function renderProducts() {
   $("#pTable").innerHTML = `<thead><tr><th><input type="checkbox" class="ad-cb" id="selAll" ${allSel ? "checked" : ""} aria-label="Hammasini tanlash" /></th><th></th><th>Mahsulot</th><th>Kategoriya</th><th class="num">Narx</th><th class="num">Eski narx</th><th class="num">Ombor</th><th>Holat</th><th>Belgi</th><th title="Original mahsulot">Original</th><th></th></tr></thead>
   <tbody>${list.length ? list.map((p) => `
     <tr data-id="${p.id}" class="${changed.has(p.id) ? "changed" : ""} ${S.sel.has(p.id) ? "selected" : ""}">
-      <td><input type="checkbox" class="ad-cb" data-sel ${S.sel.has(p.id) ? "checked" : ""} aria-label="Tanlash" /></td>
-      <td><img class="ad-thumb" src="${esc(srcOf(p.img))}" alt="" loading="lazy" /></td>
-      <td class="ad-pname"><b title="${esc(p.name)}">${esc(p.name)}</b><small>${esc(p.brand)} · ID ${p.id}</small></td>
-      <td>${esc(catName(p.cat))}</td>
-      <td class="num"><input class="cell" type="number" min="0" step="1000" data-field="price" value="${p.price}" aria-label="Narx" /></td>
-      <td class="num"><input class="cell" type="number" min="0" step="1000" data-field="old" value="${p.old || ""}" placeholder="—" aria-label="Eski narx" /></td>
-      <td class="num"><input class="cell sm" type="number" min="0" data-field="stock" value="${p.stock}" aria-label="Ombor" /></td>
-      <td>${stockChip(p.stock)}${p.old && p.old > p.price ? ` <span class="chip sale">−${Math.round((1 - p.price / p.old) * 100)}%</span>` : ""}</td>
-      <td><select class="ad-status-select" data-field="badge" aria-label="Belgi">${["", "Yangi", "Xit"].map((b) => `<option value="${b}" ${(p.badge || "") === b ? "selected" : ""}>${b || "—"}</option>`).join("")}</select></td>
-      <td><label class="ad-switch" title="Original belgisi"><input type="checkbox" data-field="original" ${p.original !== false ? "checked" : ""} /><span></span></label></td>
-      <td><div class="ad-actions"><button data-act="edit">Tahrirlash</button><button data-act="dup" title="Nusxa olish">⧉</button></div></td>
+      <td class="c-cb"><input type="checkbox" class="ad-cb" data-sel ${S.sel.has(p.id) ? "checked" : ""} aria-label="Tanlash" /></td>
+      <td class="c-img"><img class="ad-thumb" src="${esc(srcOf(p.img))}" alt="" loading="lazy" /></td>
+      <td class="ad-pname c-name"><b title="${esc(p.name)}">${esc(p.name)}</b><small>${esc(p.brand)} · ${esc(catName(p.cat))} · ID ${p.id}</small></td>
+      <td class="c-cat">${esc(catName(p.cat))}</td>
+      <td class="num c-price" data-label="Narx"><input class="cell" type="number" inputmode="numeric" min="0" step="1000" data-field="price" value="${p.price}" aria-label="Narx" /></td>
+      <td class="num c-old" data-label="Eski narx"><input class="cell" type="number" inputmode="numeric" min="0" step="1000" data-field="old" value="${p.old || ""}" placeholder="—" aria-label="Eski narx" /></td>
+      <td class="num c-stock" data-label="Ombor"><input class="cell sm" type="number" inputmode="numeric" min="0" data-field="stock" value="${p.stock}" aria-label="Ombor" /></td>
+      <td class="c-status">${stockChip(p.stock)}${p.old && p.old > p.price ? ` <span class="chip sale">−${Math.round((1 - p.price / p.old) * 100)}%</span>` : ""}</td>
+      <td class="c-badge" data-label="Belgi"><select class="ad-status-select" data-field="badge" aria-label="Belgi">${["", "Yangi", "Xit"].map((b) => `<option value="${b}" ${(p.badge || "") === b ? "selected" : ""}>${b || "—"}</option>`).join("")}</select></td>
+      <td class="c-orig" data-label="Original"><label class="ad-switch" title="Original belgisi"><input type="checkbox" data-field="original" ${p.original !== false ? "checked" : ""} aria-label="Original" /><span></span></label></td>
+      <td class="c-act"><div class="ad-actions"><button data-act="edit">Tahrirlash</button><button data-act="dup" title="Nusxa olish" aria-label="Nusxa olish">⧉</button></div></td>
     </tr>`).join("") : `<tr><td colspan="11" class="ad-empty">Hech narsa topilmadi</td></tr>`}</tbody>`;
   renderBulk();
 }
@@ -727,9 +743,9 @@ function renderCatEditor() {
   $("#cTable").innerHTML = `<thead><tr><th></th><th>Nomi</th><th>Kod (ID)</th><th class="num">Mahsulotlar</th><th></th></tr></thead><tbody>
   ${S.data.CATEGORIES.map((c) => `<tr data-cid="${esc(c.id)}">
     <td><img class="ad-thumb" src="${esc(srcOf(c.img))}" alt="" /></td>
-    <td><input class="cell wide" data-cfield="name" value="${esc(c.name)}" aria-label="Kategoriya nomi" /></td>
-    <td><code>${esc(c.id)}</code></td>
-    <td class="num">${S.data.PRODUCTS.filter((p) => p.cat === c.id).length}</td>
+    <td data-label="Nomi"><input class="cell wide" data-cfield="name" value="${esc(c.name)}" aria-label="Kategoriya nomi" /></td>
+    <td data-label="Kod"><code>${esc(c.id)}</code></td>
+    <td class="num" data-label="Mahsulotlar">${S.data.PRODUCTS.filter((p) => p.cat === c.id).length}</td>
     <td><div class="ad-actions"><label class="btn btn-ghost btn-sm ad-upload" style="margin:0">📷 Rasm<input type="file" data-cimg accept="image/*" hidden /></label></div></td>
   </tr>`).join("")}</tbody>`;
 }
@@ -752,8 +768,8 @@ async function loadHistory() {
   try {
     const list = await gh(repoPath(`/commits?path=${CFG.dataPath}&sha=${CFG.branch}&per_page=25`));
     box.innerHTML = list.length ? `<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>Sana</th><th>O'zgarish</th><th>Muallif</th><th></th></tr></thead><tbody>
-      ${list.map((c, i) => `<tr><td class="num" style="text-align:left">${new Date(c.commit.author.date).toLocaleString("ru-RU")}${i === 0 ? ` <span class="chip ok">joriy</span>` : ""}</td>
-      <td>${esc(c.commit.message.split("\n")[0])}</td><td>${esc((c.author && c.author.login) || c.commit.author.name)}</td>
+      ${list.map((c, i) => `<tr><td class="num" style="text-align:left" data-label="Sana">${new Date(c.commit.author.date).toLocaleString("ru-RU")}${i === 0 ? ` <span class="chip ok">joriy</span>` : ""}</td>
+      <td data-label="O'zgarish">${esc(c.commit.message.split("\n")[0])}</td><td data-label="Muallif">${esc((c.author && c.author.login) || c.commit.author.name)}</td>
       <td><div class="ad-actions">${i === 0 ? "" : `<button data-restore="${c.sha}">Shu versiyani ochish</button>`}<a class="btn btn-ghost btn-sm" href="${esc(c.html_url)}" target="_blank" rel="noopener">GitHub ↗</a></div></td></tr>`).join("")}
       </tbody></table></div>` : `<p class="ad-empty">Tarix topilmadi</p>`;
   } catch (ex) { box.innerHTML = `<p class="ad-empty">${esc(apiError(ex))}</p>`; }
@@ -785,13 +801,13 @@ function renderOrders() {
   const payName = (id) => (PAYMENTS.find((p) => p.id === id) || {}).name || id;
   $("#oTable").innerHTML = `<thead><tr><th>Buyurtma</th><th>Mijoz</th><th>Manzil</th><th>Mahsulotlar</th><th>To'lov</th><th class="num">Summa</th><th>Holat</th></tr></thead><tbody>
   ${O.length ? O.map((o) => `<tr>
-    <td><b>#${esc(o.id)}</b><br><small class="muted">${new Date(o.date).toLocaleString("ru-RU")}</small></td>
-    <td>${esc(o.name || "—")}<br><small class="muted">${esc(o.phone || "")}</small></td>
-    <td>${o.delivery === "pickup" ? "🏬 Do'kondan olib ketadi" : `${esc(o.region || "")}<br><small class="muted">${esc(o.address || "")}</small>`}</td>
-    <td>${(o.items || []).map((i) => { const p = S.data.PRODUCTS.find((x) => x.id === i.id); return `${esc(p ? p.name : "ID " + i.id)} × ${i.qty}`; }).join("<br>")}</td>
-    <td>${esc(payName(o.payment))}${o.months ? `<br><small class="muted">${o.months} oy</small>` : ""}</td>
-    <td class="num"><b>${fmt(o.total)}</b></td>
-    <td><select class="ad-status-select" data-order="${esc(o.id)}" aria-label="Holat">${STATUSES.map((s) => `<option ${statusOf(o.id) === s ? "selected" : ""}>${s}</option>`).join("")}</select></td>
+    <td data-label="Buyurtma"><span><b>#${esc(o.id)}</b><br><small class="muted">${new Date(o.date).toLocaleString("ru-RU")}</small></span></td>
+    <td data-label="Mijoz"><span>${esc(o.name || "—")}<br><small class="muted">${o.phone ? `<a href="tel:${esc(o.phone.replace(/\s/g, ""))}">${esc(o.phone)}</a>` : ""}</small></span></td>
+    <td data-label="Manzil"><span>${o.delivery === "pickup" ? "🏬 Do'kondan olib ketadi" : `${esc(o.region || "")}<br><small class="muted">${esc(o.address || "")}</small>`}</span></td>
+    <td data-label="Mahsulotlar"><span>${(o.items || []).map((i) => { const p = S.data.PRODUCTS.find((x) => x.id === i.id); return `${esc(p ? p.name : "ID " + i.id)} × ${i.qty}`; }).join("<br>")}</span></td>
+    <td data-label="To'lov"><span>${esc(payName(o.payment))}${o.months ? `<br><small class="muted">${o.months} oy</small>` : ""}</span></td>
+    <td class="num" data-label="Summa"><b>${fmt(o.total)}</b></td>
+    <td data-label="Holat"><select class="ad-status-select" data-order="${esc(o.id)}" aria-label="Holat">${STATUSES.map((s) => `<option ${statusOf(o.id) === s ? "selected" : ""}>${s}</option>`).join("")}</select></td>
   </tr>`).join("") : `<tr><td colspan="7" class="ad-empty">Bu brauzerda hali buyurtma yo'q. Saytda sinov buyurtmasi bering — u shu yerda paydo bo'ladi.</td></tr>`}</tbody>`;
 }
 $("#oSearch").addEventListener("input", renderOrders);
@@ -840,12 +856,25 @@ function renderSettings() {
   f.topbar.value = s.topbar || ""; f.dealTitle.value = s.dealTitle || "";
   f.freeShipFrom.value = s.freeShipFrom; f.shipPrice.value = s.shipPrice;
   f.apkUrl.value = s.apk.url || ""; f.apkVersion.value = s.apk.version || ""; f.apkSize.value = s.apk.sizeMB || "";
+  f.pmMerchant.value = s.pay.payme.merchantId || ""; f.pmAccount.value = s.pay.payme.account || "order_id";
+  f.clService.value = s.pay.click.serviceId || ""; f.clMerchant.value = s.pay.click.merchantId || "";
+  renderPayState();
+}
+function renderPayState() {
+  const p = S.data.SETTINGS.pay, on = [p.payme.merchantId && "Payme", p.click.serviceId && p.click.merchantId && "Click"].filter(Boolean);
+  $("#payState").textContent = on.length ? "Ulangan: " + on.join(", ") : "Ulanmagan";
+  $("#payState").classList.toggle("demo", !on.length);
 }
 $("#settingsForm").addEventListener("input", () => {
   const s = S.data.SETTINGS, f = $("#settingsForm").elements;
   s.topbar = f.topbar.value; s.dealTitle = f.dealTitle.value;
   s.freeShipFrom = Math.max(0, +f.freeShipFrom.value || 0); s.shipPrice = Math.max(0, +f.shipPrice.value || 0);
   s.apk = { url: f.apkUrl.value.trim(), version: f.apkVersion.value.trim(), sizeMB: +f.apkSize.value || 0 };
+  s.pay = {
+    payme: { merchantId: f.pmMerchant.value.trim(), account: f.pmAccount.value.trim() || "order_id" },
+    click: { serviceId: f.clService.value.replace(/\D/g, ""), merchantId: f.clMerchant.value.replace(/\D/g, "") },
+  };
+  renderPayState();
   markDirty();
 });
 $("#settingsForm").addEventListener("submit", (e) => e.preventDefault());
