@@ -681,9 +681,80 @@ function renderOrders() {
       <ul>${o.items.filter((i) => byId(i.id)).map((i) => `<li>${escapeHtml(byId(i.id).name)} × ${i.qty}</li>`).join("")}</ul>
       <div class="order-track" style="--p:${(st / (TRACK.length - 1)) * 84}%">${TRACK.map((t, i) => `<span class="${i <= st ? "on" : ""}">${t}</span>`).join("")}</div>
       <b>${fmt(o.total)}</b>
+      ${payLink(o) ? `<button class="btn btn-ghost btn-sm order-pay" data-pay="${esc(o.id)}">💳 ${pay.name} orqali to'lash (QR)</button><div class="pay-slot"></div>` : ""}
     </div>`;
   }).join("");
 }
+
+// ---------- Onlayn to'lov: Click / Payme havolasi va QR-kod ----------
+// Payme: checkout.paycom.uz/ + base64("m=<merchant>;ac.<hisob>=<buyurtma>;a=<tiyin>;l=uz;c=<qaytish>")
+// Click: my.click.uz/services/pay?service_id&merchant_id&amount(0.00)&transaction_param&return_url
+// ID'lar admin panel → Sozlamalar → "Onlayn to'lov" da kiritiladi (SETTINGS.pay).
+function payLink(order) {
+  const cfg = SETTINGS.pay || {};
+  const back = location.origin + location.pathname + "#orders";
+  if (order.payment === "payme") {
+    const c = cfg.payme || {};
+    if (!c.merchantId) return null;
+    return "https://checkout.paycom.uz/" + btoa([`m=${c.merchantId}`, `ac.${c.account || "order_id"}=${order.id}`, `a=${Math.round(order.total * 100)}`, "l=uz", `c=${back}`].join(";"));
+  }
+  if (order.payment === "click") {
+    const c = cfg.click || {};
+    if (!c.serviceId || !c.merchantId) return null;
+    return "https://my.click.uz/services/pay?" + new URLSearchParams({
+      service_id: c.serviceId, merchant_id: c.merchantId, amount: (+order.total).toFixed(2), transaction_param: order.id, return_url: back,
+    });
+  }
+  return null;
+}
+let qrLoading = null;
+const loadQR = () => window.QRCode ? Promise.resolve() : (qrLoading ||= new Promise((res, rej) => {
+  const s = document.createElement("script");
+  s.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+  s.onload = res; s.onerror = () => { qrLoading = null; rej(); };
+  document.head.appendChild(s);
+}));
+function payBoxHTML(order) {
+  if (!["click", "payme"].includes(order.payment)) return "";
+  const pay = payOf(order.payment), url = payLink(order);
+  if (!url) return `<div class="paybox off">${payLogo(pay)}<div><b>${pay.name} orqali onlayn to'lov hali ulanmagan</b><span>Operatorimiz siz bilan bog'lanib, to'lov havolasini yuboradi.</span></div></div>`;
+  return `<div class="paybox">
+    <div class="paybox-head">${payLogo(pay)}<div><small>To'lov summasi</small><b>${fmt(order.total)}</b></div><span class="paybox-id">#${esc(order.id)}</span></div>
+    <div class="paybox-body">
+      <div class="paybox-qr" data-qr="${esc(url)}" role="img" aria-label="${pay.name} to'lov QR-kodi"><span class="paybox-qr-wait"></span></div>
+      <div class="paybox-steps">
+        <b>Telefon orqali to'lash</b>
+        <ol><li><b>${pay.name}</b> ilovasini oching</li><li>QR-skanerni tanlab, kodni skanerlang</li><li>Summani tekshirib, tasdiqlang</li></ol>
+        <a class="btn btn-primary btn-sm paybox-btn" href="${esc(url)}" target="_blank" rel="noopener">${pay.name} ilovasida to'lash →</a>
+        <small class="muted">Telefondan buyurtma bergan bo'lsangiz — shu tugmani bosing.</small>
+      </div>
+    </div>
+  </div>`;
+}
+function mountQR(root) {
+  $$("[data-qr]", root).forEach(async (el) => {
+    try {
+      await loadQR();
+      el.innerHTML = "";
+      new QRCode(el, { text: el.dataset.qr, width: 200, height: 200, colorDark: "#14060a", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+    } catch { el.innerHTML = `<small>QR yuklanmadi — pastdagi tugmani bosing</small>`; }
+  });
+}
+$("#orderItems").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-pay]");
+  if (!b) return;
+  const slot = b.nextElementSibling;
+  if (slot.innerHTML) { slot.innerHTML = ""; return; }
+  const o = state.orders.find((x) => x.id === b.dataset.pay);
+  slot.innerHTML = payBoxHTML(o);
+  mountQR(slot);
+});
+// To'lov tizimidan qaytganda (#orders) — buyurtmalar ro'yxatini ochamiz
+if (location.hash === "#orders") setTimeout(() => {
+  renderOrders(); openLayer($("#ordersDrawer"));
+  toast("💳 To'lov sahifasidan qaytdingiz. To'lov tasdiqlangach operatorimiz bog'lanadi.");
+  history.replaceState(null, "", location.pathname + location.search);
+}, 1600);
 
 // ---------- Layers (drawer / modal) ----------
 const overlay = $("#overlay");
@@ -742,8 +813,16 @@ form.addEventListener("change", (e) => {
 });
 
 function renderInstall() {
-  const isUzum = form.elements.payment.value === "uzum";
+  const method = form.elements.payment.value;
+  const isUzum = method === "uzum";
   $("#installBox").hidden = !isUzum;
+  // Click / Payme: buyurtmadan keyin QR-kod chiqishini oldindan aytamiz
+  const pay = payOf(method), hint = $("#payHint");
+  const ready = ["click", "payme"].includes(method) && payLink({ payment: method, id: "x", total: 1 });
+  hint.hidden = !["click", "payme"].includes(method);
+  hint.innerHTML = ready
+    ? `📱 Buyurtma berilgach <b>${pay.name} QR-kodi</b> chiqadi — telefoningizdagi ${pay.name} ilovasi bilan skanerlab to'laysiz.`
+    : `ℹ️ ${pay ? pay.name : ""} orqali onlayn to'lov hozircha ulanmagan — buyurtmadan keyin operator to'lov havolasini yuboradi.`;
   if (!isUzum) return;
   const total = totals().total;
   $("#months").innerHTML = MONTHS.map((m) => `<button type="button" data-m="${m}" class="${m === state.months ? "active" : ""}">${m} oy · ${fmt(total / m)}</button>`).join("");
@@ -822,8 +901,11 @@ function placeOrder() {
     form.hidden = true;
     $("#steps").hidden = true;
     $("#orderId").textContent = "#" + order.id;
-    $("#successNote").textContent = ["click", "payme"].includes(pay.id)
-      ? `${pay.name} orqali to'lov havolasi SMS orqali yuboriladi. Operatorimiz tez orada bog'lanadi.`
+    const online = ["click", "payme"].includes(pay.id);
+    $("#payBox").innerHTML = payBoxHTML(order);
+    mountQR($("#payBox"));
+    $("#successNote").textContent = online
+      ? (payLink(order) ? `Endi ${pay.name} orqali to'lovni amalga oshiring — QR-kodni skanerlang yoki tugmani bosing.` : "Operatorimiz tez orada siz bilan bog'lanadi.")
       : pay.id === "uzum"
         ? `Uzum Nasiya: ${order.months} oy davomida oyiga ${fmt(order.total / order.months)}. Operatorimiz tez orada bog'lanadi.`
         : "Operatorimiz tez orada siz bilan bog'lanadi.";
