@@ -142,56 +142,78 @@ function markDirty() {
 }
 function update() { renderAll(); markDirty(); }
 
-// ---------- Kirish ----------
-async function login(token, remember) {
+// ---------- Ishga tushirish ----------
+// Token shart emas: panel paroldan keyin darhol ochiladi.
+// GitHub ulanishi — Sozlamalarda, ixtiyoriy (ulansa "E'lon qilish" saytga to'g'ridan-to'g'ri yozadi).
+const TOKEN_KEY = "opus_admin_token";
+async function connectToken(token) {
   S.token = token.trim();
   const user = await gh("/user");
   const repo = await gh(repoPath(""));
   if (repo.permissions && repo.permissions.push === false) { const e = new Error("no push"); e.status = 403; throw e; }
-  S.user = user;
-  safe(() => (remember ? localStorage : sessionStorage).setItem("opus_admin_token", S.token));
-  await loadData();
+  S.user = user; S.demo = false;
+}
+function forgetToken() {
+  S.token = null; S.user = null; S.demo = true;
+  safe(() => { sessionStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY); });
+}
+async function start() {
+  const saved = safe(() => sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY), null);
+  if (saved) { try { await connectToken(saved); } catch { forgetToken(); } }
+  S.demo = !S.token;
+  try { await loadData(); }
+  catch (ex) { toast("❌ " + apiError(ex)); forgetToken(); await loadData(); }
   enterApp();
 }
-async function enterDemo() {
-  S.demo = true; S.token = null;
-  await loadData();
-  enterApp();
+function refreshMode() {
+  const on = !!S.token;
+  $("#adUser").innerHTML = (on
+    ? `<span class="ad-mode">GitHub'ga ulangan</span><b>${esc(S.user.login)}</b><span class="muted">"E'lon qilish" saytga to'g'ridan-to'g'ri yozadi</span>`
+    : `<span class="ad-mode demo">Mahalliy rejim</span><span class="muted">"Saqlash" tayyor data.js faylini yuklab beradi</span>`)
+    + `<button class="ad-link" id="lockNowBtn">🔒 Qulflash</button>`;
+  $("#lockNowBtn").addEventListener("click", lockNow);
+  $("#publishBtn").firstChild.textContent = on ? "E'lon qilish " : "Saqlash ";
+  $("#publishBtn").title = on ? "Saytga e'lon qilish (Ctrl+S)" : "data.js va yangi rasmlarni yuklab olish (Ctrl+S)";
+  $("#ghState").textContent = on ? "Ulangan: " + S.user.login : "Ulanmagan";
+  $("#ghState").classList.toggle("demo", !on);
+  $("#ghForm").classList.toggle("connected", on);
+  $("#ghDisconnect").hidden = !on;
+  $("#syncInfo").textContent = `Ma'lumotlar yuklandi: ${new Date().toLocaleTimeString("ru-RU")}${on ? "" : " · mahalliy rejim"}`;
 }
 function enterApp() {
-  $("#login").hidden = true;
   $("#app").hidden = false;
-  $("#adUser").innerHTML = S.demo
-    ? `<span class="ad-mode demo">Ko'rish rejimi</span><span class="muted">E'lon qilish o'rniga data.js faylini yuklab olasiz.</span><button class="ad-link" id="logoutBtn">Token bilan kirish</button>`
-    : `<span class="ad-mode">GitHub'ga ulangan</span><b>${esc(S.user.login)}</b><span class="muted">${esc(CFG.owner)}/${esc(CFG.repo)}</span><button class="ad-link" id="logoutBtn">Chiqish</button>`;
-  $("#adUser").insertAdjacentHTML("beforeend", `<button class="ad-link" id="lockNowBtn">🔒 Qulflash</button>`);
-  $("#lockNowBtn").addEventListener("click", lockNow);
-  $("#logoutBtn").addEventListener("click", logout);
-  $("#publishBtn").firstChild.textContent = S.demo ? "data.js yuklab olish " : "E'lon qilish ";
+  refreshMode();
   fillSelects();
   renderAll();
   markDirty();
   const draft = ls.get("opus_admin_draft", null);
-  if (draft && draft.baseSha === S.baseSha && JSON.stringify(draft.data) !== S.baseJSON) $("#draftBanner").hidden = false;
-}
-function logout() {
-  safe(() => { sessionStorage.removeItem("opus_admin_token"); localStorage.removeItem("opus_admin_token"); sessionStorage.removeItem("opus_admin_unlock"); });
-  location.reload();
+  if (draft && JSON.stringify(draft.data) !== S.baseJSON) $("#draftBanner").hidden = false;
 }
 
-$("#loginForm").addEventListener("submit", async (e) => {
+// Sozlamalar → GitHub ulanishi (ixtiyoriy)
+$("#ghForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const token = $("#tokenInput").value;
-  const err = $("#loginError");
+  const token = $("#tokenInput").value, err = $("#loginError"), btn = $("#loginBtn");
   err.hidden = true;
   if (!token.trim()) { err.textContent = "Tokenni kiriting."; err.hidden = false; return; }
-  const btn = $("#loginBtn");
   btn.disabled = true; btn.textContent = "Tekshirilmoqda…";
-  try { await login(token, $("#rememberInput").checked); }
-  catch (ex) { S.token = null; err.textContent = apiError(ex); err.hidden = false; }
-  btn.disabled = false; btn.textContent = "Kirish";
+  try {
+    await connectToken(token);
+    safe(() => ($("#rememberInput").checked ? localStorage : sessionStorage).setItem(TOKEN_KEY, S.token));
+    // Saytdagi joriy data.js versiyasi — e'lon qilishda boshqa joydagi o'zgarishlar ustidan yozmaslik uchun
+    const f = await gh(repoPath(`/contents/${CFG.dataPath}?ref=${CFG.branch}`));
+    S.baseSha = f.sha;
+    $("#tokenInput").value = "";
+    refreshMode(); markDirty();
+    toast("✓ GitHub'ga ulandi — endi \"E'lon qilish\" saytga to'g'ridan-to'g'ri yozadi");
+  } catch (ex) { forgetToken(); err.textContent = apiError(ex); err.hidden = false; refreshMode(); }
+  btn.disabled = false; btn.textContent = "Ulash";
 });
-$("#demoBtn").addEventListener("click", () => enterDemo().catch((ex) => { $("#loginError").textContent = apiError(ex); $("#loginError").hidden = false; }));
+$("#ghDisconnect").addEventListener("click", () => {
+  forgetToken(); S.baseSha = "demo";
+  refreshMode(); markDirty();
+  toast("GitHub ulanishi uzildi — \"Saqlash\" endi faylni yuklab beradi");
+});
 
 $("#draftRestore").addEventListener("click", () => {
   const d = ls.get("opus_admin_draft", null);
@@ -833,11 +855,17 @@ $("#publishBtn").addEventListener("click", publish);
 async function publish() {
   const btn = $("#publishBtn");
   if (S.demo) {
-    const blob = new Blob([serializeData(S.data)], { type: "text/javascript" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob); a.download = "data.js"; a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    toast("⬇️ data.js yuklab olindi. Uni loyiha papkasidagi eski fayl o'rniga qo'ying.");
+    // Mahalliy rejim: tayyor data.js va yangi yuklangan rasmlarni kompyuterga yuklab beramiz
+    const save = (name, href) => { const a = document.createElement("a"); a.href = href; a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
+    const url = URL.createObjectURL(new Blob([serializeData(S.data)], { type: "text/javascript" }));
+    save("data.js", url);
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+    const used = new Set([...S.data.PRODUCTS.map((p) => p.img), ...(S.data.NEWS || []).map((n) => n.img), ...S.data.CATEGORIES.map((c) => c.img)]);
+    const imgs = Object.entries(S.uploads).filter(([p]) => used.has(p));
+    imgs.forEach(([path, dataUrl], i) => setTimeout(() => save(path.replace(/^img\//, ""), dataUrl), 400 * (i + 1)));
+    toast(imgs.length
+      ? `⬇️ data.js va ${imgs.length} ta rasm yuklab olindi. data.js ni loyiha papkasiga, rasmlarni img/ papkasiga qo'ying.`
+      : "⬇️ data.js yuklab olindi. Uni loyiha papkasidagi eski data.js o'rniga qo'ying — keyin saytga joylanadi.");
     return;
   }
   const label = btn.firstChild.textContent;
@@ -917,8 +945,7 @@ const ss = {
 
 function unlocked() {
   $("#lock").hidden = true;
-  $("#login").hidden = false;
-  autoLogin();
+  start().catch((ex) => toast("❌ Ma'lumotlarni yuklab bo'lmadi: " + apiError(ex)));
 }
 
 $("#lockEye").addEventListener("click", () => {
@@ -968,7 +995,7 @@ $("#passForm").addEventListener("submit", async (e) => {
   S.data.SETTINGS.adminPass = { salt, iter: 150000, hash: await pbkdf2(a, salt, 150000) };
   e.target.reset();
   markDirty();
-  toast("🔒 Yangi parol tayyor — kuchga kirishi uchun \"E'lon qilish\" ni bosing");
+  toast(`🔒 Yangi parol tayyor — kuchga kirishi uchun "${S.token ? "E'lon qilish" : "Saqlash"}" ni bosing`);
 });
 
 function lockNow() {
@@ -983,16 +1010,3 @@ function lockNow() {
   else setTimeout(() => $("#lockInput").focus(), 100);
 })();
 
-// ---------- Avtomatik kirish (saqlangan token) ----------
-async function autoLogin() {
-  const saved = safe(() => sessionStorage.getItem("opus_admin_token") || localStorage.getItem("opus_admin_token"), null);
-  if (!saved) return;
-  $("#loginBtn").disabled = true; $("#loginBtn").textContent = "Ulanmoqda…";
-  try { await login(saved, !!safe(() => localStorage.getItem("opus_admin_token"))); }
-  catch (ex) {
-    S.token = null;
-    safe(() => { sessionStorage.removeItem("opus_admin_token"); localStorage.removeItem("opus_admin_token"); });
-    $("#loginError").textContent = apiError(ex); $("#loginError").hidden = false;
-  }
-  $("#loginBtn").disabled = false; $("#loginBtn").textContent = "Kirish";
-}
