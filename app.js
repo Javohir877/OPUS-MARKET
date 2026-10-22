@@ -11,9 +11,10 @@ const store = {
   },
 };
 
-const PROMOS = { OPUS10: 0.10, OPUS20: 0.20, YANGI5: 0.05 };
-const FREE_SHIP_FROM = 1000000;
-const SHIP_PRICE = 50000;
+// Sozlamalar data.js dagi SETTINGS dan (admin panel tahrirlaydi)
+const PROMOS = Object.fromEntries(Object.entries(SETTINGS.promos || {}).map(([k, v]) => [k.toUpperCase(), v / 100]));
+const FREE_SHIP_FROM = SETTINGS.freeShipFrom;
+const SHIP_PRICE = SETTINGS.shipPrice;
 const MONTHS = [3, 6, 12, 24];
 const MAX_PRICE = 45000000;
 
@@ -581,7 +582,7 @@ $("#promoBtn").addEventListener("click", () => {
   if (!code) { state.promo = null; store.set("promo", null); renderCart(); return; }
   if (PROMOS[code]) {
     state.promo = code; store.set("promo", code);
-    toast(`🎉 Promo-kod qo'llandi: −${PROMOS[code] * 100}%`);
+    toast(`🎉 Promo-kod qo'llandi: −${Math.round(PROMOS[code] * 100)}%`);
     confetti(80);
   } else {
     toast("❌ Promo-kod noto'g'ri");
@@ -981,6 +982,40 @@ async function installApp() {
     $("#appHowto").hidden = !$("#appHowto").hidden;
   }
 }
+// Android APK, iPhone yo'riqnomasi, QR-kod va telefon maketi
+(() => {
+  const apk = SETTINGS.apk;
+  const link = $("#apkLink");
+  if (apk && apk.url) {
+    link.href = apk.url;
+    $("#apkMeta").textContent = `v${apk.version} · ${apk.sizeMB} MB`;
+    link.addEventListener("click", () => toast("⬇️ OPUS APK yuklab olinmoqda… Tugagach faylni ochib o'rnating"));
+  } else link.hidden = true;
+
+  $("#iosBadge").addEventListener("click", () => {
+    const box = $("#appHowto");
+    box.hidden = !box.hidden;
+    if (!box.hidden) box.scrollIntoView({ block: "nearest" });
+  });
+
+  // Kompyuterdan kirganlar uchun: telefon bilan skanerlash uchun QR
+  if (apk && apk.url && matchMedia("(pointer: fine)").matches && innerWidth > 860) {
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+    s.onload = () => {
+      try {
+        new QRCode($("#qrBox"), { text: apk.url, width: 160, height: 160, colorDark: "#1a0508", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+        $("#appQr").hidden = false;
+      } catch {}
+    };
+    document.head.appendChild(s);
+  }
+
+  // iPhone ekranidagi do'kon: eng ommabop 4 ta mahsulot
+  $("#ipCards").innerHTML = PRODUCTS.slice().sort((a, b) => b.popular - a.popular).slice(0, 4).map((p) =>
+    `<div class="ip-card"><img src="${pImg(p)}" alt="" loading="lazy" /><div><b>${escapeHtml(p.name)}</b><span>${fmt(p.price).replace(" so'm", "")}</span></div></div>`).join("");
+})();
+
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; updateInstallUI(); });
 addEventListener("appinstalled", () => { installPrompt = null; updateInstallUI(); });
 $("#installBtn").addEventListener("click", installApp);
@@ -991,6 +1026,10 @@ updateInstallUI();
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
+
+// ---------- Admin sozlamalaridagi matnlar ----------
+if (SETTINGS.topbar) $("#topbarText").textContent = SETTINGS.topbar;
+if (SETTINGS.dealTitle) $("#dealTitle").textContent = SETTINGS.dealTitle;
 
 // ---------- Init ----------
 renderPayments();
