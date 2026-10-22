@@ -1,6 +1,6 @@
 // OPUS MARKET — service worker: ilova tez ochilishi va internet sekin/yo'q bo'lganda ham ishlashi uchun kesh.
 // Sayt yangilanganda VERSION ni oshiring.
-const VERSION = "opus-v4";
+const VERSION = "opus-v5";
 const CORE = [
   "./", "index.html", "styles.css", "assets.js", "data.js", "app.js", "showcase.js", "scrollfx.js",
   "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "img/hero.jpg", "img/deals.jpg",
