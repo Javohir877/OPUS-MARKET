@@ -8,6 +8,8 @@ const SETTINGS = {
   shipPrice: 50000,
   // Promo-kodlar: kod → chegirma foizi
   promos: { OPUS10: 10, OPUS20: 20, YANGI5: 5 },
+  // Onlayn to'lov (QR-kod). ID'larni Click/Payme bilan shartnoma tuzilgach ular beradi — admin panel → Sozlamalar.
+  pay: { payme: { merchantId: "", account: "order_id" }, click: { serviceId: "", merchantId: "" } },
   // Android ilova (APK) — GitHub Releases'da
   apk: { url: "https://github.com/Javohir877/OPUS-MARKET/releases/download/v1.0/OPUS-1.0.apk", version: "1.0", sizeMB: 5.4 },
 };
