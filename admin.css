@@ -147,6 +147,18 @@ body.admin { background: var(--bg); min-height: 100vh; }
 .ad-news p { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ad-news-meta { display: flex; gap: 8px; align-items: center; font-size: 12px; flex-wrap: wrap; }
 
+/* GitHub ulanishi (ixtiyoriy) */
+.ad-gh summary { cursor: pointer; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; list-style: none; }
+.ad-gh summary::-webkit-details-marker { display: none; }
+.ad-gh summary::before { content: "▸"; color: var(--muted); transition: transform .2s; }
+.ad-gh[open] summary::before { transform: rotate(90deg); }
+.ad-gh summary .ad-mode { margin-left: auto; }
+.ad-gh form { display: flex; flex-direction: column; gap: 6px; }
+#ghForm.connected label, #ghForm.connected #tokenInput, #ghForm.connected #loginBtn { display: none !important; }
+.ad-help-steps { margin: 4px 0 0 18px; display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.ad-help-steps a { color: var(--primary); text-decoration: underline; }
+#ghForm.connected ~ .ad-help-steps { display: none; }
+
 /* Promo */
 .ad-promo { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .ad-promo code { font-family: "Orbitron", "Inter", monospace; letter-spacing: 1.5px; font-size: 14px; padding: 4px 10px; border-radius: 8px; background: var(--bg); border: 1px dashed rgba(var(--prgb), .4); }
