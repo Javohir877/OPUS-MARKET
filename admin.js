@@ -164,6 +164,8 @@ function enterApp() {
   $("#adUser").innerHTML = S.demo
     ? `<span class="ad-mode demo">Ko'rish rejimi</span><span class="muted">E'lon qilish o'rniga data.js faylini yuklab olasiz.</span><button class="ad-link" id="logoutBtn">Token bilan kirish</button>`
     : `<span class="ad-mode">GitHub'ga ulangan</span><b>${esc(S.user.login)}</b><span class="muted">${esc(CFG.owner)}/${esc(CFG.repo)}</span><button class="ad-link" id="logoutBtn">Chiqish</button>`;
+  $("#adUser").insertAdjacentHTML("beforeend", `<button class="ad-link" id="lockNowBtn">🔒 Qulflash</button>`);
+  $("#lockNowBtn").addEventListener("click", lockNow);
   $("#logoutBtn").addEventListener("click", logout);
   $("#publishBtn").firstChild.textContent = S.demo ? "data.js yuklab olish " : "E'lon qilish ";
   fillSelects();
@@ -173,7 +175,7 @@ function enterApp() {
   if (draft && draft.baseSha === S.baseSha && JSON.stringify(draft.data) !== S.baseJSON) $("#draftBanner").hidden = false;
 }
 function logout() {
-  safe(() => { sessionStorage.removeItem("opus_admin_token"); localStorage.removeItem("opus_admin_token"); });
+  safe(() => { sessionStorage.removeItem("opus_admin_token"); localStorage.removeItem("opus_admin_token"); sessionStorage.removeItem("opus_admin_unlock"); });
   location.reload();
 }
 
@@ -889,8 +891,100 @@ async function publish() {
 }
 addEventListener("beforeunload", (e) => { if (S.data && diff().n && !S.demo) { e.preventDefault(); e.returnValue = ""; } });
 
-// ---------- Avtomatik kirish (saqlangan token) ----------
+// ---------- Admin paroli ----------
+// Parolning o'zi hech qayerda saqlanmaydi — faqat PBKDF2-SHA256 xeshi (150 000 takror).
+// Standart parol xeshi shu yerda; admin parolni o'zgartirsa, yangi xesh data.js → SETTINGS.adminPass ga yoziladi.
+const DEFAULT_PASS = { salt: "opus-market-admin-v1", iter: 150000, hash: "d318ded1f0994c0f13405888a3ac6be9e7ee69912a902749d2848f00d2317a57" };
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+async function pbkdf2(pw, salt, iter) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", enc.encode(pw), "PBKDF2", false, ["deriveBits"]);
+  return hex(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: enc.encode(salt), iterations: iter }, key, 256));
+}
+async function currentPass() {
+  try {
+    const d = parseData(await (await fetch(`${CFG.dataPath}?nocache=${Date.now()}`, { cache: "no-store" })).text());
+    if (d.SETTINGS.adminPass && d.SETTINGS.adminPass.hash) return d.SETTINGS.adminPass;
+  } catch {}
+  return DEFAULT_PASS;
+}
+let PASS = DEFAULT_PASS;
+const ss = {
+  get: (k) => safe(() => sessionStorage.getItem(k), null),
+  set: (k, v) => safe(() => sessionStorage.setItem(k, v)),
+  del: (k) => safe(() => sessionStorage.removeItem(k)),
+};
+
+function unlocked() {
+  $("#lock").hidden = true;
+  $("#login").hidden = false;
+  autoLogin();
+}
+
+$("#lockEye").addEventListener("click", () => {
+  const i = $("#lockInput");
+  i.type = i.type === "password" ? "text" : "password";
+  i.focus();
+});
+
+$("#lockForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const err = $("#lockError"), btn = $("#lockBtn"), input = $("#lockInput");
+  // Ketma-ket xato urinishlardan keyin kutish vaqti
+  const until = +ss.get("opus_admin_wait") || 0;
+  if (Date.now() < until) {
+    err.textContent = `Juda ko'p xato urinish. ${Math.ceil((until - Date.now()) / 1000)} soniyadan keyin qayta urinib ko'ring.`;
+    err.hidden = false; return;
+  }
+  btn.disabled = true; btn.textContent = "Tekshirilmoqda…"; err.hidden = true;
+  let ok = false;
+  try { ok = (await pbkdf2(input.value, PASS.salt, PASS.iter || 150000)) === PASS.hash; }
+  catch { err.textContent = "Brauzer parolni tekshira olmadi (sayt https orqali ochilishi kerak)."; err.hidden = false; }
+  btn.disabled = false; btn.textContent = "Ochish";
+  if (ok) {
+    ss.set("opus_admin_unlock", PASS.hash);
+    ss.del("opus_admin_fails"); ss.del("opus_admin_wait");
+    input.value = "";
+    unlocked();
+    return;
+  }
+  if (!err.hidden) return;
+  const fails = (+ss.get("opus_admin_fails") || 0) + 1;
+  ss.set("opus_admin_fails", fails);
+  if (fails >= 5) ss.set("opus_admin_wait", Date.now() + 30000 * (fails - 4));
+  err.textContent = fails >= 5 ? "Parol noto'g'ri. Juda ko'p urinish — 30 soniya kuting." : `Parol noto'g'ri (${fails}/5).`;
+  err.hidden = false;
+  input.classList.remove("invalid"); void input.offsetWidth; input.classList.add("invalid");
+  input.select();
+});
+
+// Parolni o'zgartirish (yangi xesh "E'lon qilish" bilan saytga yoziladi)
+$("#passForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const a = $("#pNew").value, b = $("#pNew2").value;
+  if (a.length < 8) { toast("⚠️ Parol kamida 8 belgidan iborat bo'lsin"); return; }
+  if (a !== b) { toast("⚠️ Parollar bir xil emas"); return; }
+  const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
+  S.data.SETTINGS.adminPass = { salt, iter: 150000, hash: await pbkdf2(a, salt, 150000) };
+  e.target.reset();
+  markDirty();
+  toast("🔒 Yangi parol tayyor — kuchga kirishi uchun \"E'lon qilish\" ni bosing");
+});
+
+function lockNow() {
+  ss.del("opus_admin_unlock");
+  location.reload();
+}
+
+// Sahifa ochilganda: parol so'raymiz (shu seansda kiritilgan bo'lsa — o'tkazib yuboramiz)
 (async () => {
+  PASS = await currentPass();
+  if (ss.get("opus_admin_unlock") === PASS.hash) unlocked();
+  else setTimeout(() => $("#lockInput").focus(), 100);
+})();
+
+// ---------- Avtomatik kirish (saqlangan token) ----------
+async function autoLogin() {
   const saved = safe(() => sessionStorage.getItem("opus_admin_token") || localStorage.getItem("opus_admin_token"), null);
   if (!saved) return;
   $("#loginBtn").disabled = true; $("#loginBtn").textContent = "Ulanmoqda…";
@@ -901,4 +995,4 @@ addEventListener("beforeunload", (e) => { if (S.data && diff().n && !S.demo) { e
     $("#loginError").textContent = apiError(ex); $("#loginError").hidden = false;
   }
   $("#loginBtn").disabled = false; $("#loginBtn").textContent = "Kirish";
-})();
+}
