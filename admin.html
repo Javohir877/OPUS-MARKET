@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="admin.css?v=5" />
+  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="stylesheet" href="admin.css?v=6" />
 </head>
 <body class="admin">
 
@@ -35,34 +35,6 @@
   </section>
 
   <!-- Kirish -->
-  <section class="ad-login" id="login" hidden>
-    <div class="ad-login-card">
-      <a href="./" class="logo"><span class="logo-mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="none" stroke="#fff" stroke-width="3.4"/></svg></span><span class="logo-text">OPUS<b>ADMIN</b></span></a>
-      <h1>Boshqaruv paneliga kirish</h1>
-      <p class="muted">Panel o'zgarishlarni GitHub orqali saytga e'lon qiladi. Kirish uchun faqat shu do'kon repozitoriysiga ruxsatli GitHub kaliti (token) kerak.</p>
-
-      <form id="loginForm" autocomplete="off">
-        <label for="tokenInput">GitHub token</label>
-        <input id="tokenInput" type="password" placeholder="github_pat_…" spellcheck="false" />
-        <label class="ad-check"><input type="checkbox" id="rememberInput" /> Shu kompyuterda eslab qolish</label>
-        <p class="ad-error" id="loginError" hidden></p>
-        <button class="btn btn-primary btn-block" id="loginBtn">Kirish</button>
-        <button class="btn btn-ghost btn-block" type="button" id="demoBtn">Tokensiz ko'rish (e'lon qilib bo'lmaydi)</button>
-      </form>
-
-      <details class="ad-help">
-        <summary>Token qanday olinadi? (bir marta, 2 daqiqa)</summary>
-        <ol>
-          <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com → Fine-grained token yaratish</a> sahifasini oching.</li>
-          <li><b>Token name</b>: <code>OPUS admin</code>, <b>Expiration</b>: masalan 90 kun.</li>
-          <li><b>Repository access</b> → <em>Only select repositories</em> → <code id="repoName">OPUS-MARKET</code>.</li>
-          <li><b>Permissions → Repository → Contents</b>: <em>Read and write</em>.</li>
-          <li><b>Generate token</b> ni bosing va chiqqan kalitni shu yerga joylang.</li>
-        </ol>
-        <p class="muted">Kalit faqat brauzeringizda saqlanadi va faqat <code>api.github.com</code> ga yuboriladi. Uni hech kimga bermang.</p>
-      </details>
-    </div>
-  </section>
 
   <!-- Panel -->
   <div class="ad-app" id="app" hidden>
@@ -226,13 +198,29 @@
         </form>
         <form class="ad-panel ad-form" id="passForm" autocomplete="off">
           <div class="ad-panel-head"><h3>🔒 Admin parolini o'zgartirish</h3></div>
-          <p class="muted ad-hint">Yangi parol "E'lon qilish" dan keyin kuchga kiradi. Kamida 8 belgi: harf, raqam va belgi aralash bo'lsa yaxshi.</p>
+          <p class="muted ad-hint">Yangi parol "Saqlash" qilingan data.js saytga joylangandan keyin kuchga kiradi. Kamida 8 belgi: harf, raqam va belgi aralash bo'lsa yaxshi.</p>
           <div class="ad-grid2">
             <div><label for="pNew">Yangi parol</label><input id="pNew" type="password" minlength="8" autocomplete="new-password" required /></div>
             <div><label for="pNew2">Yangi parolni takrorlang</label><input id="pNew2" type="password" minlength="8" autocomplete="new-password" required /></div>
           </div>
           <button class="btn btn-ghost btn-sm" style="margin-top:12px;align-self:flex-start">Parolni o'zgartirish</button>
         </form>
+        <details class="ad-panel ad-gh" id="ghPanel">
+          <summary><b>GitHub ulanishi</b> <span class="muted">— ixtiyoriy, bir bosishda e'lon qilish uchun</span> <span class="ad-mode demo" id="ghState">Ulanmagan</span></summary>
+          <p class="muted ad-hint">Ulanmasangiz ham panel to'liq ishlaydi: "Saqlash" tugmasi tayyor <code>data.js</code> (va yangi rasmlar) ni yuklab beradi. Ulansangiz, "E'lon qilish" o'zgarishlarni saytga to'g'ridan-to'g'ri yozadi.</p>
+          <form id="ghForm" autocomplete="off">
+            <label for="tokenInput">GitHub token</label>
+            <input id="tokenInput" type="password" placeholder="github_pat_…" spellcheck="false" />
+            <label class="ad-check"><input type="checkbox" id="rememberInput" /> Shu kompyuterda eslab qolish</label>
+            <p class="ad-error" id="loginError" hidden></p>
+            <div class="ad-top-actions"><button class="btn btn-primary btn-sm" id="loginBtn">Ulash</button><button type="button" class="btn btn-ghost btn-sm" id="ghDisconnect" hidden>Uzish</button></div>
+          </form>
+          <ol class="ad-help-steps">
+            <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-grained token yaratish</a> sahifasini oching.</li>
+            <li><b>Repository access</b> → <em>Only select repositories</em> → <code id="repoName">OPUS-MARKET</code>.</li>
+            <li><b>Permissions → Contents</b>: <em>Read and write</em> → <b>Generate token</b>.</li>
+          </ol>
+        </details>
       </section>
     </main>
   </div>
@@ -319,7 +307,7 @@
 
   <div class="toasts" id="toasts"></div>
 
-  <script src="assets.js?v=5"></script>
-  <script src="admin.js?v=5"></script>
+  <script src="assets.js?v=6"></script>
+  <script src="admin.js?v=6"></script>
 </body>
 </html>
