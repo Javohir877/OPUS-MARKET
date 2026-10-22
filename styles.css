@@ -649,6 +649,38 @@ select:focus { border-color: var(--primary); }
 .preview-bar { position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0; z-index: 160; display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; padding: 10px 16px; background: #ffb020; color: #2a1800; font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.2); }
 .is-preview .header { top: 52px; }
 
+/* ---------- Onlayn to'lov QR ---------- */
+.pay-hint { font-size: 13px; padding: 10px 12px; border-radius: 12px; background: rgba(var(--prgb), .06); border: 1px dashed rgba(var(--prgb), .3); }
+.paybox-wrap { width: 100%; }
+.paybox-wrap:empty { display: none; }
+.paybox { width: 100%; text-align: left; border-radius: 20px; border: 1px solid var(--line); background: var(--card); overflow: hidden; margin: 6px 0 8px; animation: paneIn .4s; }
+.paybox.off { display: flex; gap: 12px; align-items: center; padding: 14px; }
+.paybox.off .pay-logo { width: 90px; height: 40px; padding: 4px 8px; flex-shrink: 0; }
+.paybox.off div { display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.paybox.off span { color: var(--muted); font-size: 13px; }
+.paybox-head { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--line); background: var(--bg2); }
+.paybox-head .pay-logo { width: 96px; height: 42px; padding: 4px 8px; flex-shrink: 0; }
+.paybox-head small { display: block; color: var(--muted); font-size: 12px; }
+.paybox-head b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.paybox-id { margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.paybox-body { display: grid; grid-template-columns: auto 1fr; gap: 18px; padding: 16px; align-items: center; }
+.paybox-qr { width: 216px; height: 216px; padding: 8px; border-radius: 16px; background: #fff; display: grid; place-items: center; box-shadow: 0 0 0 1px #eee, 0 10px 24px rgba(0,0,0,.12); position: relative; }
+.paybox-qr img, .paybox-qr canvas { width: 200px !important; height: 200px !important; }
+.paybox-qr small { color: #6b5a5e; text-align: center; padding: 10px; }
+.paybox-qr-wait { width: 40px; height: 40px; border-radius: 50%; border: 4px solid #eee; border-top-color: var(--primary); animation: rotate .9s linear infinite; }
+.paybox-steps { display: flex; flex-direction: column; gap: 8px; font-size: 14px; min-width: 0; }
+.paybox-steps ol { margin-left: 18px; display: grid; gap: 4px; color: var(--muted); }
+.paybox-btn { align-self: flex-start; }
+.order-pay { margin-top: 10px; }
+@media (pointer: coarse), (max-width: 560px) {
+  /* Telefonda: avval tugma (shu telefondagi ilovani ochadi), QR — boshqa telefon uchun */
+  .paybox-body { grid-template-columns: 1fr; justify-items: center; }
+  .paybox-steps { order: -1; width: 100%; }
+  .paybox-btn { align-self: stretch; padding: 14px; font-size: 15px; }
+  .paybox-qr { width: 196px; height: 196px; }
+  .paybox-qr img, .paybox-qr canvas { width: 180px !important; height: 180px !important; }
+}
+
 /* ---------- Solishtirish ---------- */
 .cmp {
   position: absolute; top: 56px; right: 12px; width: 38px; height: 38px; border-radius: 50%; background: var(--card);
