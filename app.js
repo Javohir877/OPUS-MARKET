@@ -74,6 +74,46 @@ window.addEventListener("scroll", () => {
 toTop.addEventListener("click", () => scrollTo({ top: 0 }));
 $("#burger").addEventListener("click", () => $("#nav").classList.toggle("open"));
 $$("#nav a").forEach((a) => a.addEventListener("click", () => $("#nav").classList.remove("open")));
+
+// ---------- Menyu animatsiyasi: suzuvchi kapsula + aylanuvchi matn + hozirgi bo'lim ----------
+(() => {
+  const nav = $("#nav");
+  const links = $$("a", nav);
+  links.forEach((a, i) => {
+    const t = a.textContent.trim();
+    a.innerHTML = `<span class="nl"><span data-t="${esc(t)}">${esc(t)}</span></span>`;
+    a.style.setProperty("--i", i);
+  });
+  const glider = document.createElement("span");
+  glider.className = "nav-glider";
+  nav.prepend(glider);
+
+  let active = null;
+  const moveTo = (a) => {
+    if (!a || getComputedStyle(glider).display === "none") { nav.classList.remove("glide"); return; }
+    glider.style.width = a.offsetWidth + "px";
+    glider.style.transform = `translateX(${a.offsetLeft}px)`;
+    nav.classList.add("glide");
+  };
+  links.forEach((a) => a.addEventListener("mouseenter", () => moveTo(a)));
+  nav.addEventListener("mouseleave", () => moveTo(active));
+
+  // Sahifa aylantirilganda — qaysi bo'lim ko'rinib turgan bo'lsa, kapsula o'sha havolada turadi
+  const map = new Map(links.map((a) => [a.getAttribute("href").slice(1), a]).filter(([id]) => document.getElementById(id)));
+  const vis = new Map();
+  const spy = new IntersectionObserver((entries) => {
+    entries.forEach((e) => vis.set(e.target.id, e.isIntersecting ? e.intersectionRatio : 0));
+    let best = null, ratio = 0;
+    vis.forEach((r, id) => { if (r > ratio) { ratio = r; best = id; } });
+    const next = best ? map.get(best) : null;
+    if (next === active) return;
+    links.forEach((a) => a.classList.toggle("active", a === next));
+    active = next;
+    if (!nav.matches(":hover")) moveTo(active);
+  }, { threshold: [0, 0.15, 0.35, 0.6], rootMargin: "-80px 0px -35% 0px" });
+  map.forEach((_, id) => spy.observe(document.getElementById(id)));
+  addEventListener("resize", () => moveTo(active));
+})();
 $("#year").textContent = new Date().getFullYear();
 
 // ---------- Hero ----------
