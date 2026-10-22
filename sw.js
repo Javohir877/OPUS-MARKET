@@ -1,6 +1,6 @@
 // OPUS MARKET — service worker: ilova tez ochilishi va internet sekin/yo'q bo'lganda ham ishlashi uchun kesh.
 // Sayt yangilanganda VERSION ni oshiring.
-const VERSION = "opus-v2";
+const VERSION = "opus-v3";
 const CORE = [
   "./", "index.html", "styles.css", "assets.js", "data.js", "app.js", "showcase.js", "scrollfx.js",
   "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "img/hero.jpg", "img/deals.jpg",
@@ -37,7 +37,18 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // Qolgan fayllar (CSS, JS, rasmlar, shriftlar, Three.js): keshdan darhol, fonda yangilanadi
+  // Saytning o'z kod fayllari (JS, CSS, manifest): avval internet — versiyalar aralashib ketmasligi uchun.
+  // Internet bo'lmasa — keshdagi nusxa.
+  if (url.origin === location.origin && /\.(js|css|webmanifest|json)$/.test(url.pathname)) {
+    e.respondWith(
+      fetch(req)
+        .then((res) => { if (res.ok) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); } return res; })
+        .catch(() => caches.match(req).then((hit) => hit || caches.match(req, { ignoreSearch: true })))
+    );
+    return;
+  }
+
+  // Rasmlar, shriftlar, Three.js: keshdan darhol, fonda yangilanadi
   e.respondWith(
     caches.open(VERSION).then((cache) =>
       cache.match(req).then((hit) => {
