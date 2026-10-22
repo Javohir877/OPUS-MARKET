@@ -261,13 +261,28 @@ img { display: block; max-width: 100%; }
   transition: transform .35s, box-shadow .35s;
 }
 .cat img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; transition: transform .7s; }
-.cat::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(20,0,4,.05), rgba(20,0,4,.85)); transition: background .4s; }
-.cat:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(var(--prgb), .35); }
-.cat:hover img { transform: scale(1.1); }
-.cat:hover::before { background: linear-gradient(180deg, rgba(225,15,42,.15), rgba(110,0,15,.92)); }
-.cat-ic { width: 44px; height: 44px; border-radius: 12px; background: var(--grad); display: grid; place-items: center; margin-right: 12px; flex-shrink: 0; transition: transform .4s; }
+/* Har bir kategoriya o'z rasmining rangida: --tint / --tint-deep JS tomonidan rasmdan olinadi (standart — brend qizili) */
+.cat { --tint: 225, 15, 42; --tint-deep: 110, 0, 15; }
+.cat::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(20,0,4,.05), rgba(20,0,4,.85)); }
+.cat::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; opacity: 0; transition: opacity .45s ease;
+  background:
+    radial-gradient(120% 80% at 20% 100%, rgba(var(--tint), .55), transparent 60%),
+    linear-gradient(180deg, rgba(var(--tint), .12) 0%, rgba(var(--tint-deep), .94) 100%);
+}
+.cat:hover, .cat:focus-visible { transform: translateY(-6px); box-shadow: 0 20px 44px rgba(var(--tint), .45), 0 0 0 1px rgba(var(--tint), .5); outline: none; }
+.cat:hover img, .cat:focus-visible img { transform: scale(1.1); }
+.cat:hover::after, .cat:focus-visible::after { opacity: 1; }
+.cat-ic { width: 44px; height: 44px; border-radius: 12px; background: var(--grad); display: grid; place-items: center; margin-right: 12px; flex-shrink: 0; transition: transform .4s, background .4s, box-shadow .4s; }
 .cat-ic svg { width: 24px; }
-.cat:hover .cat-ic { transform: rotate(-10deg) scale(1.1); }
+.cat:hover .cat-ic, .cat:focus-visible .cat-ic { transform: rotate(-10deg) scale(1.1); }
+.cat.tinted:hover .cat-ic, .cat.tinted:focus-visible .cat-ic { background: linear-gradient(135deg, rgb(var(--tint)), rgb(var(--tint-deep))); box-shadow: 0 8px 20px rgba(var(--tint), .55); }
+/* Sensorli ekranda (sichqoncha yo'q) — rang doim yengil ko'rinib turadi, bosilganda to'liq */
+@media (hover: none) {
+  .cat.tinted::after { opacity: .6; }
+  .cat.tinted .cat-ic { background: linear-gradient(135deg, rgb(var(--tint)), rgb(var(--tint-deep))); }
+  .cat:active::after { opacity: 1; }
+}
 .cat h4 { font-size: 18px; line-height: 1.2; }
 .cat small { opacity: .85; }
 .cat-arrow { margin-left: auto; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.18); display: grid; place-items: center; transform: translateX(-10px); opacity: 0; transition: .35s; }
