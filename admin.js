@@ -35,15 +35,19 @@ document.documentElement.dataset.theme = safe(() => JSON.parse(localStorage.getI
 function toast(msg) {
   // Ovoz: sfx.js (sayt bilan umumiy sozlamalar)
   if (window.SFX && !/^🔔/.test(msg)) SFX.play(/^(❌|⚠️|⛔)/.test(msg) ? "error" : /^🚀/.test(msg) ? "success" : "select", { noHaptic: true }); // 🔔 — yangi buyurtma: o'z signali (chime) bor
+  const m = String(msg).match(/^(\p{Extended_Pictographic}\uFE0F?|[↩↻⬇⬆✕✓])\s*/u);
+  const lead = m ? m[1] : "", text = m ? String(msg).slice(m[0].length) : String(msg);
+  const kind = /^(⚠|❌|⛔)/.test(lead) ? "err" : /^(✅|🎉|🚀|💾|🔒|🔑|💬|📋)/.test(lead) ? "ok" : /^🔔/.test(lead) ? "bell" : "info";
   const el = document.createElement("div");
-  el.className = "toast";
-  el.textContent = msg;
+  el.className = "toast t-" + kind;
+  el.innerHTML = `<svg class="ic"><use href="#i-${{ err: "alert", ok: "check", bell: "bell", info: "info" }[kind]}" /></svg><span></span>`;
+  el.lastChild.textContent = text;
   $("#toasts").appendChild(el);
   setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 300); }, 3200);
 }
 const srcOf = (img) => (img ? S.uploads[img] || IMG(img) : "");
 const catName = (id) => (S.data.CATEGORIES.find((c) => c.id === id) || {}).name || id;
-const stockChip = (n) => n <= 0 ? `<span class="chip bad">⛔ Tugagan</span>` : n <= 5 ? `<span class="chip warn">⚠ Kam</span>` : `<span class="chip ok">✓ Bor</span>`;
+const stockChip = (n) => n <= 0 ? `<span class="chip bad">Tugagan</span>` : n <= 5 ? `<span class="chip warn">Kam</span>` : `<span class="chip ok">Bor</span>`;
 const fmtPhone = (p) => { const d = String(p || "").replace(/\D/g, "").replace(/^998/, ""); return d ? "+998 " + [d.slice(0, 2), d.slice(2, 5), d.slice(5, 7), d.slice(7, 9)].join(" ") : ""; };
 const dt = (ms) => (ms ? new Date(ms).toLocaleString("ru-RU") : "—");
 
@@ -147,7 +151,7 @@ async function start() {
 }
 function refreshMode() {
   $("#adUser").innerHTML = `<span class="ad-mode">Serverga ulangan</span><span class="muted">"E'lon qilish" o'zgarishlarni saytga darhol yozadi</span>`
-    + `<button class="ad-link" id="lockNowBtn">🔒 Chiqish</button>`;
+    + `<button class="ad-link" id="lockNowBtn">Chiqish</button>`;
   $("#lockNowBtn").addEventListener("click", lockNow);
   $("#publishBtn").title = "Saytga e'lon qilish (Ctrl+S)";
   $("#sheetMode").textContent = "Serverga ulangan — o'zgarishlar \"E'lon qilish\" bilan saytga yoziladi";
@@ -228,12 +232,12 @@ function renderKpis() {
   const avgDisc = sale.length ? Math.round(sale.reduce((s, p) => s + (1 - p.price / p.old) * 100, 0) / sale.length) : 0;
   const tiles = [
     { t: "Bugungi savdo", v: fmt(st.todayRevenue), e: `${st.todayOrders || 0} ta buyurtma bugun`, hot: true },
-    { t: "Buyurtmalar", v: st.orders || 0, e: [(st.byStatus || {})["Yangi"] ? `🔔 ${st.byStatus["Yangi"]} tasi yangi` : "Jami: " + fmt(st.revenue), st.unconfirmed ? `⏳ ${st.unconfirmed} tasi kod kutmoqda` : ""].filter(Boolean).join(" · "), warn: !!(st.byStatus || {})["Yangi"] },
+    { t: "Buyurtmalar", v: st.orders || 0, e: [(st.byStatus || {})["Yangi"] ? `${st.byStatus["Yangi"]} tasi yangi` : "Jami: " + fmt(st.revenue), st.unconfirmed ? `${st.unconfirmed} tasi kod kutmoqda` : ""].filter(Boolean).join(" · "), warn: !!(st.byStatus || {})["Yangi"] },
     { t: "Mijozlar", v: st.users || 0, e: st.newUsers ? `+${st.newUsers} ta oxirgi 7 kunda` : "Ro'yxatdan o'tganlar" },
     { t: "Sharhlar", v: st.reviews || 0, e: st.newReviews ? `+${st.newReviews} ta shu hafta` : "Mijozlar fikri" },
     { t: "Mahsulotlar", v: P.length, e: `${S.data.CATEGORIES.length} ta kategoriya` },
     { t: "Omborda", v: num(units) + " dona", e: "Qiymati: " + fmt(value) },
-    { t: "Kam qolgan", v: low.length, e: out.length ? `⛔ ${out.length} tasi tugagan` : "≤ 5 dona qolganlar", warn: low.length > 0 },
+    { t: "Kam qolgan", v: low.length, e: out.length ? `${out.length} tasi tugagan` : "≤ 5 dona qolganlar", warn: low.length > 0 },
     { t: "Chegirmada", v: sale.length, e: sale.length ? `O'rtacha −${avgDisc}%` : "Chegirma yo'q" },
     { t: "Original belgisi", v: `${P.filter((p) => p.original !== false).length}/${P.length}`, e: "✓ belgili mahsulotlar" },
     { t: "Yangiliklar", v: (S.data.NEWS || []).length, e: (S.data.NEWS || []).length ? "Oxirgisi: " + (S.data.NEWS.map((n) => n.date).sort().pop() || "—") : "Hali yo'q" },
@@ -251,7 +255,6 @@ function renderChart() {
   const W = 560, H = 190, pad = 22, bw = (W - pad) / s.length;
   const short = (n) => n >= 1e9 ? (n / 1e9).toFixed(1) + " mlrd" : n >= 1e6 ? Math.round(n / 1e6) + " mln" : n >= 1e3 ? Math.round(n / 1e3) + " ming" : String(n);
   box.innerHTML = `<svg viewBox="0 0 ${W} ${H + 26}" role="img" aria-label="Kunlik savdo grafigi">
-    <defs><linearGradient id="barG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff2a40"/><stop offset="1" stop-color="#a8081d"/></linearGradient></defs>
     ${[0.25, 0.5, 0.75, 1].map((k) => `<line x1="${pad}" x2="${W}" y1="${H - (H - 14) * k}" y2="${H - (H - 14) * k}" class="ad-grid-line"/>`).join("")}
     <text x="0" y="18" class="ad-axis">${short(max)}</text>
     ${s.map((d, i) => {
@@ -260,7 +263,7 @@ function renderChart() {
       return `<g class="ad-bar${today ? " today" : ""}" style="--i:${i}">
         <title>${dd.toLocaleDateString("ru-RU")}: ${fmt(d.revenue)} (${d.orders} ta buyurtma)</title>
         <rect x="${pad + i * bw}" y="0" width="${bw}" height="${H}" fill="transparent"/>
-        <rect x="${x}" y="${H - h}" width="${w}" height="${h}" rx="5" fill="url(#barG)"/>
+        <rect x="${x}" y="${H - h}" width="${w}" height="${h}" rx="2" class="ad-bar-fill"/>
         ${d.orders ? `<text x="${x + w / 2}" y="${H - h - 5}" text-anchor="middle" class="ad-bar-n">${d.orders}</text>` : ""}
         <text x="${x + w / 2}" y="${H + 17}" text-anchor="middle" class="ad-axis">${dd.getDate()}</text>
       </g>`;
@@ -646,11 +649,11 @@ function renderNewsList() {
     <article class="ad-news ${base.get(n.id) !== canon(n) ? "changed" : ""}" data-nid="${n.id}">
       <img src="${esc(srcOf(n.img))}" alt="" onerror="this.style.visibility='hidden'" />
       <div>
-        <div class="ad-news-meta">${n.pinned ? `<span class="chip sale">📌 Tepada</span>` : ""}<span class="chip ok">${esc(n.tag || "Yangilik")}</span><span class="muted">${esc(n.date)}</span></div>
+        <div class="ad-news-meta">${n.pinned ? `<span class="chip sale">Tepada</span>` : ""}<span class="chip ok">${esc(n.tag || "Yangilik")}</span><span class="muted">${esc(n.date)}</span></div>
         <b>${esc(n.title)}</b>
         <p class="muted">${esc(n.excerpt || "")}</p>
       </div>
-      <div class="ad-actions"><button data-nact="edit">Tahrirlash</button><button data-nact="pin" title="Tepaga mahkamlash">📌</button></div>
+      <div class="ad-actions"><button data-nact="edit">Tahrirlash</button><button data-nact="pin" title="Tepaga mahkamlash">Qadash</button></div>
     </article>`).join("") : `<p class="ad-empty">Yangiliklar yo'q. "+ Yangi yangilik" ni bosing.</p>`;
 }
 $("#nSearch").addEventListener("input", renderNewsList);
@@ -728,7 +731,7 @@ function renderCatEditor() {
     <td data-label="Nomi"><input class="cell wide" data-cfield="name" value="${esc(c.name)}" aria-label="Kategoriya nomi" /></td>
     <td data-label="Kod"><code>${esc(c.id)}</code></td>
     <td class="num" data-label="Mahsulotlar">${S.data.PRODUCTS.filter((p) => p.cat === c.id).length}</td>
-    <td><div class="ad-actions"><label class="btn btn-ghost btn-sm ad-upload" style="margin:0">📷 Rasm<input type="file" data-cimg accept="image/*" hidden /></label></div></td>
+    <td><div class="ad-actions"><label class="btn btn-ghost btn-sm ad-upload" style="margin:0">Rasm<input type="file" data-cimg accept="image/*" hidden /></label></div></td>
   </tr>`).join("")}</tbody>`;
 }
 $("#cTable").addEventListener("change", async (e) => {
@@ -779,7 +782,7 @@ $("#previewBtn").addEventListener("click", () => {
 // ---------- Buyurtmalar (serverdan) ----------
 const payName = (id) => (PAYMENTS.find((p) => p.id === id) || {}).name || id;
 const itemsText = (o) => (o.items || []).map((i) => `${i.name} × ${i.qty}`);
-$("#oStatus").innerHTML += STATUSES.map((s) => `<option>${s}</option>`).join("") + `<option value="__pending">⏳ Tasdiqlanmagan</option>`;
+$("#oStatus").innerHTML += STATUSES.map((s) => `<option>${s}</option>`).join("") + `<option value="__pending">Tasdiqlanmagan</option>`;
 const isPending = (o) => o.confirmed === 0 && o.status === "Yangi";
 function renderOrders() {
   const oq = ($("#oSearch").value || "").trim().toLowerCase(), os = $("#oStatus").value;
@@ -788,11 +791,11 @@ function renderOrders() {
   ${O.length ? O.map((o) => `<tr class="${isPending(o) ? "ad-row-pending" : o.status === "Yangi" ? "ad-row-new" : ""}">
     <td data-label="Buyurtma"><span><b>#${esc(o.id)}</b><br><small class="muted">${dt(o.created_at)}</small>${isPending(o) ? `<br><span class="chip warn" title="Mijoz hali Telegram kodini kiritmagan. 2 soatda tasdiqlanmasa avtomatik bekor qilinadi.">⏳ Tasdiqlanmagan</span>` : ""}</span></td>
     <td data-label="Mijoz"><span>${o.user_id ? `<button class="ad-link" data-user="${o.user_id}">${esc(o.user_name || "—")}</button>` : "<i>o'chirilgan mijoz</i>"}<br><small class="muted">${o.user_phone ? `<a href="tel:+${esc(o.user_phone)}">${esc(fmtPhone(o.user_phone))}</a>` : ""}</small></span></td>
-    <td data-label="Manzil"><span>${o.delivery === "pickup" ? "🏬 Do'kondan olib ketadi" : `${esc(o.region || "")}<br><small class="muted">${esc(o.address || "")}</small>`}${o.note ? `<br><small class="muted">💬 ${esc(o.note)}</small>` : ""}</span></td>
+    <td data-label="Manzil"><span>${o.delivery === "pickup" ? "Do'kondan olib ketadi" : `${esc(o.region || "")}<br><small class="muted">${esc(o.address || "")}</small>`}${o.note ? `<br><small class="muted">💬 ${esc(o.note)}</small>` : ""}</span></td>
     <td data-label="Mahsulotlar"><span>${itemsText(o).map(esc).join("<br>")}</span></td>
-    <td data-label="To'lov"><span>${esc(payName(o.payment))}${o.months ? `<br><small class="muted">${o.months} oy</small>` : ""}${o.promo ? `<br><small class="muted">🎟 ${esc(o.promo)}</small>` : ""}</span></td>
+    <td data-label="To'lov"><span>${esc(payName(o.payment))}${o.months ? `<br><small class="muted">${o.months} oy</small>` : ""}${o.promo ? `<br><small class="muted">Promo: ${esc(o.promo)}</small>` : ""}</span></td>
     <td class="num" data-label="Summa"><b>${fmt(o.total)}</b>${o.discount ? `<br><small class="muted">−${fmt(o.discount)}</small>` : ""}</td>
-    <td data-label="Holat"><span class="ad-ostatus"><select class="ad-status-select" data-order="${esc(o.id)}" aria-label="Holat">${STATUSES.map((s) => `<option ${o.status === s ? "selected" : ""}>${s}</option>`).join("")}</select><button class="ad-link" data-print="${esc(o.id)}" title="Chekni chop etish">🖨 Chek</button></span></td>
+    <td data-label="Holat"><span class="ad-ostatus"><select class="ad-status-select" data-order="${esc(o.id)}" aria-label="Holat">${STATUSES.map((s) => `<option ${o.status === s ? "selected" : ""}>${s}</option>`).join("")}</select><button class="ad-link" data-print="${esc(o.id)}" title="Chekni chop etish">Chek</button></span></td>
   </tr>`).join("") : `<tr><td colspan="7" class="ad-empty">${S.orders.length ? "Hech narsa topilmadi" : "Hali buyurtma yo'q. Mijozlar saytda ro'yxatdan o'tib buyurtma berishi bilan shu yerda paydo bo'ladi."}</td></tr>`}</tbody>`;
 }
 $("#oSearch").addEventListener("input", renderOrders);
@@ -840,7 +843,7 @@ function renderUsers() {
   const U = S.users.filter((u) => !q || [u.name, u.phone, fmtPhone(u.phone), u.email].join(" ").toLowerCase().includes(q));
   $("#uTable").innerHTML = `<thead><tr><th>Mijoz</th><th>Telefon / email</th><th>Manzil</th><th class="num">Buyurtmalar</th><th class="num">Xarid summasi</th><th>Ro'yxatdan o'tgan</th><th></th></tr></thead><tbody>
   ${U.length ? U.map((u) => `<tr class="${u.blocked ? "ad-row-blocked" : ""}">
-    <td data-label="Mijoz"><span class="ad-user-cell"><i class="ad-ava">${esc(initials(u.name))}</i><span><b>${esc(u.name)}</b>${u.tg ? ` <span class="ad-tg-dot" title="Telegram ulangan">✈️</span>` : ""}${u.blocked ? `<br><span class="chip bad">⛔ Bloklangan</span>` : ""}</span></span></td>
+    <td data-label="Mijoz"><span class="ad-user-cell"><i class="ad-ava">${esc(initials(u.name))}</i><span><b>${esc(u.name)}</b>${u.tg ? ` <span class="ad-tg-dot" title="Telegram ulangan">TG</span>` : ""}${u.blocked ? `<br><span class="chip bad">⛔ Bloklangan</span>` : ""}</span></span></td>
     <td data-label="Aloqa"><span><a href="tel:+${esc(u.phone)}">${esc(fmtPhone(u.phone))}</a>${u.email ? `<br><small class="muted">${esc(u.email)}</small>` : ""}</span></td>
     <td data-label="Manzil"><span>${esc(u.region || "—")}${u.address ? `<br><small class="muted">${esc(u.address)}</small>` : ""}</span></td>
     <td class="num" data-label="Buyurtmalar">${u.orders}</td>
@@ -881,12 +884,12 @@ async function openUser(id) {
       <dt>Manzil</dt><dd>${esc(u.address || "—")}</dd>
       <dt>Ro'yxatdan o'tgan</dt><dd>${dt(u.created_at)}</dd>
       <dt>Oxirgi kirish</dt><dd>${dt(u.last_login)}</dd>
-      <dt>Telegram</dt><dd>${u.tg ? "✈️ ulangan — kodlar va holatlar botdan boradi" : "ulanmagan"}</dd>
-      <dt>Parol</dt><dd>🔒 shifrlangan — ko'rib bo'lmaydi</dd>
+      <dt>Telegram</dt><dd>${u.tg ? "ulangan — kodlar va holatlar botdan boradi" : "ulanmagan"}</dd>
+      <dt>Parol</dt><dd>shifrlangan — ko'rib bo'lmaydi</dd>
     </dl>
     <div class="ad-uactions">
-      <button class="btn btn-ghost btn-sm" data-uact="reset">🔑 Parolni tiklash</button>
-      <button class="btn btn-ghost btn-sm" data-uact="block">${u.blocked ? "✓ Blokdan chiqarish" : "⛔ Bloklash"}</button>
+      <button class="btn btn-ghost btn-sm" data-uact="reset">Parolni tiklash</button>
+      <button class="btn btn-ghost btn-sm" data-uact="block">${u.blocked ? "Blokdan chiqarish" : "Bloklash"}</button>
       <button class="btn btn-ghost btn-sm ad-danger" data-uact="delete">O'chirish</button>
     </div>
     <div id="uTemp"></div>
@@ -913,7 +916,7 @@ async function openUser(id) {
         const { password } = await api("POST", `/api/admin/users/${u.id}/reset-password`);
         $("#uTemp").innerHTML = `<div class="ad-temp-pass"><small>Vaqtinchalik parol — mijozga ayting (faqat bir marta ko'rsatiladi):</small><code>${esc(password)}</code><button class="ad-link" id="uCopy">Nusxalash</button></div>`;
         $("#uCopy").onclick = () => navigator.clipboard?.writeText(password).then(() => toast("📋 Nusxalandi"));
-        b.classList.remove("confirm"); b.textContent = "🔑 Parolni tiklash";
+        b.classList.remove("confirm"); b.textContent = "Parolni tiklash";
         toast("🔑 Yangi parol yaratildi, mijozning eski seanslari yopildi");
       } else if (act === "block") {
         await api("PATCH", `/api/admin/users/${u.id}`, { blocked: !u.blocked });
@@ -989,7 +992,7 @@ function renderReviews() {
         <button class="btn btn-primary btn-sm">${r.reply ? "Javobni yangilash" : "Javob berish"}</button>
       </form>
       <div class="ad-actions">
-        <button data-rv-hide>${r.hidden ? "👁 Ko'rsatish" : "🙈 Yashirish"}</button>
+        <button data-rv-hide>${r.hidden ? "Ko'rsatish" : "Yashirish"}</button>
         <button data-rv-del class="ad-danger">O'chirish</button>
       </div>
     </article>`;
@@ -1054,7 +1057,7 @@ async function pollOrders() {
       await loadServer();
       const fresh = Math.max(1, S.orders.length - prev);
       unseen += fresh;
-      document.title = `(${unseen}) 🔔 ${baseTitle}`;
+      document.title = `(${unseen}) Yangi buyurtma · ${baseTitle}`;
       renderAll(); chime();
       const o = S.orders.find((x) => x.confirmed !== 0) || S.orders[0];
       toast(`🔔 Yangi buyurtma #${o.id}: ${o.user_name || "mijoz"} — ${fmt(o.total)}`);
@@ -1087,7 +1090,7 @@ $("#tgLink").addEventListener("click", async () => {
   try {
     const { link } = await api("POST", "/api/admin/telegram/link");
     $("#tgLinkBox").innerHTML = `<div class="ad-temp-pass"><small>Bir martalik havola (15 daqiqa amal qiladi). Uni faqat o'zingiz oching — kim ochsa, buyurtmalar o'shanga boradi:</small>
-      <a class="btn btn-primary btn-sm" href="${esc(link)}" target="_blank" rel="noopener">✈️ Telegram'da ochish</a></div>`;
+      <a class="btn btn-primary btn-sm" href="${esc(link)}" target="_blank" rel="noopener">Telegram'da ochish</a></div>`;
     // Havola ochilib START bosilishini kutamiz (3 daqiqa)
     const t0 = Date.now();
     const iv = setInterval(async () => {
