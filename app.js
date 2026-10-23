@@ -2,6 +2,9 @@
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
+// Ovoz effektlari (sfx.js). Fayl yuklanmagan bo'lsa ham sayt ishlayveradi.
+const sfx = (name) => { try { window.SFX && window.SFX.play(name); } catch {} };
+
 const store = {
   get(key, def) {
     try { const v = localStorage.getItem("opus_" + key); return v ? JSON.parse(v) : def; } catch { return def; }
@@ -97,7 +100,9 @@ setTimeout(() => $("#loader").classList.add("hide"), 1400);
 // ---------- Theme ----------
 const applyTheme = (t) => { document.documentElement.dataset.theme = t; store.set("theme", t); };
 applyTheme(store.get("theme", matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
-$("#themeBtn").addEventListener("click", () => applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+$("#themeBtn").addEventListener("click", () => { applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"); sfx("toggle"); });
+// Ovozni o'chirish / yoqish
+$("#soundBtn").addEventListener("click", () => { window.SFX && SFX.toggle(); toast(window.SFX && SFX.on ? "🔊 Ovoz effektlari yoqildi" : "🔇 Ovoz effektlari o'chirildi"); });
 
 // ---------- Header ----------
 const header = $("#header");
@@ -630,7 +635,8 @@ function addToCart(id, qty = 1, srcEl, silent) {
   if (current + qty > p.stock) { toast(`⚠️ Omborda faqat ${p.stock} dona bor`); return false; }
   if (item) item.qty += qty; else state.cart.push({ id, qty });
   saveCart();
-  if (srcEl) flyToCart(srcEl, p);
+  sfx("add");
+  if (srcEl) { flyToCart(srcEl, p); setTimeout(() => sfx("coin"), 700); }
   setTimeout(() => { updateBadges(true); renderCart(); renderProducts(); }, srcEl ? 700 : 0);
   if (!silent) toast(`✅ "${p.name}" savatga qo'shildi`);
   return true;
@@ -643,10 +649,12 @@ function changeQty(id, d) {
   if (item.qty + d > p.stock) return toast(`⚠️ Omborda faqat ${p.stock} dona bor`);
   item.qty += d;
   if (item.qty <= 0) return removeFromCart(id);
+  sfx(d > 0 ? "plus" : "minus");
   saveCart(); renderCart(); updateBadges();
 }
 
 function removeFromCart(id) {
+  sfx("remove");
   const el = $(`#cartItems [data-id="${id}"]`);
   const done = () => {
     state.cart = state.cart.filter((x) => x.id !== id);
@@ -894,13 +902,16 @@ if (location.hash === "#orders") setTimeout(() => {
 // ---------- Layers (drawer / modal) ----------
 const overlay = $("#overlay");
 function openLayer(el) {
-  closeAll(true);
+  if (!el.classList.contains("open")) sfx("open");
+  closeAll(true, true);
   el.classList.add("open");
   overlay.classList.add("show");
   document.body.classList.add("lock");
 }
-function closeAll(keepOverlay) {
-  $$(".drawer.open, .modal.open").forEach((x) => x.classList.remove("open"));
+function closeAll(keepOverlay, quiet) {
+  const opened = $$(".drawer.open, .modal.open");
+  if (opened.length && !quiet) sfx("close");
+  opened.forEach((x) => x.classList.remove("open"));
   if (!keepOverlay) { overlay.classList.remove("show"); document.body.classList.remove("lock"); }
   if (location.hash.startsWith("#news-")) history.replaceState(null, "", location.pathname + location.search);
 }
@@ -1155,12 +1166,28 @@ $("#newsForm").addEventListener("submit", (e) => {
 
 // ---------- Toast ----------
 function toast(msg) {
+  if (/^(⚠️|❌|⛔)/.test(msg)) sfx("error");
+  else if (/^(🔔|📨|🙏|👋|🎉)/.test(msg)) sfx("notify");
   const el = document.createElement("div");
   el.className = "toast";
   el.textContent = msg;
   $("#toasts").appendChild(el);
   setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 300); }, 2600);
 }
+
+// ---------- Ovoz: bosish va kartalar ustidan o'tish ----------
+// Savatga qo'shish, ochish/yopish kabi o'z ovozi bor tugmalar uchun click chalinmaydi
+const OWN_SOUND = "[data-add], #pmAdd, [data-d], .rm, .close, [data-close], #themeBtn, #soundBtn, #cartBtn, #ordersBtn, #accBtn, [data-open]";
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button, .btn, .chip, a[href^='#']");
+  if (b && !b.closest(OWN_SOUND)) sfx("click");
+}, true);
+document.addEventListener("mouseover", (e) => {
+  if (!matchMedia("(hover: hover)").matches) return;
+  const c = e.target.closest(".card, .cat, .news-card");
+  if (c && !c.contains(e.relatedTarget)) sfx("hover");
+});
+document.addEventListener("input", (e) => { if (e.target.matches(".tgc-form input, input[name=password], input[name=phone]")) sfx("tick"); });
 
 // ---------- Ripple ----------
 document.addEventListener("pointerdown", (e) => {
@@ -1177,6 +1204,7 @@ document.addEventListener("pointerdown", (e) => {
 
 // ---------- Confetti ----------
 function confetti(n = 150) {
+  sfx("success");
   const cv = $("#confetti"), ctx = cv.getContext("2d");
   cv.width = innerWidth; cv.height = innerHeight;
   const colors = ["#e10f2a", "#ff4d2e", "#ffb020", "#ffffff", "#8f0618"];
