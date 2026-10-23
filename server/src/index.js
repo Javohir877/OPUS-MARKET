@@ -80,7 +80,7 @@ function normPhone(p) {
 const normEmail = (e) => { const v = str(e, 120).toLowerCase(); return v && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v) ? v : null; };
 const ip = (req) => req.headers.get("CF-Connecting-IP") || "local";
 const publicUser = (u) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email, region: u.region, address: u.address, created_at: u.created_at });
-const orderOut = (o) => ({ ...o, items: JSON.parse(o.items_json || "[]"), items_json: undefined });
+const orderOut = (o) => ({ ...o, items: JSON.parse(o.items_json || "[]"), items_json: undefined, code_hash: undefined, code_exp: undefined, code_tries: undefined });
 
 // Xato urinishlar: oynada (windowMs) max dan ortiq bo'lsa — 429
 async function checkLimit(env, key, max, windowMs) {
@@ -274,19 +274,249 @@ route("POST", "/api/orders", async (req, env) => {
   for (let tries = 0; tries < 5; tries++) {
     id = "OP" + String(now).slice(-7) + String(crypto.getRandomValues(new Uint16Array(1))[0] % 100).padStart(2, "0");
     try {
-      await env.DB.prepare(`INSERT INTO orders (id, user_id, status, delivery, region, address, note, payment, months, promo, subtotal, discount, ship, total, items_json, created_at, updated_at)
-        VALUES (?, ?, 'Yangi', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .bind(id, u.id, delivery, region, address, note, payment, months, pct ? promo : null, subtotal, discount, ship, total, JSON.stringify(lines), now, now).run();
+      // Telegram bot ulangan bo'lsa — buyurtma kod bilan tasdiqlanguncha "tasdiqlanmagan" (confirmed = 0) turadi
+      await env.DB.prepare(`INSERT INTO orders (id, user_id, status, delivery, region, address, note, payment, months, promo, subtotal, discount, ship, total, items_json, created_at, updated_at, confirmed, confirmed_at)
+        VALUES (?, ?, 'Yangi', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .bind(id, u.id, delivery, region, address, note, payment, months, pct ? promo : null, subtotal, discount, ship, total, JSON.stringify(lines), now, now,
+          env.TELEGRAM_TOKEN ? 0 : 1, env.TELEGRAM_TOKEN ? null : now).run();
       break;
     } catch (e) { if (tries === 4) throw e; }
   }
   // Keyingi safar uchun manzilni eslab qolamiz
   if (delivery === "courier") await env.DB.prepare("UPDATE users SET region = ?, address = ? WHERE id = ?").bind(region, address, u.id).run();
-  return json({ order: orderOut(await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(id).first()) }, 201);
+  const order = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(id).first();
+  return json({ order: orderOut(order), confirm: order.confirmed ? null : await startConfirm(env, u, order) }, 201);
 });
 
 // ---------- Admin ----------
 const admin = (req, env) => session(req, env, "admin");
+
+// ---------- Telegram bot ----------
+// Token va webhook kaliti — Cloudflare maxfiy o'zgaruvchilari (wrangler secret): TELEGRAM_TOKEN, TG_WEBHOOK_SECRET, TG_ADMIN_CHAT.
+// Bot odamga birinchi bo'lib yoza olmaydi, shuning uchun mijoz bir marta t.me/<bot>?start=<kalit> orqali botni ochib,
+// kontaktini yuboradi; telefon akkauntdagi raqamga mos kelsa — chat akkauntga bog'lanadi va kodlar shu yerga keladi.
+const CODE_TTL = 10 * 60e3, CODE_TRIES = 5, UNCONFIRMED_TTL = 2 * 3600e3;
+async function tg(env, method, payload) {
+  if (!env.TELEGRAM_TOKEN) return null;
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_TOKEN}/${method}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    return await r.json();
+  } catch { return null; }
+}
+const tgSend = (env, chat, text, extra = {}) => tg(env, "sendMessage", { chat_id: chat, text, parse_mode: "HTML", disable_web_page_preview: true, ...extra });
+const hh = (s) => String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const som = (n) => String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " so'm";
+const phoneFmt = (p) => { const d = String(p || "").replace(/^998/, ""); return `+998 ${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5, 7)} ${d.slice(7, 9)}`; };
+const tashkent = (ms) => new Date(ms + 5 * 3600e3).toISOString().slice(0, 16).replace("T", " ");
+const PAY_NAMES = { click: "Click", payme: "Payme", uzcard: "Uzcard", humo: "Humo", visa: "Visa", mastercard: "Mastercard", uzum: "Uzum Nasiya", cash: "Naqd pul" };
+const kvGet = async (env, k) => (await env.DB.prepare("SELECT value FROM kv WHERE key = ?").bind(k).first())?.value ?? null;
+const kvSet = (env, k, v) => env.DB.prepare("INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(k, v).run();
+const adminChat = async (env) => (await kvGet(env, "tg_admin_chat")) || env.TG_ADMIN_CHAT || null;
+const botLink = (env, payload) => `https://t.me/${env.TELEGRAM_BOT}?start=${payload}`;
+
+// Buyurtma tarkibi (mijoz cheki va admin xabari uchun umumiy qism)
+function orderLines(o) {
+  const items = JSON.parse(o.items_json || "[]");
+  return [
+    ...items.map((i, n) => `${n + 1}. ${hh(i.name)} × ${i.qty} — <b>${som(i.price * i.qty)}</b>`),
+    "",
+    `Mahsulotlar: ${som(o.subtotal)}`,
+    o.discount ? `Chegirma${o.promo ? ` (${hh(o.promo)})` : ""}: −${som(o.discount)}` : null,
+    `Yetkazib berish: ${o.ship ? som(o.ship) : "bepul"}`,
+    `💰 <b>Jami: ${som(o.total)}</b>`,
+    `💳 To'lov: ${PAY_NAMES[o.payment] || hh(o.payment)}${o.months ? ` (${o.months} oy, oyiga ${som(o.total / o.months)})` : ""}`,
+    o.delivery === "pickup" ? "🏬 Do'kondan olib ketish" : `🚚 Kuryer: ${hh([o.region, o.address].filter(Boolean).join(", "))}`,
+  ].filter((x) => x !== null).join("\n");
+}
+
+async function sendCode(env, o, chat) {
+  const code = String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000));
+  await env.DB.prepare("UPDATE orders SET code_hash = ?, code_exp = ?, code_tries = 0, code_sent = ? WHERE id = ?")
+    .bind(await sha256(o.id + ":" + code), Date.now() + CODE_TTL, Date.now(), o.id).run();
+  await tgSend(env, chat, `🔐 <b>OPUS MARKET</b>\n\nBuyurtma <b>#${o.id}</b> (${som(o.total)}) uchun tasdiqlash kodi:\n\n<code>${code}</code>\n\nKodni saytga kiriting. Kod 10 daqiqa amal qiladi.\n⚠️ Kodni hech kimga aytmang — do'kon xodimlari ham uni so'ramaydi.`);
+}
+
+// Buyurtma berilgach: chat bog'langan bo'lsa — kod yuboramiz, bo'lmasa — botni ochish havolasini qaytaramiz
+async function startConfirm(env, u, o) {
+  const fresh = await env.DB.prepare("SELECT tg_chat_id, tg_link_token FROM users WHERE id = ?").bind(u.id).first();
+  if (fresh.tg_chat_id) { await sendCode(env, o, fresh.tg_chat_id); return { linked: true, bot: env.TELEGRAM_BOT }; }
+  let token = fresh.tg_link_token;
+  if (!token) { token = randHex(12); await env.DB.prepare("UPDATE users SET tg_link_token = ? WHERE id = ?").bind(token, u.id).run(); }
+  return { linked: false, bot: env.TELEGRAM_BOT, link: botLink(env, token) };
+}
+
+async function notifyConfirmed(env, o) {
+  const u = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(o.user_id).first();
+  if (u && u.tg_chat_id) {
+    await tgSend(env, u.tg_chat_id, `✅ <b>Buyurtma tasdiqlandi!</b>\n<b>#${o.id}</b> · ${tashkent(o.created_at)}\n\nSiz oldingiz:\n${orderLines(o)}\n\nOperatorimiz tez orada bog'lanadi. Holatini saytdagi "Buyurtmalarim" bo'limida kuzatishingiz mumkin. Xaridingiz uchun rahmat! ❤️`);
+  }
+  const chat = await adminChat(env);
+  if (!chat) return;
+  const st = u ? await env.DB.prepare("SELECT COUNT(*) AS c, COALESCE(SUM(total), 0) AS s FROM orders WHERE user_id = ? AND confirmed = 1 AND status != 'Bekor qilindi'").bind(u.id).first() : { c: 0, s: 0 };
+  await tgSend(env, chat, [
+    `🛒 <b>YANGI BUYURTMA #${o.id}</b> ✅ tasdiqlangan`,
+    `🕒 ${tashkent(o.created_at)}`,
+    "",
+    `👤 <b>${hh(u ? u.name : "—")}</b>`,
+    u ? `📞 ${phoneFmt(u.phone)}` : null,
+    u && u.email ? `✉️ ${hh(u.email)}` : null,
+    u && u.tg_chat_id ? `💬 Telegram: <a href="tg://user?id=${u.tg_chat_id}">yozish</a>` : null,
+    o.note ? `📝 Izoh: ${hh(o.note)}` : null,
+    "",
+    orderLines(o),
+    "",
+    u ? `📊 Mijozning ${st.c}-buyurtmasi, jami xaridlari: ${som(st.s)}` : null,
+  ].filter((x) => x !== null).join("\n"));
+}
+
+// Bot xabarlari ikki yo'l bilan keladi: webhook (agar Telegram serverimizga yeta olsa) yoki polling (getUpdates).
+// Polling: mijoz tasdiqlash oynasida turganida sayt har 3 soniyada /api/tg/poll ni chaqiradi, qolgan paytda — har daqiqada cron.
+route("POST", "/tg/webhook", async (req, env) => {
+  if (!env.TG_WEBHOOK_SECRET || req.headers.get("X-Telegram-Bot-Api-Secret-Token") !== env.TG_WEBHOOK_SECRET) return new Response("forbidden", { status: 403 });
+  await handleUpdate(env, await body(req, 100000));
+  return json({ ok: true });
+});
+async function pollUpdates(env) {
+  if (!env.TELEGRAM_TOKEN) return 0;
+  // Bir vaqtda faqat bitta so'rov o'qisin (aks holda bitta xabar ikki marta ishlanishi mumkin)
+  const now = Date.now();
+  const lock = await env.DB.prepare("INSERT INTO kv (key, value) VALUES ('tg_poll_lock', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value WHERE CAST(kv.value AS INTEGER) < ?")
+    .bind(String(now), now - 8000).run();
+  if (!lock.meta.changes) return 0;
+  try {
+    const offset = +(await kvGet(env, "tg_offset")) || 0;
+    const r = await tg(env, "getUpdates", { offset: offset + 1, timeout: 0, limit: 30, allowed_updates: ["message"] });
+    if (!r || !r.ok) return 0;
+    for (const upd of r.result) {
+      await kvSet(env, "tg_offset", String(upd.update_id)); // avval belgilaymiz — xato bo'lsa ham qayta ishlanmaydi
+      try { await handleUpdate(env, upd); } catch (e) { console.error("tg update", e && e.stack || e); }
+    }
+    return r.result.length;
+  } finally {
+    await env.DB.prepare("UPDATE kv SET value = '0' WHERE key = 'tg_poll_lock'").run();
+  }
+}
+// Sayt (mijoz yoki admin) tasdiqlash oynasida turganida chaqiradi
+route("POST", "/api/tg/poll", async (req, env) => {
+  const t = bearer(req);
+  if (!t || !(await env.DB.prepare("SELECT 1 FROM sessions WHERE token_hash = ? AND expires_at > ?").bind(await sha256(t), Date.now()).first())) fail(401, "Avval akkauntingizga kiring");
+  return json({ processed: await pollUpdates(env) });
+});
+async function handleUpdate(env, upd) {
+  const m = upd.message;
+  if (!m || !m.chat || m.chat.type !== "private") return;
+  const chat = String(m.chat.id), text = (m.text || "").trim();
+  const isAdmin = chat === String(await adminChat(env));
+
+  if (text.startsWith("/start")) {
+    const payload = text.split(/\s+/)[1] || "";
+    if (payload.startsWith("adm_")) {
+      const link = JSON.parse((await kvGet(env, "tg_admin_link")) || "null");
+      if (link && link.token === payload.slice(4) && link.exp > Date.now()) {
+        await kvSet(env, "tg_admin_chat", chat);
+        await env.DB.prepare("DELETE FROM kv WHERE key = 'tg_admin_link'").run();
+        await tgSend(env, chat, "✅ Siz <b>OPUS MARKET admini</b> sifatida ulandingiz. Tasdiqlangan har bir buyurtma mijozning to'liq ma'lumotlari bilan shu yerga keladi.");
+      } else await tgSend(env, chat, "⛔ Havola eskirgan yoki noto'g'ri. Admin paneldan yangisini oling.");
+      return;
+    }
+    if (payload) {
+      const u = await env.DB.prepare("SELECT * FROM users WHERE tg_link_token = ?").bind(payload).first();
+      if (!u) { await tgSend(env, chat, "⛔ Havola eskirgan. Saytdagi \"Telegram'da tasdiqlash\" tugmasini qayta bosing."); return; }
+      await env.DB.prepare("UPDATE users SET tg_pending_chat = ? WHERE id = ?").bind(chat, u.id).run();
+      await tgSend(env, chat, `Assalomu alaykum, <b>${hh(u.name)}</b>! 👋\n\nBuyurtmangizni tasdiqlash uchun telefon raqamingizni yuboring — u OPUS MARKET akkauntingizdagi raqamga mos kelishi kerak. Pastdagi tugmani bosing 👇`, {
+        reply_markup: { keyboard: [[{ text: "📱 Raqamimni yuborish", request_contact: true }]], resize_keyboard: true, one_time_keyboard: true },
+      });
+      return;
+    }
+    const linked = await env.DB.prepare("SELECT name FROM users WHERE tg_chat_id = ?").bind(chat).first();
+    await tgSend(env, chat, isAdmin ? "👑 Siz OPUS MARKET adminisiz. Yangi buyurtmalar shu yerga keladi."
+      : linked ? `Salom, <b>${hh(linked.name)}</b>! Buyurtmalaringiz tasdiqlash kodlari va holati shu yerga keladi.`
+      : "OPUS MARKET botiga xush kelibsiz! 🛒\nSaytda buyurtma berganingizdan keyin \"Telegram'da tasdiqlash\" tugmasini bosing — tasdiqlash kodi shu yerga keladi.");
+    return;
+  }
+
+  if (m.contact) {
+    if (String(m.contact.user_id) !== String(m.from.id)) { await tgSend(env, chat, "⚠️ Faqat o'zingizning raqamingizni yuboring (pastdagi tugma orqali)."); return; }
+    const u = await env.DB.prepare("SELECT * FROM users WHERE tg_pending_chat = ?").bind(chat).first();
+    if (!u) { await tgSend(env, chat, "Avval saytdagi \"Telegram'da tasdiqlash\" tugmasini bosing."); return; }
+    if (normPhone(m.contact.phone_number) !== u.phone) {
+      await tgSend(env, chat, `⛔ Bu raqam akkauntdagi raqamga (<b>+998 ** *** ** ${u.phone.slice(-2)}</b>) mos kelmadi.\nAkkauntingizdagi raqam bilan ro'yxatdan o'tgan Telegram'dan kiring.`, { reply_markup: { remove_keyboard: true } });
+      return;
+    }
+    await env.DB.prepare("UPDATE users SET tg_chat_id = NULL WHERE tg_chat_id = ? AND id != ?").bind(chat, u.id).run();
+    await env.DB.prepare("UPDATE users SET tg_chat_id = ?, tg_pending_chat = NULL, tg_link_token = NULL WHERE id = ?").bind(chat, u.id).run();
+    await tgSend(env, chat, "✅ Telegram akkauntingizga ulandi! Endi tasdiqlash kodlari va buyurtma holati shu yerga keladi.", { reply_markup: { remove_keyboard: true } });
+    const pending = await env.DB.prepare("SELECT * FROM orders WHERE user_id = ? AND confirmed = 0 AND status = 'Yangi' ORDER BY created_at DESC LIMIT 3").bind(u.id).all();
+    for (const o of pending.results) await sendCode(env, o, chat);
+    return;
+  }
+
+  await tgSend(env, chat, isAdmin ? "👑 Admin: yangi buyurtmalar avtomatik keladi. Batafsil — admin panelda." : "Tasdiqlash kodi saytda buyurtma berganingizda shu yerga keladi. Savollar bo'lsa — do'kon operatoriga murojaat qiling.");
+}
+
+// Mijoz: kodni qayta yuborish / bot havolasini olish
+route("POST", "/api/orders/:id/code", async (req, env, p) => {
+  const u = await currentUser(req, env);
+  const o = await env.DB.prepare("SELECT * FROM orders WHERE id = ? AND user_id = ?").bind(p.id, u.id).first();
+  if (!o) fail(404, "Buyurtma topilmadi");
+  if (o.confirmed) return json({ confirmed: true });
+  if (o.status === "Bekor qilindi") fail(409, "Buyurtma bekor qilingan");
+  if (u.tg_chat_id && o.code_sent && Date.now() - o.code_sent < 60e3) fail(429, "Kod yaqinda yuborildi. 1 daqiqadan keyin qayta so'rang.");
+  return json(await startConfirm(env, u, o));
+});
+// Mijoz: kodni kiritish
+route("POST", "/api/orders/:id/confirm", async (req, env, p) => {
+  const u = await currentUser(req, env), b = await body(req);
+  const o = await env.DB.prepare("SELECT * FROM orders WHERE id = ? AND user_id = ?").bind(p.id, u.id).first();
+  if (!o) fail(404, "Buyurtma topilmadi");
+  if (o.confirmed) return json({ order: orderOut(o) });
+  if (o.status === "Bekor qilindi") fail(409, "Buyurtma bekor qilingan");
+  if (!o.code_hash) fail(400, "Avval Telegram orqali kod oling");
+  if (o.code_tries >= CODE_TRIES) fail(429, "Juda ko'p xato urinish. \"Kodni qayta yuborish\" ni bosing.");
+  if (o.code_exp < Date.now()) fail(400, "Kod muddati tugagan. \"Kodni qayta yuborish\" ni bosing.");
+  const code = String(b.code || "").replace(/\D/g, "");
+  if (!safeEqual(await sha256(o.id + ":" + code), o.code_hash)) {
+    await env.DB.prepare("UPDATE orders SET code_tries = code_tries + 1 WHERE id = ?").bind(o.id).run();
+    const left = CODE_TRIES - o.code_tries - 1;
+    fail(400, left > 0 ? `Kod noto'g'ri. Yana ${left} marta urinish mumkin.` : "Kod noto'g'ri. \"Kodni qayta yuborish\" ni bosing.");
+  }
+  const now = Date.now();
+  await env.DB.prepare("UPDATE orders SET confirmed = 1, confirmed_at = ?, code_hash = NULL, updated_at = ? WHERE id = ?").bind(now, now, o.id).run();
+  const done = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(o.id).first();
+  await notifyConfirmed(env, done);
+  return json({ order: orderOut(done) });
+});
+
+// Admin: Telegram ulanishi
+route("GET", "/api/admin/telegram", async (req, env) => {
+  await admin(req, env);
+  const linked = await env.DB.prepare("SELECT COUNT(*) AS c FROM users WHERE tg_chat_id IS NOT NULL").first();
+  return json({ enabled: !!env.TELEGRAM_TOKEN, bot: env.TELEGRAM_BOT || null, adminConnected: !!(await adminChat(env)), linkedUsers: linked.c });
+});
+route("POST", "/api/admin/telegram/link", async (req, env) => {
+  await admin(req, env);
+  const token = randHex(12);
+  await kvSet(env, "tg_admin_link", JSON.stringify({ token, exp: Date.now() + 15 * 60e3 }));
+  return json({ link: botLink(env, "adm_" + token) });
+});
+route("POST", "/api/admin/telegram/test", async (req, env) => {
+  await admin(req, env);
+  const chat = await adminChat(env);
+  if (!chat) fail(400, "Admin Telegram'i hali ulanmagan");
+  const r = await tgSend(env, chat, "🔔 Sinov xabari: OPUS MARKET admin paneli bot bilan bog'langan. Yangi buyurtmalar shu yerga keladi.");
+  if (!r || !r.ok) fail(502, "Telegram xabarni qabul qilmadi" + (r && r.description ? ": " + r.description : ""));
+  return json({ ok: true });
+});
+
+// Tasdiqlanmagan eski buyurtmalarni bekor qilib, omborga qaytaramiz (cron va admin ro'yxatida chaqiriladi)
+async function expireUnconfirmed(env) {
+  const old = await env.DB.prepare("SELECT * FROM orders WHERE confirmed = 0 AND status = 'Yangi' AND created_at < ? LIMIT 50").bind(Date.now() - UNCONFIRMED_TTL).all();
+  for (const o of old.results) {
+    await restock(env, o, 1);
+    await env.DB.prepare("UPDATE orders SET status = 'Bekor qilindi', updated_at = ? WHERE id = ?").bind(Date.now(), o.id).run();
+  }
+  return old.results.length;
+}
 
 route("POST", "/api/admin/login", async (req, env) => {
   const b = await body(req);
@@ -322,15 +552,15 @@ route("GET", "/api/admin/stats", async (req, env) => {
   const [users, newUsers, orders, today, revenue, byStatus] = await Promise.all([
     q("SELECT COUNT(*) AS c FROM users"),
     q("SELECT COUNT(*) AS c FROM users WHERE created_at > ?", week),
-    q("SELECT COUNT(*) AS c FROM orders"),
-    q("SELECT COUNT(*) AS c, COALESCE(SUM(total), 0) AS s FROM orders WHERE created_at > ? AND status != 'Bekor qilindi'", day),
-    q("SELECT COALESCE(SUM(total), 0) AS s FROM orders WHERE status != 'Bekor qilindi'"),
-    env.DB.prepare("SELECT status, COUNT(*) AS c FROM orders GROUP BY status").all(),
+    q("SELECT COUNT(*) AS c FROM orders WHERE confirmed = 1"),
+    q("SELECT COUNT(*) AS c, COALESCE(SUM(total), 0) AS s FROM orders WHERE created_at > ? AND status != 'Bekor qilindi' AND confirmed = 1", day),
+    q("SELECT COALESCE(SUM(total), 0) AS s FROM orders WHERE status != 'Bekor qilindi' AND confirmed = 1"),
+    env.DB.prepare("SELECT status, COUNT(*) AS c FROM orders WHERE confirmed = 1 GROUP BY status").all(),
   ]);
   // Oxirgi 14 kunlik savdo (Toshkent vaqti, UTC+5) va 30 kunda eng ko'p sotilganlar
   const TZ = 5 * 3600e3, dayKey = (ms) => new Date(ms + TZ).toISOString().slice(0, 10);
   const since = Date.now() - 30 * 864e5;
-  const recent = (await env.DB.prepare("SELECT total, items_json, created_at FROM orders WHERE created_at > ? AND status != 'Bekor qilindi'").bind(since).all()).results;
+  const recent = (await env.DB.prepare("SELECT total, items_json, created_at FROM orders WHERE created_at > ? AND status != 'Bekor qilindi' AND confirmed = 1").bind(since).all()).results;
   const series = [];
   for (let i = 13; i >= 0; i--) series.push({ day: dayKey(Date.now() - i * 864e5), orders: 0, revenue: 0 });
   const byDay = new Map(series.map((d) => [d.day, d])), top = new Map();
@@ -346,14 +576,15 @@ route("GET", "/api/admin/stats", async (req, env) => {
   return json({ users: users.c, newUsers: newUsers.c, orders: orders.c, todayOrders: today.c, todayRevenue: today.s, revenue: revenue.s,
     byStatus: Object.fromEntries(byStatus.results.map((r) => [r.status, r.c])),
     series, top: [...top.values()].sort((a, b) => b.qty - a.qty).slice(0, 5),
-    reviews: reviews.c, newReviews: reviews.w || 0, lastOrderAt: (await q("SELECT MAX(created_at) AS m FROM orders")).m || 0 });
+    reviews: reviews.c, newReviews: reviews.w || 0, lastOrderAt: (await q("SELECT MAX(COALESCE(confirmed_at, created_at)) AS m FROM orders WHERE confirmed = 1")).m || 0,
+    unconfirmed: (await q("SELECT COUNT(*) AS c FROM orders WHERE confirmed = 0 AND status = 'Yangi'")).c });
 });
 
 route("GET", "/api/admin/users", async (req, env) => {
   await admin(req, env);
   const url = new URL(req.url), q = "%" + (url.searchParams.get("q") || "").trim() + "%";
-  const r = await env.DB.prepare(`SELECT u.id, u.name, u.phone, u.email, u.region, u.address, u.blocked, u.created_at, u.last_login,
-      COUNT(o.id) AS orders, COALESCE(SUM(CASE WHEN o.status != 'Bekor qilindi' THEN o.total END), 0) AS spent
+  const r = await env.DB.prepare(`SELECT u.id, u.name, u.phone, u.email, u.region, u.address, u.blocked, u.created_at, u.last_login, (u.tg_chat_id IS NOT NULL) AS tg,
+      COUNT(CASE WHEN o.confirmed = 1 THEN o.id END) AS orders, COALESCE(SUM(CASE WHEN o.status != 'Bekor qilindi' AND o.confirmed = 1 THEN o.total END), 0) AS spent
     FROM users u LEFT JOIN orders o ON o.user_id = u.id
     WHERE u.name LIKE ?1 OR u.phone LIKE ?1 OR COALESCE(u.email, '') LIKE ?1
     GROUP BY u.id ORDER BY u.created_at DESC LIMIT 500`).bind(q).all();
@@ -364,7 +595,7 @@ route("GET", "/api/admin/users/:id", async (req, env, p) => {
   const u = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(+p.id).first();
   if (!u) fail(404, "Mijoz topilmadi");
   const o = await env.DB.prepare("SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC").bind(u.id).all();
-  return json({ user: { ...publicUser(u), blocked: u.blocked, last_login: u.last_login }, orders: o.results.map(orderOut) });
+  return json({ user: { ...publicUser(u), blocked: u.blocked, last_login: u.last_login, tg: !!u.tg_chat_id }, orders: o.results.map(orderOut) });
 });
 route("PATCH", "/api/admin/users/:id", async (req, env, p) => {
   await admin(req, env);
@@ -396,6 +627,7 @@ route("POST", "/api/admin/users/:id/reset-password", async (req, env, p) => {
 
 route("GET", "/api/admin/orders", async (req, env) => {
   await admin(req, env);
+  await expireUnconfirmed(env);
   const url = new URL(req.url), status = url.searchParams.get("status"), q = "%" + (url.searchParams.get("q") || "").trim() + "%";
   const r = await env.DB.prepare(`SELECT o.*, u.name AS user_name, u.phone AS user_phone, u.email AS user_email
     FROM orders o LEFT JOIN users u ON u.id = o.user_id
@@ -413,6 +645,11 @@ route("PATCH", "/api/admin/orders/:id", async (req, env, p) => {
   const wasCancelled = o.status === "Bekor qilindi", nowCancelled = b.status === "Bekor qilindi";
   if (wasCancelled !== nowCancelled) await restock(env, o, nowCancelled ? 1 : -1);
   await env.DB.prepare("UPDATE orders SET status = ?, updated_at = ? WHERE id = ?").bind(b.status, Date.now(), o.id).run();
+  if (b.status !== o.status) {
+    const u = o.user_id && await env.DB.prepare("SELECT tg_chat_id FROM users WHERE id = ?").bind(o.user_id).first();
+    const icon = { "Tasdiqlandi": "✅", "Yig'ilmoqda": "📦", "Yo'lda": "🚚", "Yetkazildi": "🎉", "Bekor qilindi": "❌" }[b.status] || "ℹ️";
+    if (u && u.tg_chat_id) await tgSend(env, u.tg_chat_id, `${icon} Buyurtma <b>#${o.id}</b> holati: <b>${b.status}</b>${b.status === "Yetkazildi" ? "\n\nXaridingiz uchun rahmat! Mahsulot haqida saytda sharh qoldirsangiz, xursand bo'lamiz ⭐" : ""}`);
+  }
   return json({ ok: true });
 });
 
@@ -433,7 +670,7 @@ route("POST", "/api/products/:id/reviews", async (req, env, p) => {
   if (!(rating >= 1 && rating <= 5)) fail(400, "Bahoni tanlang (1–5 yulduz)");
   if (text.length < 3) fail(400, "Fikringizni bir necha so'z bilan yozing");
   // Shu mahsulotni sotib olgan (bekor qilinmagan buyurtmasi bor) mijozga "Xarid qilgan" belgisi
-  const own = await env.DB.prepare("SELECT items_json FROM orders WHERE user_id = ? AND status != 'Bekor qilindi'").bind(u.id).all();
+  const own = await env.DB.prepare("SELECT items_json FROM orders WHERE user_id = ? AND status != 'Bekor qilindi' AND confirmed = 1").bind(u.id).all();
   const verified = own.results.some((o) => JSON.parse(o.items_json).some((i) => i.id === pid)) ? 1 : 0;
   await env.DB.prepare(`INSERT INTO reviews (product_id, user_id, rating, text, verified, hidden, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)
     ON CONFLICT(product_id, user_id) DO UPDATE SET rating = excluded.rating, text = excluded.text, verified = excluded.verified, created_at = excluded.created_at`)
@@ -512,6 +749,7 @@ route("POST", "/api/admin/images", async (req, env) => {
 
 // ---------- Kirish nuqtasi ----------
 export default {
+  async scheduled(event, env) { await pollUpdates(env); await expireUnconfirmed(env); },
   async fetch(req, env) {
     const cors = corsHeaders(req, env);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
