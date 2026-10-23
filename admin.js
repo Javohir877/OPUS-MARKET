@@ -33,6 +33,8 @@ document.documentElement.dataset.theme = safe(() => JSON.parse(localStorage.getI
 
 // ---------- Umumiy ----------
 function toast(msg) {
+  // Ovoz: sfx.js (sayt bilan umumiy sozlamalar)
+  if (window.SFX && !/^🔔/.test(msg)) SFX.play(/^(❌|⚠️|⛔)/.test(msg) ? "error" : /^🚀/.test(msg) ? "success" : "select", { noHaptic: true }); // 🔔 — yangi buyurtma: o'z signali (chime) bor
   const el = document.createElement("div");
   el.className = "toast";
   el.textContent = msg;
