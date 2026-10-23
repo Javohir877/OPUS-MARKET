@@ -29,6 +29,14 @@
     return ctx;
   }
 
+  // Hozir chalinayotgan ovozlar (har biri alohida gain "bus"da) — kerak bo'lsa birdan so'ndirish uchun
+  let bus = null;
+  const voices = new Set();
+  function silenceOthers() {
+    const c = ctx; if (!c) return;
+    for (const g of voices) { try { g.gain.cancelScheduledValues(c.currentTime); g.gain.setTargetAtTime(0, c.currentTime, 0.02); } catch {} }
+    voices.clear();
+  }
   // Bitta nota: chastota, boshlanish (s), davomiylik (s), to'lqin turi, balandlik, chastota siljishi
   function tone(f, t0, dur, type = "sine", v = 0.2, slideTo) {
     const c = ac(); if (!c) return;
@@ -39,7 +47,7 @@
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(v, t + Math.min(0.012, dur / 4));
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g).connect(master);
+    o.connect(g).connect(bus || master);
     o.start(t); o.stop(t + dur + 0.02);
   }
   // Shovqin (shitirlash) — "whoosh" uchun
@@ -55,7 +63,7 @@
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(v, t + dur * 0.3);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    src.connect(flt).connect(g).connect(master);
+    src.connect(flt).connect(g).connect(bus || master);
     src.start(t); src.stop(t + dur);
   }
 
@@ -83,6 +91,15 @@
     open:    [() => { noise(0, 0.22, 0.07, 600, 2600); tone(440, 0.02, 0.18, "sine", 0.05, 660); }, 0],
     close:   [() => noise(0, 0.18, 0.05, 2400, 500), 0],
     toggle:  [() => { tone(900, 0, 0.05, "square", 0.04); tone(1350, 0.05, 0.07, "square", 0.035); }, 8],
+    check:   [() => {
+      tone(392, 0, 0.55, "sine", 0.05, 784);                 // doira chizilmoqda
+      noise(0.05, 0.5, 0.025, 800, 3200);
+      tone(1046.5, 0.62, 0.55, "sine", 0.17);                 // galochka — asosiy "ding"
+      tone(1568, 0.62, 0.45, "sine", 0.07);
+      tone(2093, 0.66, 0.35, "triangle", 0.04);
+      [2637, 3136, 3951].forEach((f, i) => tone(f, 0.8 + i * 0.06, 0.18, "sine", 0.025)); // yaltirash
+    }, [0, 600, 30]],
+    ok:      [() => { tone(1046.5, 0, 0.25, "sine", 0.12); tone(1568, 0.02, 0.22, "sine", 0.05); }, 12],
     success: [() => [523, 659, 784, 1047].forEach((f, i) => { tone(f, i * 0.09, 0.32, "triangle", 0.14); tone(f * 2, i * 0.09, 0.2, "sine", 0.04); }), [20, 50, 20, 50, 40]],
     error:   [() => { tone(220, 0, 0.14, "sawtooth", 0.07, 180); tone(196, 0.13, 0.2, "sawtooth", 0.07, 150); }, [40, 60, 40]],
     notify:  [() => { tone(1320, 0, 0.1, "sine", 0.1); tone(1760, 0.09, 0.16, "sine", 0.09); }, 20],
@@ -91,15 +108,28 @@
 
   // Bir xil ovoz ketma-ket juda tez chalinmasin
   const last = {}, history = [];
-  let total = 0;
+  let total = 0, hushUntil = 0;
   function play(name, opts) {
     const s = SOUNDS[name];
     if (!s || document.hidden) return;
     const now = performance.now();
+    const main = name === "check" || name === "success";
+    if (!main && now < hushUntil) return; // galochka jaranglayotganda boshqa ovozlar chalinmaydi
+    if (main) hushUntil = now + (name === "check" ? 1300 : 900);
     if (now - (last[name] || 0) < (name === "hover" || name === "tick" ? 60 : 35)) return;
     last[name] = now;
     history.push(name); total++; if (history.length > 20) history.shift();
-    if (on) { try { s[0](); } catch {} }
+    if (on) {
+      try {
+        const c = ac();
+        if (c) {
+          if (["check", "success"].includes(name)) silenceOthers(); // galochka/g'alaba ovozi boshqa ovozlar bilan aralashmasin
+          bus = c.createGain(); bus.connect(master); voices.add(bus);
+          const mine = bus; setTimeout(() => voices.delete(mine), 1600);
+        }
+        s[0]();
+      } catch {} finally { bus = null; }
+    }
     if (haptic && s[1] && !(opts && opts.noHaptic) && navigator.vibrate && matchMedia("(pointer: coarse)").matches) { try { navigator.vibrate(s[1]); } catch {} }
   }
   // Slayder: qiymatga qarab balandligi o'zgaradigan "tik"
