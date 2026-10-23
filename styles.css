@@ -1235,3 +1235,9 @@ select:focus { border-color: var(--primary); }
 
 @keyframes tgcIn { from { opacity: 0; } }
 .local-badge { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 9999; padding: 8px 14px; border-radius: 99px; background: #ffb020; color: #1a0a00; font-size: 12.5px; font-weight: 800; box-shadow: 0 8px 24px rgba(0,0,0,.35); white-space: nowrap; }
+
+/* ---------- Ovoz tugmasi ---------- */
+.sound-btn .snd-off { display: none; }
+.sound-off .sound-btn .snd-on { display: none; }
+.sound-off .sound-btn .snd-off { display: block; opacity: .55; }
+.sound-btn:active svg { transform: scale(.85); }
