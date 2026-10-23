@@ -557,9 +557,13 @@ function openProduct(id) {
         <button class="btn btn-ghost" id="pmCmp">${CMP_ICON.replace("<svg", '<svg width="18" height="18"')} ${state.compare.includes(p.id) ? "Solishtirishda ✓" : "Solishtirish"}</button>
       </div>
     </div>
-  </div>`;
+  </div>
+  <section class="pm-reviews" id="pmReviews"><div class="rv-wait">Sharhlar yuklanmoqda…</div></section>`;
 
   const body = $("#productModalBody");
+  $(".rating", body).classList.add("rv-jump");
+  $(".rating", body).addEventListener("click", () => $("#pmReviews").scrollIntoView({ behavior: "smooth", block: "start" }));
+  loadReviews(p);
   const updMonthly = () => ($("#pmMonthly").textContent = `${fmt((p.price * qty) / months)}/oy`);
   updMonthly();
   $$("[data-q]", body).forEach((b) => b.addEventListener("click", () => {
@@ -779,6 +783,7 @@ function renderOrders() {
       ${cancelled ? "" : `<div class="order-track" style="--p:${(st / (TRACK.length - 1)) * 84}%">${TRACK_LABEL.map((t, i) => `<span class="${i <= st ? "on" : ""}">${t}</span>`).join("")}</div>`}
       <b>${fmt(o.total)}</b>
       ${!cancelled && st < 4 && payLink(o) ? `<button class="btn btn-ghost btn-sm order-pay" data-pay="${esc(o.id)}">💳 ${pay.name} orqali to'lash (QR)</button><div class="pay-slot"></div>` : ""}
+      ${o.status === "Yangi" ? `<button class="order-cancel" data-cancel="${esc(o.id)}">Buyurtmani bekor qilish</button>` : ""}
     </div>`;
   }).join("");
 }
@@ -837,7 +842,25 @@ function mountQR(root) {
     } catch { el.innerHTML = `<small>QR yuklanmadi — pastdagi tugmani bosing</small>`; }
   });
 }
-$("#orderItems").addEventListener("click", (e) => {
+$("#orderItems").addEventListener("click", async (e) => {
+  const c = e.target.closest("[data-cancel]");
+  if (c) {
+    // Ikki bosqichli tasdiq: birinchi bosish — so'rash, ikkinchisi — bekor qilish
+    if (!c.classList.contains("confirm")) {
+      c.classList.add("confirm"); c.textContent = "Rostdan bekor qilinsinmi? Ha, bekor qilish";
+      setTimeout(() => { if (c.isConnected) { c.classList.remove("confirm"); c.textContent = "Buyurtmani bekor qilish"; } }, 4000);
+      return;
+    }
+    c.disabled = true;
+    try {
+      const { order } = await api("POST", `/api/orders/${encodeURIComponent(c.dataset.cancel)}/cancel`);
+      state.orders = state.orders.map((o) => (o.id === order.id ? order : o));
+      order.items.forEach((i) => { const p = byId(i.id); if (p) p.stock = (p.stock || 0) + i.qty; });
+      renderOrders(); renderProducts();
+      toast("Buyurtma bekor qilindi");
+    } catch (err) { toast("⚠️ " + err.message); c.disabled = false; }
+    return;
+  }
   const b = e.target.closest("[data-pay]");
   if (!b) return;
   const slot = b.nextElementSibling;
@@ -1431,6 +1454,73 @@ $("#passForm").addEventListener("submit", async (e) => {
     toast("🔒 Parol yangilandi. Boshqa qurilmalardagi seanslar yopildi.");
   } catch (err) { toast("⚠️ " + err.message); }
 });
+
+// ---------- Mahsulot sharhlari ----------
+const timeAgo = (ms) => {
+  const d = Math.floor((Date.now() - ms) / 864e5);
+  return d < 1 ? "bugun" : d < 2 ? "kecha" : d < 30 ? `${d} kun oldin` : new Date(ms).toLocaleDateString("ru-RU");
+};
+const starRow = (n) => `<span class="rv-stars" aria-label="${n} yulduz">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= n ? "on" : ""}">★</i>`).join("")}</span>`;
+async function loadReviews(p, fresh) {
+  const box = $("#pmReviews");
+  let data = { reviews: [], count: 0, avg: 0 };
+  // fresh — o'z sharhimizni yuborgandan keyin 20 soniyalik keshni chetlab o'tamiz
+  try { data = await api("GET", `/api/products/${p.id}/reviews${fresh ? "?t=" + Date.now() : ""}`); } catch {}
+  if (!box.isConnected || $("#pmReviews") !== box) return; // boshqa mahsulot ochilib bo'lgan
+  const dist = [5, 4, 3, 2, 1].map((s) => ({ s, n: data.reviews.filter((r) => r.rating === s).length }));
+  box.innerHTML = `
+    <div class="rv-head">
+      <div class="rv-score">
+        <b>${data.count ? data.avg.toFixed(1) : "—"}</b>
+        ${starRow(Math.round(data.avg))}
+        <small>${data.count ? `${data.count} ta mijoz sharhi` : "Hali sharh yo'q"}</small>
+      </div>
+      <div class="rv-dist">${dist.map((d) => `<div><span>${d.s}★</span><i><em style="width:${data.count ? (d.n / data.count) * 100 : 0}%"></em></i><small>${d.n}</small></div>`).join("")}</div>
+      <button class="btn btn-primary btn-sm" id="rvWrite">✍️ Sharh yozish</button>
+    </div>
+    <form class="rv-form" id="rvForm" hidden>
+      <div class="rv-pick" role="radiogroup" aria-label="Baho">${[1, 2, 3, 4, 5].map((i) => `<button type="button" data-star="${i}" aria-label="${i} yulduz">★</button>`).join("")}<span id="rvPickLabel">Baho bering</span></div>
+      <textarea name="text" rows="3" maxlength="1000" placeholder="Mahsulot haqida fikringiz: sifati, ishlashi, yetkazib berish…"></textarea>
+      <div class="rv-form-foot"><small class="muted">Sharhingiz ismingiz bilan ko'rsatiladi</small><button class="btn btn-primary btn-sm">Yuborish</button></div>
+    </form>
+    <div class="rv-list">${data.reviews.length ? data.reviews.map((r) => `
+      <article class="rv-item">
+        <header><i class="rv-ava">${esc(r.author[0] || "?")}</i><div><b>${esc(r.author)}</b>${r.verified ? `<span class="rv-ver">✓ Xarid qilgan</span>` : ""}<small>${timeAgo(r.created_at)}</small></div>${starRow(r.rating)}</header>
+        <p>${esc(r.text)}</p>
+        ${r.reply ? `<div class="rv-reply"><b>OPUS MARKET javobi:</b> ${esc(r.reply)}</div>` : ""}
+      </article>`).join("") : `<p class="rv-empty">Bu mahsulotga birinchi bo'lib sharh qoldiring — boshqa xaridorlarga yordam bering! ⭐</p>`}</div>`;
+  let rating = 0;
+  const labels = ["", "Yomon", "O'rtacha emas", "Yaxshi", "Juda yaxshi", "A'lo!"];
+  const paint = (n) => $$("[data-star]", box).forEach((b) => b.classList.toggle("on", +b.dataset.star <= n));
+  $$("[data-star]", box).forEach((b) => {
+    b.addEventListener("mouseenter", () => paint(+b.dataset.star));
+    b.addEventListener("mouseleave", () => paint(rating));
+    b.addEventListener("click", () => { rating = +b.dataset.star; paint(rating); $("#rvPickLabel").textContent = labels[rating]; });
+  });
+  $("#rvWrite").addEventListener("click", () => {
+    if (!auth.user) return requireLogin("Sharh yozish uchun akkauntingizga kiring", () => { openProduct(p.id); setTimeout(() => $("#rvWrite")?.click(), 900); });
+    const f = $("#rvForm");
+    f.hidden = !f.hidden;
+    if (!f.hidden) f.elements.text.focus();
+  });
+  $("#rvForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = e.target.elements.text.value.trim();
+    if (!rating) return toast("⭐ Avval yulduzcha bilan baho bering");
+    if (text.length < 3) return toast("✍️ Fikringizni bir necha so'z bilan yozing");
+    const btn = $("button.btn", e.target);
+    btn.disabled = true;
+    try {
+      await api("POST", `/api/products/${p.id}/reviews`, { rating, text });
+      toast("🙏 Rahmat! Sharhingiz qo'shildi");
+      loadReviews(p, true);
+    } catch (err) {
+      btn.disabled = false;
+      if (err.status === 401) return requireLogin("Seans tugagan — qayta kiring", () => openProduct(p.id));
+      toast("⚠️ " + err.message);
+    }
+  });
+}
 
 // ---------- Katalog serverdan ----------
 // Sahifa avval data.js bilan darhol chiziladi, keyin serverdagi eng so'nggi katalog (narx, ombor, yangi mahsulotlar) bilan yangilanadi.
