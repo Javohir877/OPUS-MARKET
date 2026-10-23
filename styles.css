@@ -1162,3 +1162,45 @@ select:focus { border-color: var(--primary); }
 .order-card.cancelled { opacity: .7; }
 .order-card.cancelled .status { background: rgba(225,15,42,.12); color: var(--primary); }
 #checkoutForm input[readonly] { opacity: .7; cursor: not-allowed; }
+
+/* ---------- Mahsulot sharhlari ---------- */
+.rating.rv-jump { cursor: pointer; }
+.rating.rv-jump:hover small { color: var(--primary); text-decoration: underline; }
+.pm-reviews { margin-top: 30px; padding-top: 26px; border-top: 1px solid var(--line); scroll-margin-top: 10px; }
+.rv-wait, .rv-empty { color: var(--muted); text-align: center; padding: 18px; }
+.rv-head { display: grid; grid-template-columns: auto 1fr auto; gap: 26px; align-items: center; margin-bottom: 18px; }
+.rv-score { text-align: center; display: grid; gap: 2px; }
+.rv-score b { font-size: 44px; line-height: 1; font-weight: 800; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.rv-score small { color: var(--muted); font-size: 12.5px; }
+.rv-stars { display: inline-flex; gap: 1px; font-size: 15px; letter-spacing: 0; }
+.rv-stars i { font-style: normal; color: var(--line); }
+.rv-stars i.on { color: #ffb020; }
+.rv-dist { display: grid; gap: 5px; max-width: 340px; }
+.rv-dist div { display: grid; grid-template-columns: 28px 1fr 22px; gap: 8px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.rv-dist i { height: 7px; border-radius: 9px; background: var(--line); overflow: hidden; }
+.rv-dist em { display: block; height: 100%; border-radius: 9px; background: linear-gradient(90deg, #ffb020, #ff7a1a); transition: width .8s cubic-bezier(.2,.9,.3,1); }
+.rv-form { display: grid; gap: 12px; padding: 16px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); margin-bottom: 18px; animation: slideIn .35s both; }
+.rv-form textarea { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--bg2); outline: none; resize: vertical; font: inherit; }
+.rv-form textarea:focus { border-color: var(--primary); }
+.rv-pick { display: flex; align-items: center; gap: 4px; }
+.rv-pick button { font-size: 30px; line-height: 1; color: var(--line); transition: transform .15s, color .15s; }
+.rv-pick button.on { color: #ffb020; }
+.rv-pick button:hover { transform: scale(1.2) rotate(-8deg); }
+.rv-pick span { margin-left: 10px; font-weight: 700; font-size: 14px; color: var(--muted); }
+.rv-form-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.rv-list { display: grid; gap: 12px; }
+.rv-item { padding: 16px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); animation: slideIn .4s both; }
+.rv-item header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.rv-item header > div { flex: 1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.rv-item header small { color: var(--muted); font-size: 12px; }
+.rv-ava { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; color: #fff; background: var(--grad); flex: none; }
+.rv-ver { font-size: 11.5px; font-weight: 700; color: var(--ok); background: rgba(22,163,74,.12); padding: 2px 8px; border-radius: 99px; }
+.rv-item p { line-height: 1.55; white-space: pre-line; word-break: break-word; }
+.rv-reply { margin-top: 10px; padding: 10px 12px; border-radius: 12px; border-left: 3px solid var(--primary); background: rgba(225,15,42,.06); font-size: 14px; }
+@media (max-width: 640px) {
+  .rv-head { grid-template-columns: auto 1fr; gap: 16px; }
+  .rv-head .btn { grid-column: 1 / -1; }
+}
+.order-cancel { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--muted); text-decoration: underline; display: block; }
+.order-cancel:hover { color: var(--primary); }
+.order-cancel.confirm { color: #fff; background: var(--primary); text-decoration: none; padding: 8px 12px; border-radius: 10px; }
