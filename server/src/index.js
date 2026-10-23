@@ -402,6 +402,9 @@ route("POST", "/api/tg/poll", async (req, env) => {
   if (!t || !(await env.DB.prepare("SELECT 1 FROM sessions WHERE token_hash = ? AND expires_at > ?").bind(await sha256(t), Date.now()).first())) fail(401, "Avval akkauntingizga kiring");
   return json({ processed: await pollUpdates(env) });
 });
+const CONTACT_KB = { reply_markup: { keyboard: [[{ text: "📱 Raqamimni yuborish", request_contact: true }]], resize_keyboard: true, one_time_keyboard: true } };
+const askContact = (env, chat, hello) => tgSend(env, chat, `${hello}\n\nTelefon raqamingizni yuboring — u OPUS MARKET saytidagi akkauntingiz raqamiga mos kelishi kerak. Shunda buyurtma tasdiqlash kodlari va chek shu yerga keladi.\n\nPastdagi <b>📱 Raqamimni yuborish</b> tugmasini bosing 👇`, CONTACT_KB);
+
 async function handleUpdate(env, upd) {
   const m = upd.message;
   if (!m || !m.chat || m.chat.type !== "private") return;
@@ -423,23 +426,26 @@ async function handleUpdate(env, upd) {
       const u = await env.DB.prepare("SELECT * FROM users WHERE tg_link_token = ?").bind(payload).first();
       if (!u) { await tgSend(env, chat, "⛔ Havola eskirgan. Saytdagi \"Telegram'da tasdiqlash\" tugmasini qayta bosing."); return; }
       await env.DB.prepare("UPDATE users SET tg_pending_chat = ? WHERE id = ?").bind(chat, u.id).run();
-      await tgSend(env, chat, `Assalomu alaykum, <b>${hh(u.name)}</b>! 👋\n\nBuyurtmangizni tasdiqlash uchun telefon raqamingizni yuboring — u OPUS MARKET akkauntingizdagi raqamga mos kelishi kerak. Pastdagi tugmani bosing 👇`, {
-        reply_markup: { keyboard: [[{ text: "📱 Raqamimni yuborish", request_contact: true }]], resize_keyboard: true, one_time_keyboard: true },
-      });
+      await askContact(env, chat, `Assalomu alaykum, <b>${hh(u.name)}</b>! 👋`);
       return;
     }
     const linked = await env.DB.prepare("SELECT name FROM users WHERE tg_chat_id = ?").bind(chat).first();
-    await tgSend(env, chat, isAdmin ? "👑 Siz OPUS MARKET adminisiz. Yangi buyurtmalar shu yerga keladi."
-      : linked ? `Salom, <b>${hh(linked.name)}</b>! Buyurtmalaringiz tasdiqlash kodlari va holati shu yerga keladi.`
-      : "OPUS MARKET botiga xush kelibsiz! 🛒\nSaytda buyurtma berganingizdan keyin \"Telegram'da tasdiqlash\" tugmasini bosing — tasdiqlash kodi shu yerga keladi.");
+    if (linked) await tgSend(env, chat, `${isAdmin ? "👑 Siz OPUS MARKET adminisiz — yangi buyurtmalar shu yerga keladi.\n" : ""}Salom, <b>${hh(linked.name)}</b>! Buyurtmalaringiz tasdiqlash kodlari va holati shu yerga keladi.`);
+    else await askContact(env, chat, `${isAdmin ? "👑 Siz OPUS MARKET adminisiz — yangi buyurtmalar shu yerga keladi.\n\n" : ""}OPUS MARKET botiga xush kelibsiz! 🛒`);
     return;
   }
 
   if (m.contact) {
     if (String(m.contact.user_id) !== String(m.from.id)) { await tgSend(env, chat, "⚠️ Faqat o'zingizning raqamingizni yuboring (pastdagi tugma orqali)."); return; }
-    const u = await env.DB.prepare("SELECT * FROM users WHERE tg_pending_chat = ?").bind(chat).first();
-    if (!u) { await tgSend(env, chat, "Avval saytdagi \"Telegram'da tasdiqlash\" tugmasini bosing."); return; }
-    if (normPhone(m.contact.phone_number) !== u.phone) {
+    // Telegram kontakt egasi (user_id) tekshirilgan — raqam haqiqatan shu odamniki
+    const phone = normPhone(m.contact.phone_number);
+    const u = (await env.DB.prepare("SELECT * FROM users WHERE tg_pending_chat = ?").bind(chat).first())
+      || (phone && await env.DB.prepare("SELECT * FROM users WHERE phone = ?").bind(phone).first());
+    if (!u) {
+      await tgSend(env, chat, `ℹ️ <b>${phone ? phoneFmt(phone) : "Bu raqam"}</b> bilan OPUS MARKET saytida akkaunt topilmadi.\nAvval saytda shu raqam bilan ro'yxatdan o'ting, keyin bu yerga qaytib tugmani yana bosing.`, { reply_markup: { remove_keyboard: true } });
+      return;
+    }
+    if (phone !== u.phone) {
       await tgSend(env, chat, `⛔ Bu raqam akkauntdagi raqamga (<b>+998 ** *** ** ${u.phone.slice(-2)}</b>) mos kelmadi.\nAkkauntingizdagi raqam bilan ro'yxatdan o'tgan Telegram'dan kiring.`, { reply_markup: { remove_keyboard: true } });
       return;
     }
@@ -448,9 +454,11 @@ async function handleUpdate(env, upd) {
     await tgSend(env, chat, "✅ Telegram akkauntingizga ulandi! Endi tasdiqlash kodlari va buyurtma holati shu yerga keladi.", { reply_markup: { remove_keyboard: true } });
     const pending = await env.DB.prepare("SELECT * FROM orders WHERE user_id = ? AND confirmed = 0 AND status = 'Yangi' ORDER BY created_at DESC LIMIT 3").bind(u.id).all();
     for (const o of pending.results) await sendCode(env, o, chat);
+    if (!pending.results.length) await tgSend(env, chat, "ℹ️ Hozircha tasdiqlanishi kerak bo'lgan buyurtmangiz yo'q.\n\nSaytda buyurtma bering — oxirgi bosqichdan keyin 6 xonali kod darhol shu yerga keladi. 🛒");
     return;
   }
 
+  if (!(await env.DB.prepare("SELECT 1 FROM users WHERE tg_chat_id = ?").bind(chat).first())) return askContact(env, chat, isAdmin ? "👑 Admin: yangi buyurtmalar avtomatik keladi." : "Botdan foydalanish uchun raqamingizni ulang.");
   await tgSend(env, chat, isAdmin ? "👑 Admin: yangi buyurtmalar avtomatik keladi. Batafsil — admin panelda." : "Tasdiqlash kodi saytda buyurtma berganingizda shu yerga keladi. Savollar bo'lsa — do'kon operatoriga murojaat qiling.");
 }
 
