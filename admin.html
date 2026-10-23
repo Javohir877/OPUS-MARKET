@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=11" />
-  <link rel="stylesheet" href="admin.css?v=11" />
+  <link rel="stylesheet" href="styles.css?v=13" />
+  <link rel="stylesheet" href="admin.css?v=13" />
 </head>
 <body class="admin">
 
@@ -47,6 +47,7 @@
         <button data-view="cats"><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm13 0a4 4 0 110 8 4 4 0 010-8z"/></svg>Kategoriyalar</button>
         <button data-view="orders"><svg viewBox="0 0 24 24"><path d="M6 2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zm2 5v2h8V7H8zm0 4v2h8v-2H8zm0 4v2h5v-2H8z"/></svg>Buyurtmalar <span class="ad-count" id="navOrders"></span></button>
         <button data-view="users"><svg viewBox="0 0 24 24"><path d="M9 3a4 4 0 110 8 4 4 0 010-8zm0 10c4 0 7 2 7 4.5V20H2v-2.5C2 15 5 13 9 13zm8-9.6a4 4 0 010 7.2A5.5 5.5 0 0017 3.4zM18.5 13.3c2.2.6 3.5 2 3.5 4.2V20h-4v-2.5c0-1.7-.6-3.1-1.6-4.2h2.1z"/></svg>Mijozlar <span class="ad-count" id="navUsers"></span></button>
+        <button data-view="reviews"><svg viewBox="0 0 24 24"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7L12 2z"/></svg>Sharhlar <span class="ad-count" id="navReviews"></span></button>
         <button data-view="promos"><svg viewBox="0 0 24 24"><path d="M21.4 11.6l-9-9A2 2 0 0011 2H4a2 2 0 00-2 2v7c0 .6.2 1.1.6 1.4l9 9a2 2 0 002.8 0l7-7a2 2 0 000-2.8zM6.5 8A1.5 1.5 0 116.5 5a1.5 1.5 0 010 3z"/></svg>Promo-kodlar</button>
         <button data-view="settings"><svg viewBox="0 0 24 24"><path d="M19.4 13a7.6 7.6 0 000-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 00-1.7-1L15 3.2h-4l-.4 2.7a7.4 7.4 0 00-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 000 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 001.7 1l.4 2.7h4l.4-2.7a7.4 7.4 0 001.7-1l2.5 1 2-3.5-2.1-1.6zM13 15.5a3.5 3.5 0 110-7 3.5 3.5 0 010 7z"/></svg>Sozlamalar</button>
         <button data-view="history"><svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 00-9 9H1l4 4 4-4H6a7 7 0 112 4.9l-1.4 1.4A9 9 0 1013 3zm-1 5v5l4.2 2.5.8-1.3-3.5-2.1V8H12z"/></svg>Tarix</button>
@@ -77,6 +78,16 @@
       <!-- Boshqaruv -->
       <section class="ad-view" data-view="dash">
         <div class="ad-kpis" id="kpis"></div>
+        <div class="ad-two ad-two-wide">
+          <div class="ad-panel">
+            <div class="ad-panel-head"><h3>Savdo — oxirgi 14 kun</h3><small class="muted" id="chartTotal"></small></div>
+            <div class="ad-chart" id="salesChart"></div>
+          </div>
+          <div class="ad-panel">
+            <div class="ad-panel-head"><h3>Eng ko'p sotilganlar</h3><small class="muted">30 kun</small></div>
+            <div id="topProducts"></div>
+          </div>
+        </div>
         <div class="ad-two">
           <div class="ad-panel">
             <div class="ad-panel-head"><h3>Kam qolgan mahsulotlar</h3><small class="muted">5 dona va undan kam</small></div>
@@ -163,6 +174,21 @@
         <p class="muted ad-hint">Holatni o'zgartirsangiz, mijoz uni saytdagi "Buyurtmalarim" bo'limida darhol ko'radi. "Bekor qilindi" — mahsulotlar omborga qaytadi.</p>
       </section>
 
+      <!-- Sharhlar -->
+      <section class="ad-view" data-view="reviews" hidden>
+        <div class="ad-toolbar">
+          <input type="search" id="rSearch" placeholder="Mahsulot, mijoz yoki matn…" />
+          <select id="rFilter" aria-label="Saralash">
+            <option value="">Barcha sharhlar</option>
+            <option value="noreply">Javob berilmagan</option>
+            <option value="low">Past baho (1–2★)</option>
+            <option value="hidden">Yashirilgan</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" id="rReload" title="Yangilash">↻</button>
+        </div>
+        <div class="ad-reviews" id="reviewList"></div>
+      </section>
+
       <!-- Mijozlar -->
       <section class="ad-view" data-view="users" hidden>
         <div class="ad-toolbar">
@@ -243,6 +269,7 @@
     <div class="ad-sheet" id="adSheet" hidden>
       <div class="ad-sheet-grip"></div>
       <div class="ad-sheet-grid">
+        <button data-view="reviews"><span>⭐</span>Sharhlar</button>
         <button data-view="news"><span>📰</span>Yangiliklar</button>
         <button data-view="cats"><span>🗂</span>Kategoriyalar</button>
         <button data-view="promos"><span>🎟</span>Promo-kodlar</button>
@@ -346,8 +373,8 @@
 
   <div class="toasts" id="toasts"></div>
 
-  <script src="assets.js?v=11"></script>
-  <script src="admin.js?v=11"></script>
-  <script src="admin-bg.js?v=11"></script>
+  <script src="assets.js?v=13"></script>
+  <script src="admin.js?v=13"></script>
+  <script src="admin-bg.js?v=13"></script>
 </body>
 </html>
