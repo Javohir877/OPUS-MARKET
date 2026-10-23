@@ -1130,6 +1130,9 @@ function renderSettings() {
   const s = S.data.SETTINGS, f = $("#settingsForm").elements;
   if (document.activeElement && document.activeElement.form === $("#settingsForm")) return;
   f.topbar.value = s.topbar || ""; f.dealTitle.value = s.dealTitle || "";
+  // Hafta tanlovi: bo'sh — avtomatik (eng ommabop noutbuk)
+  f.heroProduct.innerHTML = `<option value="">Avtomatik — eng ommabop noutbuk</option>` + S.data.PRODUCTS.filter((p) => p.img).map((p) => `<option value="${p.id}">${esc(p.name)} — ${fmt(p.price)}</option>`).join("");
+  f.heroProduct.value = s.heroProduct ? String(s.heroProduct) : "";
   f.freeShipFrom.value = s.freeShipFrom; f.shipPrice.value = s.shipPrice;
   f.apkUrl.value = s.apk.url || ""; f.apkVersion.value = s.apk.version || ""; f.apkSize.value = s.apk.sizeMB || "";
   f.pmMerchant.value = s.pay.payme.merchantId || ""; f.pmAccount.value = s.pay.payme.account || "order_id";
@@ -1144,6 +1147,7 @@ function renderPayState() {
 $("#settingsForm").addEventListener("input", () => {
   const s = S.data.SETTINGS, f = $("#settingsForm").elements;
   s.topbar = f.topbar.value; s.dealTitle = f.dealTitle.value;
+  if (f.heroProduct.value) s.heroProduct = +f.heroProduct.value; else delete s.heroProduct;
   s.freeShipFrom = Math.max(0, +f.freeShipFrom.value || 0); s.shipPrice = Math.max(0, +f.shipPrice.value || 0);
   s.apk = { url: f.apkUrl.value.trim(), version: f.apkVersion.value.trim(), sizeMB: +f.apkSize.value || 0 };
   s.pay = {
