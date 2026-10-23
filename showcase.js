@@ -42,8 +42,8 @@
     envScene.add(m);
   };
   panel(0xffffff, 2.2, [0, 6, 0], [7, 7]);
-  panel(0xff1a30, 4, [-6, 1.5, 2], [3, 7]);
-  panel(0xff5a2e, 2.5, [6, 1, -2], [3, 7]);
+  panel(0xfff1e6, 1.6, [-6, 1.5, 2], [3, 7]);
+  panel(0xd6281c, 0.35, [6, 1, -2], [3, 7]);
   panel(0xffffff, 1.2, [0, 1.5, 7], [9, 2]);
   scene.environment = pmrem.fromScene(envScene, 0.04).texture;
 
@@ -66,7 +66,7 @@
   const deckMat = new THREE.MeshStandardMaterial({ color: 0x070506, metalness: 0.5, roughness: 0.5, envMapIntensity: 0.4 });
   const keyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.1, roughness: 0.7, envMapIntensity: 0.25 });
   const padMat = new THREE.MeshStandardMaterial({ color: 0x241b1d, metalness: 0.5, roughness: 0.25 });
-  const glowMat = new THREE.MeshBasicMaterial({ color: 0xff1430, toneMapped: false });
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xcfc6ba, toneMapped: false });
   const ringMat = new THREE.MeshBasicMaterial({ color: 0xff1a35, toneMapped: false });
 
   // ---------- Noutbuk ----------
@@ -111,7 +111,7 @@
   laptop.add(keys);
   const keyColor = new THREE.Color();
   const keyDark = new THREE.Color(0x141012);
-  const keyRed = new THREE.Color(0xff2038);
+  const keyRed = new THREE.Color(0x8a8278);
   for (let i = 0; i < COLS * ROWS; i++) keys.setColorAt(i, keyDark);
 
   // Sensorli panel
@@ -145,7 +145,7 @@
   logo.rotation.x = Math.PI / 2;
   logo.position.set(0, 0.082, (D - 0.04) / 2);
   lidPivot.add(logo);
-  const logoHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTex("rgba(255,30,50,1)"), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.8 }));
+  const logoHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTex("rgba(255,60,50,1)"), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.25 }));
   logoHalo.scale.set(1.3, 1.3, 1);
   logoHalo.position.set(0, 0.1, (D - 0.04) / 2);
   lidPivot.add(logoHalo);
@@ -164,7 +164,7 @@
   lidPivot.add(screen);
 
   // Ekran nuri klaviaturaga tushadi
-  const screenLight = new THREE.PointLight(0xff6070, 0, 4, 2);
+  const screenLight = new THREE.PointLight(0xfff1e4, 0, 4, 2);
   screenLight.position.set(0, 0.9, 0.2);
   laptop.add(screenLight);
 
@@ -289,7 +289,7 @@
   }
   const floorGlow = new THREE.Mesh(
     new THREE.PlaneGeometry(9, 9),
-    new THREE.MeshBasicMaterial({ map: radialTex("rgba(255,20,45,.55)"), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })
+    new THREE.MeshBasicMaterial({ map: radialTex("rgba(255,255,255,.12)"), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })
   );
   floorGlow.rotation.x = -Math.PI / 2;
   floorGlow.position.y = -0.02;
@@ -342,16 +342,19 @@
     blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true, toneMapped: false,
   }));
   scene.add(particles);
+  // Studiya uslubi: orbita halqalari va zarrachalar ko'rsatilmaydi (faqat noutbuk va yumshoq yorug'lik)
+  rings.visible = false;
+  particles.visible = false;
 
   // ---------- Chiroqlar ----------
-  scene.add(new THREE.AmbientLight(0xffffff, 0.15));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.3));
   const key = new THREE.DirectionalLight(0xffffff, 1.4);
   key.position.set(2, 6, 5);
   scene.add(key);
-  const rimRed = new THREE.PointLight(0xff1a35, 3, 12, 2);
+  const rimRed = new THREE.PointLight(0xd6281c, 0.9, 12, 2);
   rimRed.position.set(-3.5, 1.8, -1.5);
   scene.add(rimRed);
-  const rimOrange = new THREE.PointLight(0xff5a2e, 2, 12, 2);
+  const rimOrange = new THREE.PointLight(0xfff4ea, 1.4, 12, 2);
   rimOrange.position.set(3.5, 1.2, -2);
   scene.add(rimOrange);
 
