@@ -772,17 +772,19 @@ function renderOrders() {
   }
   box.innerHTML = state.orders.map((o) => {
     const cancelled = o.status === "Bekor qilindi";
+    const pending = !cancelled && o.confirmed === 0;
     const st = Math.max(0, TRACK.indexOf(o.status));
     const pay = payOf(o.payment);
     const items = o.items.map((i) => ({ ...i, p: byId(i.id) }));
     return `<div class="order-card${cancelled ? " cancelled" : ""}">
-      <header><b>#${esc(o.id)}</b><span class="status">${cancelled ? "Bekor qilindi" : TRACK_LABEL[st]}</span></header>
+      <header><b>#${esc(o.id)}</b><span class="status${pending ? " pending" : ""}">${cancelled ? "Bekor qilindi" : pending ? "⏳ Tasdiqlanmagan" : TRACK_LABEL[st]}</span></header>
       <small class="muted">${new Date(o.created_at).toLocaleString("ru-RU")} · ${pay ? pay.name : esc(o.payment)}${o.months ? ` (${o.months} oy)` : ""} · ${DELIVERY[o.delivery] || ""}</small>
       <div class="thumbs">${items.map((i) => `<img src="${esc(IMG(i.p ? i.p.img : i.img))}" alt="" title="${esc(i.name)}" onerror="this.remove()" />`).join("")}</div>
       <ul>${items.map((i) => `<li>${esc(i.name)} × ${i.qty}</li>`).join("")}</ul>
-      ${cancelled ? "" : `<div class="order-track" style="--p:${(st / (TRACK.length - 1)) * 84}%">${TRACK_LABEL.map((t, i) => `<span class="${i <= st ? "on" : ""}">${t}</span>`).join("")}</div>`}
+      ${pending ? `<button class="btn btn-primary btn-sm order-confirm" data-confirm="${esc(o.id)}">✈️ Telegram orqali tasdiqlash</button><div class="confirm-slot"></div>` : ""}
+      ${cancelled || pending ? "" : `<div class="order-track" style="--p:${(st / (TRACK.length - 1)) * 84}%">${TRACK_LABEL.map((t, i) => `<span class="${i <= st ? "on" : ""}">${t}</span>`).join("")}</div>`}
       <b>${fmt(o.total)}</b>
-      ${!cancelled && st < 4 && payLink(o) ? `<button class="btn btn-ghost btn-sm order-pay" data-pay="${esc(o.id)}">💳 ${pay.name} orqali to'lash (QR)</button><div class="pay-slot"></div>` : ""}
+      ${!cancelled && !pending && st < 4 && payLink(o) ? `<button class="btn btn-ghost btn-sm order-pay" data-pay="${esc(o.id)}">💳 ${pay.name} orqali to'lash (QR)</button><div class="pay-slot"></div>` : ""}
       ${o.status === "Yangi" ? `<button class="order-cancel" data-cancel="${esc(o.id)}">Buyurtmani bekor qilish</button>` : ""}
     </div>`;
   }).join("");
@@ -843,6 +845,19 @@ function mountQR(root) {
   });
 }
 $("#orderItems").addEventListener("click", async (e) => {
+  const cf = e.target.closest("[data-confirm]");
+  if (cf) {
+    const slot = cf.nextElementSibling, o = state.orders.find((x) => x.id === cf.dataset.confirm);
+    if (slot.innerHTML) { slot.innerHTML = ""; return; }
+    cf.disabled = true;
+    try {
+      const r = await api("POST", `/api/orders/${encodeURIComponent(o.id)}/code`);
+      if (r.confirmed) { await loadOrders(); renderOrders(); return; }
+      mountConfirm(slot, o, r, () => { renderOrders(); confetti(160); });
+    } catch (ex) { toast("⚠️ " + ex.message); }
+    cf.disabled = false;
+    return;
+  }
   const c = e.target.closest("[data-cancel]");
   if (c) {
     // Ikki bosqichli tasdiq: birinchi bosish — so'rash, ikkinchisi — bekor qilish
@@ -1011,14 +1026,14 @@ async function placeOrder() {
   btn.innerHTML = "⏳ Yuborilmoqda...";
   const data = Object.fromEntries(new FormData(form));
   const pay = payOf(data.payment);
-  let order;
+  let order, confirm;
   try {
     // Narx, chegirma va yetkazish serverda katalogdan qayta hisoblanadi
-    order = (await api("POST", "/api/orders", {
+    ({ order, confirm } = await api("POST", "/api/orders", {
       items: state.cart.map(({ id, qty }) => ({ id, qty })),
       delivery: data.delivery, region: data.region, address: data.address, note: data.note,
       payment: data.payment, months: data.payment === "uzum" ? state.months : null, promo: state.promo,
-    })).order;
+    }));
     // Server manzilni akkauntga eslab qoladi; ism/email o'zgargan bo'lsa — profilni yangilaymiz
     Object.assign(auth.user, { region: data.region, address: data.address || auth.user.address });
     store.set("user", auth.user);
@@ -1042,6 +1057,25 @@ async function placeOrder() {
   form.hidden = true;
   $("#steps").hidden = true;
   $("#orderId").textContent = "#" + order.id;
+  $("#successPane").hidden = false;
+  form.reset();
+  btn.disabled = false;
+  // Telegram orqali tasdiqlash kerak bo'lsa — avval kod, keyin to'lov
+  if (confirm) {
+    $("#successTitle").textContent = "Buyurtmani tasdiqlang";
+    $("#successNote").textContent = "";
+    $("#payBox").innerHTML = "";
+    $(".check-anim", $("#successPane")).classList.add("wait");
+    mountConfirm($("#confirmBox"), order, confirm, (done) => { showPaid(done, pay, true); confetti(240); });
+    return;
+  }
+  showPaid(order, pay);
+  confetti(240);
+}
+function showPaid(order, pay, confirmedNow) {
+  $("#confirmBox").innerHTML = "";
+  $(".check-anim", $("#successPane")).classList.remove("wait");
+  $("#successTitle").textContent = confirmedNow ? "Buyurtma tasdiqlandi!" : "Buyurtma qabul qilindi!";
   const online = ["click", "payme"].includes(pay.id);
   $("#payBox").innerHTML = payBoxHTML(order);
   mountQR($("#payBox"));
@@ -1050,10 +1084,65 @@ async function placeOrder() {
     : pay.id === "uzum"
       ? `Uzum Nasiya: ${order.months} oy davomida oyiga ${fmt(order.total / order.months)}. Operatorimiz tez orada bog'lanadi.`
       : "Operatorimiz tez orada siz bilan bog'lanadi.";
-  $("#successPane").hidden = false;
-  form.reset();
-  btn.disabled = false;
-  confetti(240);
+}
+
+// ---------- Telegram orqali tasdiqlash ----------
+// confirm: { linked, bot, link? } — server javobi. Kod kiritilgach onDone(order) chaqiriladi.
+function mountConfirm(box, order, confirm, onDone) {
+  const bot = "@" + (confirm.bot || "opussmarketbot");
+  // Oyna ochiq turganda serverdan bot xabarlarini o'qishni so'raymiz (START, kontakt) — kod tezroq keladi
+  const started = Date.now();
+  const poll = setInterval(() => {
+    if (!box.isConnected || !$(".tgc", box) || Date.now() - started > 15 * 60e3) return clearInterval(poll);
+    if (!document.hidden || Date.now() - started < 120e3) api("POST", "/api/tg/poll").catch(() => {});
+  }, 3000);
+  const finish = onDone;
+  onDone = (o) => { clearInterval(poll); finish(o); };
+  const draw = (c) => {
+    box.innerHTML = `<div class="tgc">
+      <div class="tgc-head"><span class="tgc-logo"><svg viewBox="0 0 24 24"><path d="M21.9 4.3l-3.2 15.1c-.2 1-.9 1.3-1.7.8l-4.8-3.6-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.9 8.9-8c.4-.3-.1-.5-.6-.2L6.5 13.1l-4.7-1.5c-1-.3-1-1 .2-1.5L20.5 3c.9-.3 1.6.2 1.4 1.3z"/></svg></span>
+        <div><b>Telegram orqali tasdiqlash</b><small>${c.linked ? `Kod Telegram'dagi <b>${esc(bot)}</b> botiga yuborildi` : "Bir martalik — keyingi buyurtmalarda kod darhol keladi"}</small></div></div>
+      ${c.linked ? "" : `<ol class="tgc-steps">
+        <li>Pastdagi tugma bilan <b>${esc(bot)}</b> botini oching va <b>START</b> ni bosing</li>
+        <li>"📱 Raqamimni yuborish" tugmasini bosing (raqam akkauntingizdagi bilan bir xil bo'lishi kerak)</li>
+        <li>Bot yuborgan 6 xonali kodni shu yerga kiriting</li></ol>
+        <a class="btn btn-tg btn-block" href="${esc(c.link)}" target="_blank" rel="noopener">✈️ Telegram'da ochish</a>`}
+      <form class="tgc-form" novalidate>
+        <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="• • • • • •" aria-label="Tasdiqlash kodi" />
+        <button class="btn btn-primary">Tasdiqlash</button>
+      </form>
+      <p class="tgc-err" hidden></p>
+      <div class="tgc-foot"><button type="button" class="tgc-resend">↻ Kodni qayta yuborish</button>${c.linked ? `<a href="https://t.me/${esc(c.bot)}" target="_blank" rel="noopener">Botni ochish ↗</a>` : ""}</div>
+      <small class="muted">Buyurtma 2 soat ichida tasdiqlanmasa, avtomatik bekor qilinadi.</small>
+    </div>`;
+    const f = $(".tgc-form", box), err = $(".tgc-err", box), inp = f.elements.code;
+    inp.addEventListener("input", () => { inp.value = inp.value.replace(/D/g, "").slice(0, 6); if (inp.value.length === 6) f.requestSubmit(); });
+    if (c.linked) setTimeout(() => inp.focus(), 300);
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (inp.value.length !== 6) { err.textContent = "6 xonali kodni kiriting"; err.hidden = false; return; }
+      const b = $("button", f); b.disabled = true; err.hidden = true;
+      try {
+        const r = await api("POST", `/api/orders/${encodeURIComponent(order.id)}/confirm`, { code: inp.value });
+        state.orders = state.orders.map((o) => (o.id === r.order.id ? r.order : o));
+        toast("✅ Buyurtma tasdiqlandi! Chek Telegram'ga yuborildi");
+        onDone(r.order);
+      } catch (ex) {
+        err.textContent = ex.message; err.hidden = false; b.disabled = false;
+        inp.classList.remove("invalid"); void inp.offsetWidth; inp.classList.add("invalid"); inp.select();
+      }
+    });
+    $(".tgc-resend", box).addEventListener("click", async (e) => {
+      const b = e.currentTarget; b.disabled = true;
+      try {
+        const r = await api("POST", `/api/orders/${encodeURIComponent(order.id)}/code`);
+        if (r.confirmed) return onDone({ ...order, confirmed: 1 });
+        toast(r.linked ? "📨 Yangi kod Telegram'ga yuborildi" : "Avval Telegram'da botni oching");
+        draw(r);
+      } catch (ex) { toast("⚠️ " + ex.message); b.disabled = false; }
+    });
+  };
+  draw(confirm);
 }
 
 // Newsletter
