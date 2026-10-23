@@ -78,8 +78,6 @@ const payOf = (id) => PAYMENTS.find((p) => p.id === id);
 const CMP_ICON = '<svg viewBox="0 0 24 24"><path d="M7 7h10.2l-2.6-2.6L16 3l5 5-5 5-1.4-1.4L17.2 9H7V7zm10 10H6.8l2.6 2.6L8 21l-5-5 5-5 1.4 1.4L6.8 15H17v2z"/></svg>';
 const ORIG_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1l9 4v6c0 5.6-3.8 10.7-9 12-5.2-1.3-9-6.4-9-12V5l9-4zm-1.4 14.6l6.4-6.4-1.4-1.4-5 5-2.3-2.3-1.4 1.4 3.7 3.7z"/></svg>';
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-// Admin kiritgan matnlardan emoji olib tashlanadi (sayt uslubi bir xil bo'lishi uchun)
-const plainText = (t) => String(t || "").replace(/\p{Extended_Pictographic}️?\s*/gu, "").trim();
 const svgIcon = (name) => `<svg viewBox="0 0 24 24">${ICONS[name]}</svg>`;
 const stars = (r) => "★".repeat(Math.round(r)) + "☆".repeat(5 - Math.round(r));
 const discount = (p) => (p.old ? Math.round((1 - p.price / p.old) * 100) : 0);
@@ -97,7 +95,7 @@ window.imgFail = (el) => {
 };
 
 // ---------- Loader ----------
-
+setTimeout(() => $("#loader").classList.add("hide"), 1400);
 
 // ---------- Theme ----------
 const applyTheme = (t) => { document.documentElement.dataset.theme = t; store.set("theme", t); };
@@ -113,7 +111,7 @@ $("#themeBtn").addEventListener("click", () => { applyTheme(document.documentEle
     <label class="sp-row"><span>Ovoz</span><input type="checkbox" id="spOn" class="sp-switch" data-sfx="none" /></label>
     <label class="sp-row sp-vol"><span>Balandlik</span><input type="range" id="spVol" min="0" max="100" step="5" /></label>
     ${SFX.canVibrate ? `<label class="sp-row"><span>Tebranish (telefon)</span><input type="checkbox" id="spHap" class="sp-switch" data-sfx="none" /></label>` : ""}
-    <div class="sp-test" aria-label="Ovozlarni tinglash"><button type="button" data-sfx="none" data-try="add">Savat</button><button type="button" data-sfx="none" data-try="check">Tayyor</button><button type="button" data-sfx="none" data-try="notify">Xabar</button><button type="button" data-sfx="none" data-try="error">Xato</button></div>`;
+    <div class="sp-test"><button type="button" data-sfx="none" data-try="add">🛒</button><button type="button" data-sfx="none" data-try="success">🎉</button><button type="button" data-sfx="none" data-try="notify">🔔</button><button type="button" data-sfx="none" data-try="error">⚠️</button></div>`;
   btn.parentElement.appendChild(pop);
   const sync = () => {
     $("#spOn").checked = SFX.on; $("#spVol").value = Math.round(SFX.volume * 100);
@@ -137,39 +135,87 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 toTop.addEventListener("click", () => scrollTo({ top: 0 }));
 $("#burger").addEventListener("click", () => $("#nav").classList.toggle("open"));
-// Telefonda yashirilgan tugmalar menyu ichidan ishlaydi
-$$("[data-proxy]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); $("#nav").classList.remove("open"); $(b.dataset.proxy).click(); }));
 $$("#nav a").forEach((a) => a.addEventListener("click", () => $("#nav").classList.remove("open")));
 
-// ---------- Menyu: hozir ko'rinib turgan bo'lim belgilanadi ----------
+// ---------- Menyu animatsiyasi: suzuvchi kapsula + aylanuvchi matn + hozirgi bo'lim ----------
 (() => {
-  const links = $$("#nav a");
-  const map = new Map(links.map((a) => [a.getAttribute("href").slice(1), a]).filter(([id]) => id && document.getElementById(id)));
+  const nav = $("#nav");
+  const links = $$("a", nav);
+  links.forEach((a, i) => {
+    const t = a.textContent.trim();
+    a.innerHTML = `<span class="nl"><span data-t="${esc(t)}">${esc(t)}</span></span>`;
+    a.style.setProperty("--i", i);
+  });
+  const glider = document.createElement("span");
+  glider.className = "nav-glider";
+  nav.prepend(glider);
+
+  let active = null;
+  const moveTo = (a) => {
+    if (!a || getComputedStyle(glider).display === "none") { nav.classList.remove("glide"); return; }
+    glider.style.width = a.offsetWidth + "px";
+    glider.style.transform = `translateX(${a.offsetLeft}px)`;
+    nav.classList.add("glide");
+  };
+  links.forEach((a) => a.addEventListener("mouseenter", () => moveTo(a)));
+  nav.addEventListener("mouseleave", () => moveTo(active));
+
+  // Sahifa aylantirilganda — qaysi bo'lim ko'rinib turgan bo'lsa, kapsula o'sha havolada turadi
+  const map = new Map(links.map((a) => [a.getAttribute("href").slice(1), a]).filter(([id]) => document.getElementById(id)));
   const vis = new Map();
   const spy = new IntersectionObserver((entries) => {
     entries.forEach((e) => vis.set(e.target.id, e.isIntersecting ? e.intersectionRatio : 0));
     let best = null, ratio = 0;
     vis.forEach((r, id) => { if (r > ratio) { ratio = r; best = id; } });
-    links.forEach((a) => a.classList.toggle("active", best && a === map.get(best)));
-  }, { threshold: [0, 0.2, 0.5], rootMargin: "-80px 0px -40% 0px" });
+    const next = best ? map.get(best) : null;
+    if (next === active) return;
+    links.forEach((a) => a.classList.toggle("active", a === next));
+    active = next;
+    if (!nav.matches(":hover")) moveTo(active);
+  }, { threshold: [0, 0.15, 0.35, 0.6], rootMargin: "-80px 0px -35% 0px" });
   map.forEach((_, id) => spy.observe(document.getElementById(id)));
+  addEventListener("resize", () => moveTo(active));
 })();
 $("#year").textContent = new Date().getFullYear();
 
 // ---------- Hero ----------
+$("#heroImg").src = IMG(HERO_IMG, 900, 560);
 $("#dealsImg").style.backgroundImage = "url(img/deals.jpg)";
-// Hafta tanlovi: admin SETTINGS.heroProduct ni tanlasa — o'sha, aks holda eng ommabop va omborda bor mahsulot
-function renderHero() {
-  const ok = PRODUCTS.filter((p) => p.stock > 0 && p.img).sort((a, b) => (b.popular || 0) - (a.popular || 0));
-  const pick = byId(+SETTINGS.heroProduct) || ok.find((p) => p.cat === "laptop") || ok[0];
-  if (!pick) { $("#heroFigure").hidden = true; return; }
-  $("#heroImg").src = pImg(pick, 900);
-  $("#heroImg").alt = pick.name;
-  $("#heroName").textContent = pick.name;
-  $("#heroPrice").textContent = fmt(pick.price) + (pick.old ? " · avval " + fmt(pick.old) : "");
-  $("#heroOpen").onclick = () => openProduct(pick.id);
-  $(".hero-photo").onclick = () => openProduct(pick.id);
-}
+
+(() => {
+  const words = ["sizning qo'lingizda", "o'yinlar uchun", "ish uchun", "o'qish uchun"];
+  const el = $("#typed");
+  let w = 0, i = 0, del = false;
+  (function tick() {
+    const word = words[w];
+    el.textContent = word.slice(0, i);
+    if (!del && i < word.length) i++;
+    else if (del && i > 0) i--;
+    else if (!del) { del = true; return setTimeout(tick, 1600); }
+    else { del = false; w = (w + 1) % words.length; }
+    setTimeout(tick, del ? 45 : 90);
+  })();
+})();
+
+(() => {
+  const box = $("#particles");
+  box.innerHTML = Array.from({ length: 22 }, () => {
+    const s = 3 + Math.random() * 5;
+    return `<span style="left:${Math.random() * 100}%;width:${s}px;height:${s}px;--dx:${(Math.random() - 0.5) * 200}px;animation-duration:${8 + Math.random() * 10}s;animation-delay:${-Math.random() * 15}s"></span>`;
+  }).join("");
+})();
+
+(() => {
+  const card = $("#tiltCard");
+  const wrap = card.parentElement;
+  wrap.addEventListener("mousemove", (e) => {
+    const r = wrap.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    card.style.transform = `rotateY(${x * 22}deg) rotateX(${-y * 18}deg)`;
+  });
+  wrap.addEventListener("mouseleave", () => (card.style.transform = ""));
+})();
 
 // ---------- Reveal + counters ----------
 const io = new IntersectionObserver((entries) => {
@@ -335,7 +381,7 @@ function productCard(p, i) {
   const tags = [
     p.old ? `<span class="tag">−${discount(p)}%</span>` : "",
     p.badge === "Yangi" ? `<span class="tag new">Yangi</span>` : "",
-    p.badge === "Xit" ? `<span class="tag hit">Xit</span>` : "",
+    p.badge === "Xit" ? `<span class="tag hit">🔥 Xit</span>` : "",
     p.original !== false ? `<span class="tag orig" title="Original mahsulot — rasmiy yetkazib beruvchidan, soxta emas">${ORIG_ICON}Original</span>` : "",
     p.stock <= 5 ? `<span class="tag low">Oz qoldi: ${p.stock}</span>` : "",
   ].join("");
@@ -345,7 +391,7 @@ function productCard(p, i) {
       ${img(p, 500, 400)}
       <div class="tags">${tags}</div>
       <span class="card-brand">${p.brand}</span>
-      <span class="quick">Tezkor ko'rish</span>
+      <span class="quick">👁 Tezkor ko'rish</span>
     </div>
     <button class="cmp ${compared ? "on" : ""}" data-cmp title="Solishtirish">${CMP_ICON}</button>
     <div class="card-body">
@@ -478,7 +524,7 @@ document.addEventListener("click", (e) => { if (!e.target.closest("#searchBox"))
 const range = $("#priceRange");
 range.max = MAX_PRICE;
 range.value = state.maxPrice;
-const updatePriceLabel = () => ($("#priceLabel").textContent = +range.value >= MAX_PRICE ? "cheklanmagan" : fmt(+range.value) + " gacha");
+const updatePriceLabel = () => ($("#priceLabel").textContent = +range.value >= MAX_PRICE ? "Cheklanmagan" : fmt(+range.value));
 updatePriceLabel();
 range.addEventListener("input", () => { state.maxPrice = +range.value; updatePriceLabel(); renderProducts(); });
 $("#sortSelect").addEventListener("change", (e) => { state.sort = e.target.value; renderProducts(); });
@@ -510,7 +556,7 @@ function openProduct(id) {
     <div class="pm-gallery">
       <div class="pm-main" id="pmMain"><img src="${views[0]}" alt="${escapeHtml(p.name)}" data-icon="${c.icon}" onerror="imgFail(this)" /></div>
       ${views.length > 1 ? `<div class="pm-thumbs">${sources.map((s, i) => `<button class="${i === 0 ? "active" : ""}" data-v="${i}"><img src="${IMG(s, 250)}" alt="" /></button>`).join("")}</div>` : ""}
-      ${credits[0] ? `<a class="pm-credit" id="pmCredit" href="${credits[0]}" target="_blank" rel="noopener">Foto: Wikimedia Commons — muallif va litsenziya</a>` : ""}
+      ${credits[0] ? `<a class="pm-credit" id="pmCredit" href="${credits[0]}" target="_blank" rel="noopener">📷 Foto: Wikimedia Commons — muallif va litsenziya</a>` : ""}
       <div class="pm-pay">${PAYMENTS.map(payLogo).join("")}</div>
     </div>
     <div>
@@ -525,7 +571,7 @@ function openProduct(id) {
         Bo'lib to'lash (Uzum Nasiya, 0%): <b class="big" id="pmMonthly"></b>
         <div class="months" id="pmMonths">${MONTHS.map((m) => `<button data-m="${m}" class="${m === months ? "active" : ""}">${m} oy</button>`).join("")}</div>
       </div>
-      <div class="stock">Omborda ${p.stock} dona · rasmiy kafolat</div>
+      <div class="stock">✔ Omborda: ${p.stock} dona · 🛡 Rasmiy kafolat</div>
       ${p.original !== false ? `<div class="orig-box">
         <span class="orig-seal">${ORIG_ICON}</span>
         <div><b>100% original mahsulot — soxta emas</b>
@@ -654,11 +700,11 @@ function renderCart() {
   $("#shipProgress").hidden = !state.cart.length;
   $("#shipText").innerHTML = left > 0
     ? `Bepul yetkazib berishga yana <b>${fmt(left)}</b> qoldi`
-    : `Yetkazib berish <b>bepul</b>`;
+    : `🎉 Sizga <b>bepul yetkazib berish</b>!`;
   $("#shipBar").style.width = Math.min(100, (t.sub / FREE_SHIP_FROM) * 100) + "%";
 
   if (!state.cart.length) {
-    box.innerHTML = `<div class="drawer-empty"><svg class="ic"><use href="#i-cart" /></svg><h4>Savat bo'sh</h4><p>Katalogdan mahsulot tanlang</p></div>`;
+    box.innerHTML = `<div class="drawer-empty"><div>🛒</div><h4>Savat bo'sh</h4><p>Mahsulot qo'shing va xaridni boshlang</p></div>`;
     $("#cartFoot").hidden = true;
     return;
   }
@@ -671,7 +717,7 @@ function renderCart() {
         <h5>${p.name}</h5><b>${fmt(p.price * qty)}</b>
         <div class="qty"><button data-d="-1">−</button><span>${qty}</span><button data-d="1">+</button></div>
       </div>
-      <button class="rm" title="O'chirish" aria-label="O'chirish">✕</button>
+      <button class="rm" title="O'chirish">🗑</button>
     </div>`;
   }).join("");
   $("#subTotal").textContent = fmt(t.sub);
@@ -743,15 +789,15 @@ async function loadOrders() {
 async function showOrders() {
   if (!auth.user) return requireLogin("Buyurtmalaringizni ko'rish uchun akkauntingizga kiring", showOrders);
   const box = $("#orderItems");
-  box.innerHTML = `<div class="drawer-empty"><p>Yuklanmoqda…</p></div>`;
+  box.innerHTML = `<div class="drawer-empty"><div>⏳</div><p>Yuklanmoqda…</p></div>`;
   openLayer($("#ordersDrawer"));
   try { await loadOrders(); renderOrders(); }
-  catch (e) { box.innerHTML = `<div class="drawer-empty"><svg class="ic"><use href="#i-alert" /></svg><h4>Yuklab bo'lmadi</h4><p>${esc(e.message)}</p></div>`; }
+  catch (e) { box.innerHTML = `<div class="drawer-empty"><div>⚠️</div><h4>Yuklab bo'lmadi</h4><p>${esc(e.message)}</p></div>`; }
 }
 function renderOrders() {
   const box = $("#orderItems");
   if (!state.orders.length) {
-    box.innerHTML = `<div class="drawer-empty"><svg class="ic"><use href="#i-box" /></svg><h4>Hali buyurtmalar yo'q</h4><p>Berilgan buyurtmalar shu yerda ko'rinadi</p></div>`;
+    box.innerHTML = `<div class="drawer-empty"><div>📦</div><h4>Hali buyurtmalar yo'q</h4><p>Birinchi xaridingizni amalga oshiring</p></div>`;
     return;
   }
   box.innerHTML = state.orders.map((o) => {
@@ -761,14 +807,14 @@ function renderOrders() {
     const pay = payOf(o.payment);
     const items = o.items.map((i) => ({ ...i, p: byId(i.id) }));
     return `<div class="order-card${cancelled ? " cancelled" : ""}">
-      <header><b>#${esc(o.id)}</b><span class="status${pending ? " pending" : ""}">${cancelled ? "Bekor qilindi" : pending ? "Tasdiqlanmagan" : TRACK_LABEL[st]}</span></header>
+      <header><b>#${esc(o.id)}</b><span class="status${pending ? " pending" : ""}">${cancelled ? "Bekor qilindi" : pending ? "⏳ Tasdiqlanmagan" : TRACK_LABEL[st]}</span></header>
       <small class="muted">${new Date(o.created_at).toLocaleString("ru-RU")} · ${pay ? pay.name : esc(o.payment)}${o.months ? ` (${o.months} oy)` : ""} · ${DELIVERY[o.delivery] || ""}</small>
       <div class="thumbs">${items.map((i) => `<img src="${esc(IMG(i.p ? i.p.img : i.img))}" alt="" title="${esc(i.name)}" onerror="this.remove()" />`).join("")}</div>
       <ul>${items.map((i) => `<li>${esc(i.name)} × ${i.qty}</li>`).join("")}</ul>
-      ${pending ? `<button class="btn btn-primary btn-sm order-confirm" data-confirm="${esc(o.id)}">Telegram orqali tasdiqlash</button><div class="confirm-slot"></div>` : ""}
+      ${pending ? `<button class="btn btn-primary btn-sm order-confirm" data-confirm="${esc(o.id)}">✈️ Telegram orqali tasdiqlash</button><div class="confirm-slot"></div>` : ""}
       ${cancelled || pending ? "" : `<div class="order-track" style="--p:${(st / (TRACK.length - 1)) * 84}%">${TRACK_LABEL.map((t, i) => `<span class="${i <= st ? "on" : ""}">${t}</span>`).join("")}</div>`}
       <b>${fmt(o.total)}</b>
-      ${!cancelled && !pending && st < 4 && payLink(o) ? `<button class="btn btn-ghost btn-sm order-pay" data-pay="${esc(o.id)}">${pay.name} orqali to'lash (QR)</button><div class="pay-slot"></div>` : ""}
+      ${!cancelled && !pending && st < 4 && payLink(o) ? `<button class="btn btn-ghost btn-sm order-pay" data-pay="${esc(o.id)}">💳 ${pay.name} orqali to'lash (QR)</button><div class="pay-slot"></div>` : ""}
       ${o.status === "Yangi" ? `<button class="order-cancel" data-cancel="${esc(o.id)}">Buyurtmani bekor qilish</button>` : ""}
     </div>`;
   }).join("");
@@ -951,8 +997,8 @@ function renderInstall() {
   const ready = ["click", "payme"].includes(method) && payLink({ payment: method, id: "x", total: 1 });
   hint.hidden = !["click", "payme"].includes(method);
   hint.innerHTML = ready
-    ? `Buyurtma berilgach <b>${pay.name} QR-kodi</b> chiqadi — telefoningizdagi ${pay.name} ilovasi bilan skanerlab to'laysiz.`
-    : `${pay ? pay.name : ""} orqali onlayn to'lov hozircha ulanmagan — buyurtmadan keyin operator to'lov havolasini yuboradi.`;
+    ? `📱 Buyurtma berilgach <b>${pay.name} QR-kodi</b> chiqadi — telefoningizdagi ${pay.name} ilovasi bilan skanerlab to'laysiz.`
+    : `ℹ️ ${pay ? pay.name : ""} orqali onlayn to'lov hozircha ulanmagan — buyurtmadan keyin operator to'lov havolasini yuboradi.`;
   if (!isUzum) return;
   const total = totals().total;
   $("#months").innerHTML = MONTHS.map((m) => `<button type="button" data-m="${m}" class="${m === state.months ? "active" : ""}">${m} oy · ${fmt(total / m)}</button>`).join("");
@@ -1010,7 +1056,7 @@ $("#nextStep").addEventListener("click", () => {
 async function placeOrder() {
   const btn = $("#nextStep");
   btn.disabled = true;
-  btn.innerHTML = "Yuborilmoqda…";
+  btn.innerHTML = "⏳ Yuborilmoqda...";
   const data = Object.fromEntries(new FormData(form));
   const pay = payOf(data.payment);
   let order, confirm;
@@ -1098,15 +1144,15 @@ function mountConfirm(box, order, confirm, onDone) {
         <div><b>Telegram orqali tasdiqlash</b><small>${c.linked ? `Kod Telegram'dagi <b>${esc(bot)}</b> botiga yuborildi` : "Bir martalik — keyingi buyurtmalarda kod darhol keladi"}</small></div></div>
       ${c.linked ? "" : `<ol class="tgc-steps">
         <li>Pastdagi tugma bilan <b>${esc(bot)}</b> botini oching va <b>START</b> ni bosing</li>
-        <li>"Raqamimni yuborish" tugmasini bosing (raqam akkauntingizdagi bilan bir xil bo'lishi kerak)</li>
+        <li>"📱 Raqamimni yuborish" tugmasini bosing (raqam akkauntingizdagi bilan bir xil bo'lishi kerak)</li>
         <li>Bot yuborgan 6 xonali kodni shu yerga kiriting</li></ol>
-        <a class="btn btn-tg btn-block" href="${esc(c.link)}" target="_blank" rel="noopener">Telegram'da ochish</a>`}
+        <a class="btn btn-tg btn-block" href="${esc(c.link)}" target="_blank" rel="noopener">✈️ Telegram'da ochish</a>`}
       <form class="tgc-form" novalidate>
         <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="• • • • • •" aria-label="Tasdiqlash kodi" />
         <button class="btn btn-primary">Tasdiqlash</button>
       </form>
       <p class="tgc-err" hidden></p>
-      <div class="tgc-foot"><button type="button" class="tgc-resend">Kodni qayta yuborish</button>${c.linked ? `<a href="https://t.me/${esc(c.bot)}" target="_blank" rel="noopener">Botni ochish ↗</a>` : ""}</div>
+      <div class="tgc-foot"><button type="button" class="tgc-resend">↻ Kodni qayta yuborish</button>${c.linked ? `<a href="https://t.me/${esc(c.bot)}" target="_blank" rel="noopener">Botni ochish ↗</a>` : ""}</div>
       <small class="muted">Buyurtma 2 soat ichida tasdiqlanmasa, avtomatik bekor qilinadi.</small>
     </div>`;
     const f = $(".tgc-form", box), err = $(".tgc-err", box), inp = f.elements.code;
@@ -1152,13 +1198,9 @@ function toast(msg) {
   if (/^(⚠️|❌|⛔)/.test(msg)) sfx("error");
   else if (/^✅/.test(msg) && !/savatga/.test(msg)) sfx("ok");
   else if (/^(🔔|📨|🙏|👋|🎉)/.test(msg)) sfx("notify");
-  const m = String(msg).match(/^(\p{Extended_Pictographic}\uFE0F?|[↩↻⬇⬆✕✓])\s*/u);
-  const lead = m ? m[1] : "", text = m ? String(msg).slice(m[0].length) : String(msg);
-  const kind = /^(⚠|❌|⛔)/.test(lead) ? "err" : /^(✅|🎉|🙏|👋|🚀|💾|🔒)/.test(lead) ? "ok" : /^(🔔|📨|📬)/.test(lead) ? "bell" : "info";
   const el = document.createElement("div");
-  el.className = "toast t-" + kind;
-  el.innerHTML = `<svg class="ic"><use href="#i-${{ err: "alert", ok: "check", bell: "bell", info: "info" }[kind]}" /></svg><span></span>`;
-  el.lastChild.textContent = text;
+  el.className = "toast";
+  el.textContent = msg;
   $("#toasts").appendChild(el);
   setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 300); }, 2600);
 }
@@ -1382,7 +1424,7 @@ function renderNews() {
   $("#newsMore").hidden = newsAll || list.length <= 4;
   $("#newsGrid").innerHTML = list.slice(0, newsAll ? list.length : 4).map((n, i) => `
     <article class="news-card ${i === 0 ? "featured" : ""}" data-news="${n.id}" tabindex="0" role="button" aria-label="${esc(n.title)}">
-      <div class="news-img"><img src="${esc(IMG(n.img))}" alt="" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()" />${n.pinned ? `<span class="news-pin">Muhim</span>` : ""}</div>
+      <div class="news-img"><img src="${esc(IMG(n.img))}" alt="" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()" />${n.pinned ? `<span class="news-pin">📌 Muhim</span>` : ""}</div>
       <div class="news-text">
         <div class="news-meta"><span class="news-tag">${esc(n.tag || "Yangilik")}</span><time datetime="${esc(n.date)}">${fmtDate(n.date)}</time></div>
         <h3>${esc(n.title)}</h3>
@@ -1402,7 +1444,7 @@ function openNews(id) {
     <h2>${esc(n.title)}</h2>
     <div class="na-body">${String(n.body || n.excerpt || "").split(/\n\s*\n/).map((p) => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`).join("")}</div>
     <div class="na-foot">
-      <button class="btn btn-ghost btn-sm" id="naShare"><svg class="ic"><use href="#i-copy" /></svg>Havolani nusxalash</button>
+      <button class="btn btn-ghost btn-sm" id="naShare">🔗 Havolani nusxalash</button>
       ${others.length ? `<div class="na-others"><b>Boshqa yangiliklar</b>${others.map((o) => `<button data-news-link="${o.id}"><span>${fmtDate(o.date)}</span>${esc(o.title)}</button>`).join("")}</div>` : ""}
     </div>`;
   openLayer($("#newsModal"));
@@ -1484,7 +1526,7 @@ function authError(formEl, msg) {
 }
 async function authSubmit(formEl, path, body) {
   const btn = $("button.btn", formEl), label = btn.textContent;
-  btn.disabled = true; btn.textContent = "Kuting…";
+  btn.disabled = true; btn.textContent = "⏳ Kuting...";
   try {
     const r = await api("POST", path, body);
     setAuth(r.token, r.user);
@@ -1584,7 +1626,7 @@ async function loadReviews(p, fresh) {
         <small>${data.count ? `${data.count} ta mijoz sharhi` : "Hali sharh yo'q"}</small>
       </div>
       <div class="rv-dist">${dist.map((d) => `<div><span>${d.s}★</span><i><em style="width:${data.count ? (d.n / data.count) * 100 : 0}%"></em></i><small>${d.n}</small></div>`).join("")}</div>
-      <button class="btn btn-primary btn-sm" id="rvWrite">Sharh yozish</button>
+      <button class="btn btn-primary btn-sm" id="rvWrite">✍️ Sharh yozish</button>
     </div>
     <form class="rv-form" id="rvForm" hidden>
       <div class="rv-pick" role="radiogroup" aria-label="Baho">${[1, 2, 3, 4, 5].map((i) => `<button type="button" data-star="${i}" aria-label="${i} yulduz">★</button>`).join("")}<span id="rvPickLabel">Baho bering</span></div>
@@ -1596,7 +1638,7 @@ async function loadReviews(p, fresh) {
         <header><i class="rv-ava">${esc(r.author[0] || "?")}</i><div><b>${esc(r.author)}</b>${r.verified ? `<span class="rv-ver">✓ Xarid qilgan</span>` : ""}<small>${timeAgo(r.created_at)}</small></div>${starRow(r.rating)}</header>
         <p>${esc(r.text)}</p>
         ${r.reply ? `<div class="rv-reply"><b>OPUS MARKET javobi:</b> ${esc(r.reply)}</div>` : ""}
-      </article>`).join("") : `<p class="rv-empty">Bu mahsulotga birinchi bo'lib sharh qoldiring — boshqa xaridorlarga yordam bering.</p>`}</div>`;
+      </article>`).join("") : `<p class="rv-empty">Bu mahsulotga birinchi bo'lib sharh qoldiring — boshqa xaridorlarga yordam bering! ⭐</p>`}</div>`;
   let rating = 0;
   const labels = ["", "Yomon", "O'rtacha emas", "Yaxshi", "Juda yaxshi", "A'lo!"];
   const paint = (n) => $$("[data-star]", box).forEach((b) => b.classList.toggle("on", +b.dataset.star <= n));
@@ -1630,25 +1672,6 @@ async function loadReviews(p, fresh) {
   });
 }
 
-// ---------- Bosh sahifa: so'nggi sharhlar ----------
-async function loadLatestReviews() {
-  let list = [];
-  try { list = (await api("GET", "/api/reviews/latest")).reviews || []; } catch {}
-  list = list.filter((r) => byId(r.product_id)).slice(0, 6);
-  if (!list.length) return;
-  $("#latestReviews").innerHTML = list.map((r) => {
-    const p = byId(r.product_id);
-    return `<article class="testi">
-      <div class="stars" aria-label="${r.rating} yulduz">${"★".repeat(r.rating)}<span style="color:var(--line-2)">${"★".repeat(5 - r.rating)}</span></div>
-      <p>${esc(r.text)}</p>
-      <div class="testi-user"><span class="avatar">${esc((r.author || "?")[0])}</span><div><b>${esc(r.author)}</b><small>${r.verified ? "Xarid qilgan · " : ""}${timeAgo(r.created_at)}</small></div></div>
-      <button type="button" class="testi-prod" data-open-product="${p.id}">${esc(p.name)}</button>
-    </article>`;
-  }).join("");
-  $("#reviews").hidden = false;
-}
-document.addEventListener("click", (e) => { const b = e.target.closest("[data-open-product]"); if (b) openProduct(+b.dataset.openProduct); });
-
 // ---------- Katalog serverdan ----------
 // Sahifa avval data.js bilan darhol chiziladi, keyin serverdagi eng so'nggi katalog (narx, ombor, yangi mahsulotlar) bilan yangilanadi.
 async function loadCatalog() {
@@ -1664,9 +1687,9 @@ async function loadCatalog() {
     applySettings();
     state.cart = state.cart.filter((x) => byId(x.id));
     if (state.promo && !PROMOS[state.promo]) state.promo = null;
-    if (SETTINGS.topbar) $("#topbarText").textContent = plainText(SETTINGS.topbar);
-    if (SETTINGS.dealTitle) $("#dealTitle").textContent = plainText(SETTINGS.dealTitle);
-    renderCategories(); renderProducts(); renderCart(); renderRecent(); renderCompareBar(); renderNews(); updateBadges(); renderHero();
+    if (SETTINGS.topbar) $("#topbarText").textContent = SETTINGS.topbar;
+    if (SETTINGS.dealTitle) $("#dealTitle").textContent = SETTINGS.dealTitle;
+    renderCategories(); renderProducts(); renderCart(); renderRecent(); renderCompareBar(); renderNews(); updateBadges();
   } catch {}
 }
 
@@ -1674,14 +1697,14 @@ async function loadCatalog() {
 if (window.OPUS_PREVIEW) { $("#previewBar").hidden = false; document.body.classList.add("is-preview"); }
 
 // ---------- Admin sozlamalaridagi matnlar ----------
-if (SETTINGS.topbar) $("#topbarText").textContent = plainText(SETTINGS.topbar);
-if (SETTINGS.dealTitle) $("#dealTitle").textContent = plainText(SETTINGS.dealTitle);
+if (SETTINGS.topbar) $("#topbarText").textContent = SETTINGS.topbar;
+if (SETTINGS.dealTitle) $("#dealTitle").textContent = SETTINGS.dealTitle;
 
 // Lokal sinov nusxasi (kompyuterdagi server) — haqiqiy sayt bilan adashtirmaslik uchun belgi
 if (/^(localhost|127.0.0.1)$/.test(location.hostname)) {
   const b = document.createElement("a");
   b.className = "local-badge"; b.href = "https://javohir877.github.io/OPUS-MARKET/";
-  b.innerHTML = "Lokal sinov nusxasi — Telegram kodi kelmaydi. <u>Haqiqiy saytni ochish</u>";
+  b.innerHTML = "🧪 LOKAL SINOV — Telegram kodi kelmaydi. <u>Haqiqiy saytni ochish →</u>";
   document.body.appendChild(b);
 }
 
@@ -1695,9 +1718,7 @@ renderCompareBar();
 renderNews();
 updateBadges();
 renderAccBtn();
-renderHero();
-// Sharhlar serverdagi katalog kelgandan keyin (yangi qo'shilgan mahsulotlar ham hisobga olinsin)
-loadCatalog().finally(loadLatestReviews);
+loadCatalog();
 // Saqlangan seans hali amaldami (admin bloklagan yoki parolni tiklagan bo'lishi mumkin)
 if (auth.token) api("GET", "/api/me").then((r) => setAuth(auth.token, r.user), () => {});
 // Yangilik havolasi orqali kelganda (#news-3) — maqolani ochamiz
