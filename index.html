@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=15" />
+  <link rel="stylesheet" href="styles.css?v=16" />
 </head>
 <body>
   <!-- Loader -->
@@ -65,6 +65,10 @@
       <div class="header-actions">
         <button class="icon-btn install-btn" id="installBtn" title="Ilovani o'rnatish" hidden>
           <svg viewBox="0 0 24 24"><path d="M7 1h10a2 2 0 012 2v18a2 2 0 01-2 2H7a2 2 0 01-2-2V3a2 2 0 012-2zm0 3v15h10V4H7zm5 16.2a1 1 0 100 2 1 1 0 000-2zM11 6h2v5.2l1.8-1.8 1.4 1.4L12 15l-4.2-4.2 1.4-1.4 1.8 1.8V6z"/></svg>
+        </button>
+        <button class="icon-btn sound-btn" id="soundBtn" title="Ovoz effektlari" aria-label="Ovoz effektlarini o'chirish yoki yoqish">
+          <svg class="snd-on" viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3V9zm13.5 3a4.5 4.5 0 00-2.5-4v8a4.5 4.5 0 002.5-4zM14 3.2v2.1a7 7 0 010 13.4v2.1a9 9 0 000-17.6z"/></svg>
+          <svg class="snd-off" viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3V9zm13.6 3l2.7-2.7 1.4 1.4-2.7 2.7 2.7 2.7-1.4 1.4-2.7-2.7-2.7 2.7-1.4-1.4 2.7-2.7-2.7-2.7 1.4-1.4 2.7 2.7z"/></svg>
         </button>
         <button class="icon-btn" id="themeBtn" title="Mavzu">
           <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 109 9 7 7 0 01-9-9z"/></svg>
@@ -645,8 +649,9 @@
   <button class="to-top" id="toTop">↑</button>
   <canvas id="confetti"></canvas>
 
-  <script src="assets.js?v=15"></script>
-  <script src="data.js?v=15"></script>
+  <script src="sfx.js?v=16"></script>
+  <script src="assets.js?v=16"></script>
+  <script src="data.js?v=16"></script>
   <script>
     // Admin paneldan "Oldindan ko'rish": e'lon qilinmagan qoralamani faqat shu brauzerda ko'rsatamiz
     (function () {
@@ -663,9 +668,9 @@
       } catch (e) {}
     })();
   </script>
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=16"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="showcase.js?v=15"></script>
-  <script src="scrollfx.js?v=15"></script>
+  <script src="showcase.js?v=16"></script>
+  <script src="scrollfx.js?v=16"></script>
 </body>
 </html>
