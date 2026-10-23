@@ -160,7 +160,8 @@ $("#year").textContent = new Date().getFullYear();
 $("#dealsImg").style.backgroundImage = "url(img/deals.jpg)";
 // Hafta tanlovi: admin SETTINGS.heroProduct ni tanlasa — o'sha, aks holda eng ommabop va omborda bor mahsulot
 function renderHero() {
-  const pick = byId(+SETTINGS.heroProduct) || PRODUCTS.filter((p) => p.stock > 0 && p.img).sort((a, b) => b.popular - a.popular)[0];
+  const ok = PRODUCTS.filter((p) => p.stock > 0 && p.img).sort((a, b) => (b.popular || 0) - (a.popular || 0));
+  const pick = byId(+SETTINGS.heroProduct) || ok.find((p) => p.cat === "laptop") || ok[0];
   if (!pick) { $("#heroFigure").hidden = true; return; }
   $("#heroImg").src = pImg(pick, 900);
   $("#heroImg").alt = pick.name;
@@ -1695,8 +1696,8 @@ renderNews();
 updateBadges();
 renderAccBtn();
 renderHero();
-loadCatalog();
-loadLatestReviews();
+// Sharhlar serverdagi katalog kelgandan keyin (yangi qo'shilgan mahsulotlar ham hisobga olinsin)
+loadCatalog().finally(loadLatestReviews);
 // Saqlangan seans hali amaldami (admin bloklagan yoki parolni tiklagan bo'lishi mumkin)
 if (auth.token) api("GET", "/api/me").then((r) => setAuth(auth.token, r.user), () => {});
 // Yangilik havolasi orqali kelganda (#news-3) — maqolani ochamiz
