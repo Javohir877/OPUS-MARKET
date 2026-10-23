@@ -405,3 +405,12 @@ body.admin { background: var(--bg); min-height: 100vh; }
 .ad-actions .confirm { background: var(--primary) !important; color: #fff !important; }
 @media (max-width: 900px) { .ad-two-wide { grid-template-columns: 1fr; } }
 @media (max-width: 520px) { .ad-reply { flex-direction: column; } }
+
+/* ---------- Telegram ---------- */
+.ad-table tr.ad-row-pending td { opacity: .72; }
+.ad-table tr.ad-row-pending td:first-child { box-shadow: inset 3px 0 var(--gold); opacity: 1; }
+.ad-tg-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.ad-tg-info div { padding: 12px 14px; border-radius: 14px; background: var(--bg2); border: 1px solid var(--line); }
+.ad-tg-info small { display: block; color: var(--muted); font-size: 12px; font-weight: 600; }
+.ad-tg-info a { color: var(--primary); }
+.ad-tg-dot { font-size: 12px; }
