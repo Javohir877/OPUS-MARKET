@@ -4,11 +4,13 @@
 //          GET  /img/:name                       — admin yuklagan rasmlar
 // Mijoz:   POST /api/auth/register | /api/auth/login | /api/auth/logout
 //          GET  /api/me    PATCH /api/me    POST /api/me/password
-//          GET  /api/orders    POST /api/orders
+//          GET  /api/orders    POST /api/orders    POST /api/orders/:id/cancel
+//          GET  /api/products/:id/reviews (ochiq)   POST /api/products/:id/reviews
 // Admin:   POST /api/admin/login | /api/admin/logout | /api/admin/password
 //          GET  /api/admin/stats
 //          GET  /api/admin/users   GET|PATCH|DELETE /api/admin/users/:id   POST /api/admin/users/:id/reset-password
 //          GET  /api/admin/orders  PATCH /api/admin/orders/:id
+//          GET  /api/admin/reviews PATCH|DELETE /api/admin/reviews/:id
 //          PUT  /api/admin/catalog GET /api/admin/catalog/versions  GET /api/admin/catalog/versions/:id
 //          POST /api/admin/images
 //
@@ -135,6 +137,13 @@ async function saveCatalog(env, c, versionNote) {
   }
   await env.DB.prepare("INSERT INTO catalog (id, json, updated_at) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at")
     .bind(JSON.stringify(data), Date.now()).run();
+}
+
+// Buyurtma mahsulotlarini omborga qaytarish (sign = 1) yoki qayta ayirish (sign = -1)
+async function restock(env, o, sign) {
+  const cat = await getCatalog(env), byId = new Map(cat.PRODUCTS.map((x) => [x.id, x]));
+  for (const l of JSON.parse(o.items_json)) { const prod = byId.get(l.id); if (prod) prod.stock = Math.max(0, (prod.stock || 0) + sign * l.qty); }
+  await saveCatalog(env, cat);
 }
 
 // ---------- Marshrutlar ----------
@@ -318,8 +327,26 @@ route("GET", "/api/admin/stats", async (req, env) => {
     q("SELECT COALESCE(SUM(total), 0) AS s FROM orders WHERE status != 'Bekor qilindi'"),
     env.DB.prepare("SELECT status, COUNT(*) AS c FROM orders GROUP BY status").all(),
   ]);
+  // Oxirgi 14 kunlik savdo (Toshkent vaqti, UTC+5) va 30 kunda eng ko'p sotilganlar
+  const TZ = 5 * 3600e3, dayKey = (ms) => new Date(ms + TZ).toISOString().slice(0, 10);
+  const since = Date.now() - 30 * 864e5;
+  const recent = (await env.DB.prepare("SELECT total, items_json, created_at FROM orders WHERE created_at > ? AND status != 'Bekor qilindi'").bind(since).all()).results;
+  const series = [];
+  for (let i = 13; i >= 0; i--) series.push({ day: dayKey(Date.now() - i * 864e5), orders: 0, revenue: 0 });
+  const byDay = new Map(series.map((d) => [d.day, d])), top = new Map();
+  for (const o of recent) {
+    const d = byDay.get(dayKey(o.created_at));
+    if (d) { d.orders++; d.revenue += o.total; }
+    for (const i of JSON.parse(o.items_json)) {
+      const t = top.get(i.id) || { id: i.id, name: i.name, qty: 0, revenue: 0 };
+      t.qty += i.qty; t.revenue += i.price * i.qty; top.set(i.id, t);
+    }
+  }
+  const reviews = await q("SELECT COUNT(*) AS c, SUM(CASE WHEN created_at > ? THEN 1 ELSE 0 END) AS w FROM reviews", week);
   return json({ users: users.c, newUsers: newUsers.c, orders: orders.c, todayOrders: today.c, todayRevenue: today.s, revenue: revenue.s,
-    byStatus: Object.fromEntries(byStatus.results.map((r) => [r.status, r.c])) });
+    byStatus: Object.fromEntries(byStatus.results.map((r) => [r.status, r.c])),
+    series, top: [...top.values()].sort((a, b) => b.qty - a.qty).slice(0, 5),
+    reviews: reviews.c, newReviews: reviews.w || 0, lastOrderAt: (await q("SELECT MAX(created_at) AS m FROM orders")).m || 0 });
 });
 
 route("GET", "/api/admin/users", async (req, env) => {
@@ -384,12 +411,65 @@ route("PATCH", "/api/admin/orders/:id", async (req, env, p) => {
   if (!o) fail(404, "Buyurtma topilmadi");
   // Bekor qilinganda mahsulotlar omborga qaytadi (va aksincha)
   const wasCancelled = o.status === "Bekor qilindi", nowCancelled = b.status === "Bekor qilindi";
-  if (wasCancelled !== nowCancelled) {
-    const cat = await getCatalog(env), byId = new Map(cat.PRODUCTS.map((x) => [x.id, x]));
-    for (const l of JSON.parse(o.items_json)) { const prod = byId.get(l.id); if (prod) prod.stock = Math.max(0, (prod.stock || 0) + (nowCancelled ? l.qty : -l.qty)); }
-    await saveCatalog(env, cat);
-  }
+  if (wasCancelled !== nowCancelled) await restock(env, o, nowCancelled ? 1 : -1);
   await env.DB.prepare("UPDATE orders SET status = ?, updated_at = ? WHERE id = ?").bind(b.status, Date.now(), o.id).run();
+  return json({ ok: true });
+});
+
+// ---------- Sharhlar ----------
+const reviewOut = (r) => ({ id: r.id, product_id: r.product_id, rating: r.rating, text: r.text, reply: r.reply, verified: !!r.verified,
+  created_at: r.created_at, author: String(r.user_name || "Mijoz").split(/\s+/)[0] });
+route("GET", "/api/products/:id/reviews", async (req, env, p) => {
+  const r = await env.DB.prepare(`SELECT r.*, u.name AS user_name FROM reviews r LEFT JOIN users u ON u.id = r.user_id
+    WHERE r.product_id = ? AND r.hidden = 0 ORDER BY r.created_at DESC LIMIT 100`).bind(+p.id).all();
+  const list = r.results.map(reviewOut);
+  const avg = list.length ? Math.round(list.reduce((s, x) => s + x.rating, 0) / list.length * 10) / 10 : 0;
+  return json({ reviews: list, count: list.length, avg }, 200, { "Cache-Control": "public, max-age=20" });
+});
+route("POST", "/api/products/:id/reviews", async (req, env, p) => {
+  const u = await currentUser(req, env), b = await body(req);
+  const pid = +p.id, rating = Math.round(+b.rating), text = str(b.text, 1000);
+  if (!(await getCatalog(env)).PRODUCTS.some((x) => x.id === pid)) fail(404, "Mahsulot topilmadi");
+  if (!(rating >= 1 && rating <= 5)) fail(400, "Bahoni tanlang (1–5 yulduz)");
+  if (text.length < 3) fail(400, "Fikringizni bir necha so'z bilan yozing");
+  // Shu mahsulotni sotib olgan (bekor qilinmagan buyurtmasi bor) mijozga "Xarid qilgan" belgisi
+  const own = await env.DB.prepare("SELECT items_json FROM orders WHERE user_id = ? AND status != 'Bekor qilindi'").bind(u.id).all();
+  const verified = own.results.some((o) => JSON.parse(o.items_json).some((i) => i.id === pid)) ? 1 : 0;
+  await env.DB.prepare(`INSERT INTO reviews (product_id, user_id, rating, text, verified, hidden, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)
+    ON CONFLICT(product_id, user_id) DO UPDATE SET rating = excluded.rating, text = excluded.text, verified = excluded.verified, created_at = excluded.created_at`)
+    .bind(pid, u.id, rating, text, verified, Date.now()).run();
+  return json({ ok: true }, 201);
+});
+
+// Mijoz o'z buyurtmasini faqat "Yangi" holatida bekor qila oladi
+route("POST", "/api/orders/:id/cancel", async (req, env, p) => {
+  const u = await currentUser(req, env);
+  const o = await env.DB.prepare("SELECT * FROM orders WHERE id = ? AND user_id = ?").bind(p.id, u.id).first();
+  if (!o) fail(404, "Buyurtma topilmadi");
+  if (o.status !== "Yangi") fail(409, "Buyurtma allaqachon tasdiqlangan — bekor qilish uchun operatorga qo'ng'iroq qiling");
+  await restock(env, o, 1);
+  await env.DB.prepare("UPDATE orders SET status = 'Bekor qilindi', updated_at = ? WHERE id = ?").bind(Date.now(), o.id).run();
+  return json({ order: orderOut(await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(o.id).first()) });
+});
+
+route("GET", "/api/admin/reviews", async (req, env) => {
+  await admin(req, env);
+  const r = await env.DB.prepare(`SELECT r.*, u.name AS user_name, u.phone AS user_phone FROM reviews r LEFT JOIN users u ON u.id = r.user_id
+    ORDER BY r.created_at DESC LIMIT 500`).all();
+  return json({ reviews: r.results.map((x) => ({ ...reviewOut(x), hidden: !!x.hidden, user_id: x.user_id, user_name: x.user_name, user_phone: x.user_phone })) });
+});
+route("PATCH", "/api/admin/reviews/:id", async (req, env, p) => {
+  await admin(req, env);
+  const b = await body(req);
+  const r = await env.DB.prepare("SELECT * FROM reviews WHERE id = ?").bind(+p.id).first();
+  if (!r) fail(404, "Sharh topilmadi");
+  await env.DB.prepare("UPDATE reviews SET hidden = ?, reply = ? WHERE id = ?")
+    .bind(b.hidden !== undefined ? (b.hidden ? 1 : 0) : r.hidden, b.reply !== undefined ? (str(b.reply, 1000) || null) : r.reply, r.id).run();
+  return json({ ok: true });
+});
+route("DELETE", "/api/admin/reviews/:id", async (req, env, p) => {
+  await admin(req, env);
+  await env.DB.prepare("DELETE FROM reviews WHERE id = ?").bind(+p.id).run();
   return json({ ok: true });
 });
 
