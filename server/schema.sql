@@ -84,3 +84,18 @@ CREATE TABLE IF NOT EXISTS attempts (
   ts          INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_attempts_key ON attempts (key, ts);
+
+-- Mahsulot sharhlari (har mijoz har mahsulotga bitta; admin yashirishi va javob yozishi mumkin)
+CREATE TABLE IF NOT EXISTS reviews (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id  INTEGER NOT NULL,
+  user_id     INTEGER,
+  rating      INTEGER NOT NULL,
+  text        TEXT    NOT NULL,
+  reply       TEXT,
+  verified    INTEGER NOT NULL DEFAULT 0,       -- shu mahsulotni sotib olgan
+  hidden      INTEGER NOT NULL DEFAULT 0,
+  created_at  INTEGER NOT NULL,
+  UNIQUE (product_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews (product_id, created_at);
