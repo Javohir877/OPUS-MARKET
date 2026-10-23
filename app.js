@@ -1639,6 +1639,14 @@ if (window.OPUS_PREVIEW) { $("#previewBar").hidden = false; document.body.classL
 if (SETTINGS.topbar) $("#topbarText").textContent = SETTINGS.topbar;
 if (SETTINGS.dealTitle) $("#dealTitle").textContent = SETTINGS.dealTitle;
 
+// Lokal sinov nusxasi (kompyuterdagi server) — haqiqiy sayt bilan adashtirmaslik uchun belgi
+if (/^(localhost|127.0.0.1)$/.test(location.hostname)) {
+  const b = document.createElement("a");
+  b.className = "local-badge"; b.href = "https://javohir877.github.io/OPUS-MARKET/";
+  b.innerHTML = "🧪 LOKAL SINOV — Telegram kodi kelmaydi. <u>Haqiqiy saytni ochish →</u>";
+  document.body.appendChild(b);
+}
+
 // ---------- Init ----------
 renderPayments();
 renderCategories();
