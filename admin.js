@@ -23,7 +23,7 @@ const S = {
   token: ss.get("opus_admin_api"),
   data: null, baseJSON: "",
   uploads: {},          // "img/u-....jpg" → dataURL (hali serverga yuklanmagan rasmlar)
-  orders: [], users: [], stats: null,
+  orders: [], users: [], reviews: [], stats: null, lastOrderAt: 0,
   view: "dash", editing: null,
 };
 
@@ -102,8 +102,9 @@ async function loadData() {
   $("#syncInfo").textContent = `Ma'lumotlar yuklandi: ${new Date().toLocaleTimeString("ru-RU")}`;
 }
 async function loadServer() {
-  const [st, o, u] = await Promise.all([api("GET", "/api/admin/stats"), api("GET", "/api/admin/orders"), api("GET", "/api/admin/users")]);
-  S.stats = st; S.orders = o.orders; S.users = u.users;
+  const [st, o, u, r] = await Promise.all([api("GET", "/api/admin/stats"), api("GET", "/api/admin/orders"), api("GET", "/api/admin/users"), api("GET", "/api/admin/reviews")]);
+  S.stats = st; S.orders = o.orders; S.users = u.users; S.reviews = r.reviews;
+  S.lastOrderAt = Math.max(S.lastOrderAt || 0, st.lastOrderAt || 0);
 }
 
 // ---------- O'zgarishlarni kuzatish ----------
@@ -178,8 +179,8 @@ $("#discardBtn").addEventListener("click", () => {
 });
 
 // ---------- Navigatsiya ----------
-const TITLES = { dash: "Boshqaruv", products: "Mahsulotlar", news: "Yangiliklar", cats: "Kategoriyalar", orders: "Buyurtmalar", users: "Mijozlar", promos: "Promo-kodlar", settings: "Sozlamalar", history: "O'zgarishlar tarixi" };
-const SHEET_VIEWS = ["news", "cats", "promos", "settings", "history"];
+const TITLES = { dash: "Boshqaruv", products: "Mahsulotlar", news: "Yangiliklar", cats: "Kategoriyalar", orders: "Buyurtmalar", users: "Mijozlar", reviews: "Sharhlar", promos: "Promo-kodlar", settings: "Sozlamalar", history: "O'zgarishlar tarixi" };
+const SHEET_VIEWS = ["reviews", "news", "cats", "promos", "settings", "history"];
 function go(view) {
   S.view = view;
   closeSheet();
@@ -209,8 +210,9 @@ function renderAll() {
   $("#navOrders").textContent = S.stats ? (S.stats.byStatus || {})["Yangi"] || "" : "";
   $("#navUsers").textContent = S.stats ? S.stats.users : "";
   $("#navNews").textContent = (S.data.NEWS || []).length;
-  renderKpis(); renderLow(); renderRecentOrders(); renderCats();
-  renderProducts(); renderOrders(); renderUsers(); renderPromos(); renderSettings();
+  $("#navReviews").textContent = S.reviews.filter((r) => !r.reply && !r.hidden).length || "";
+  renderKpis(); renderChart(); renderTop(); renderLow(); renderRecentOrders(); renderCats();
+  renderProducts(); renderOrders(); renderUsers(); renderReviews(); renderPromos(); renderSettings();
   renderNewsList(); renderCatEditor();
 }
 
@@ -225,6 +227,7 @@ function renderKpis() {
     { t: "Bugungi savdo", v: fmt(st.todayRevenue), e: `${st.todayOrders || 0} ta buyurtma bugun`, hot: true },
     { t: "Buyurtmalar", v: st.orders || 0, e: (st.byStatus || {})["Yangi"] ? `🔔 ${st.byStatus["Yangi"]} tasi yangi` : "Jami: " + fmt(st.revenue), warn: !!(st.byStatus || {})["Yangi"] },
     { t: "Mijozlar", v: st.users || 0, e: st.newUsers ? `+${st.newUsers} ta oxirgi 7 kunda` : "Ro'yxatdan o'tganlar" },
+    { t: "Sharhlar", v: st.reviews || 0, e: st.newReviews ? `+${st.newReviews} ta shu hafta` : "Mijozlar fikri" },
     { t: "Mahsulotlar", v: P.length, e: `${S.data.CATEGORIES.length} ta kategoriya` },
     { t: "Omborda", v: num(units) + " dona", e: "Qiymati: " + fmt(value) },
     { t: "Kam qolgan", v: low.length, e: out.length ? `⛔ ${out.length} tasi tugagan` : "≤ 5 dona qolganlar", warn: low.length > 0 },
@@ -233,6 +236,42 @@ function renderKpis() {
     { t: "Yangiliklar", v: (S.data.NEWS || []).length, e: (S.data.NEWS || []).length ? "Oxirgisi: " + (S.data.NEWS.map((n) => n.date).sort().pop() || "—") : "Hali yo'q" },
   ];
   $("#kpis").innerHTML = tiles.map((k) => `<div class="ad-kpi ${k.warn ? "warn" : ""} ${k.hot ? "hot" : ""}"><small>${k.t}</small><b>${k.v}</b><em>${k.e}</em></div>`).join("");
+}
+
+// 14 kunlik savdo — ustunli grafik (SVG, kutubxonasiz)
+function renderChart() {
+  const s = (S.stats && S.stats.series) || [];
+  const box = $("#salesChart");
+  if (!s.length) { box.innerHTML = `<p class="ad-empty">Ma'lumot yo'q</p>`; return; }
+  const max = Math.max(...s.map((d) => d.revenue), 1), total = s.reduce((a, d) => a + d.revenue, 0);
+  $("#chartTotal").textContent = `Jami: ${fmt(total)} · ${s.reduce((a, d) => a + d.orders, 0)} ta buyurtma`;
+  const W = 560, H = 190, pad = 22, bw = (W - pad) / s.length;
+  const short = (n) => n >= 1e9 ? (n / 1e9).toFixed(1) + " mlrd" : n >= 1e6 ? Math.round(n / 1e6) + " mln" : n >= 1e3 ? Math.round(n / 1e3) + " ming" : String(n);
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H + 26}" role="img" aria-label="Kunlik savdo grafigi">
+    <defs><linearGradient id="barG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff2a40"/><stop offset="1" stop-color="#a8081d"/></linearGradient></defs>
+    ${[0.25, 0.5, 0.75, 1].map((k) => `<line x1="${pad}" x2="${W}" y1="${H - (H - 14) * k}" y2="${H - (H - 14) * k}" class="ad-grid-line"/>`).join("")}
+    <text x="0" y="18" class="ad-axis">${short(max)}</text>
+    ${s.map((d, i) => {
+      const h = Math.max(d.revenue ? 4 : 0, ((H - 14) * d.revenue) / max), x = pad + i * bw + bw * 0.18, w = bw * 0.64;
+      const dd = new Date(d.day + "T00:00:00"), today = i === s.length - 1;
+      return `<g class="ad-bar${today ? " today" : ""}" style="--i:${i}">
+        <title>${dd.toLocaleDateString("ru-RU")}: ${fmt(d.revenue)} (${d.orders} ta buyurtma)</title>
+        <rect x="${pad + i * bw}" y="0" width="${bw}" height="${H}" fill="transparent"/>
+        <rect x="${x}" y="${H - h}" width="${w}" height="${h}" rx="5" fill="url(#barG)"/>
+        ${d.orders ? `<text x="${x + w / 2}" y="${H - h - 5}" text-anchor="middle" class="ad-bar-n">${d.orders}</text>` : ""}
+        <text x="${x + w / 2}" y="${H + 17}" text-anchor="middle" class="ad-axis">${dd.getDate()}</text>
+      </g>`;
+    }).join("")}
+  </svg>`;
+}
+function renderTop() {
+  const t = (S.stats && S.stats.top) || [];
+  const max = Math.max(...t.map((x) => x.qty), 1);
+  $("#topProducts").innerHTML = t.length ? `<ol class="ad-top">${t.map((x, i) => {
+    const p = S.data.PRODUCTS.find((y) => y.id === x.id);
+    return `<li style="--w:${(x.qty / max) * 100}%"><span class="ad-top-n">${i + 1}</span>${p ? `<img class="ad-thumb" src="${esc(srcOf(p.img))}" alt="" />` : ""}
+      <div><b>${esc(x.name)}</b><small>${x.qty} dona · ${fmt(x.revenue)}</small><i></i></div></li>`;
+  }).join("")}</ol>` : `<p class="ad-empty">Oxirgi 30 kunda sotuv yo'q</p>`;
 }
 
 function renderLow() {
@@ -749,7 +788,7 @@ function renderOrders() {
     <td data-label="Mahsulotlar"><span>${itemsText(o).map(esc).join("<br>")}</span></td>
     <td data-label="To'lov"><span>${esc(payName(o.payment))}${o.months ? `<br><small class="muted">${o.months} oy</small>` : ""}${o.promo ? `<br><small class="muted">🎟 ${esc(o.promo)}</small>` : ""}</span></td>
     <td class="num" data-label="Summa"><b>${fmt(o.total)}</b>${o.discount ? `<br><small class="muted">−${fmt(o.discount)}</small>` : ""}</td>
-    <td data-label="Holat"><select class="ad-status-select" data-order="${esc(o.id)}" aria-label="Holat">${STATUSES.map((s) => `<option ${o.status === s ? "selected" : ""}>${s}</option>`).join("")}</select></td>
+    <td data-label="Holat"><span class="ad-ostatus"><select class="ad-status-select" data-order="${esc(o.id)}" aria-label="Holat">${STATUSES.map((s) => `<option ${o.status === s ? "selected" : ""}>${s}</option>`).join("")}</select><button class="ad-link" data-print="${esc(o.id)}" title="Chekni chop etish">🖨 Chek</button></span></td>
   </tr>`).join("") : `<tr><td colspan="7" class="ad-empty">${S.orders.length ? "Hech narsa topilmadi" : "Hali buyurtma yo'q. Mijozlar saytda ro'yxatdan o'tib buyurtma berishi bilan shu yerda paydo bo'ladi."}</td></tr>`}</tbody>`;
 }
 $("#oSearch").addEventListener("input", renderOrders);
@@ -884,6 +923,148 @@ async function openUser(id) {
     b.disabled = false;
   };
 }
+
+// ---------- Buyurtma cheki (chop etish) ----------
+$("#oTable").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-print]");
+  if (b) printOrder(S.orders.find((o) => o.id === b.dataset.print));
+});
+function printOrder(o) {
+  if (!o) return;
+  const rows = (o.items || []).map((i, n) => `<tr><td>${n + 1}</td><td>${esc(i.name)}</td><td class="r">${i.qty}</td><td class="r">${fmt(i.price)}</td><td class="r">${fmt(i.price * i.qty)}</td></tr>`).join("");
+  const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Chek #${esc(o.id)}</title><style>
+    body{font:14px/1.45 Arial,Helvetica,sans-serif;color:#111;margin:32px;max-width:720px}
+    h1{font-size:22px;margin:0}h1 b{color:#e10f2a}.top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #e10f2a;padding-bottom:12px;margin-bottom:18px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-bottom:18px}.grid small{color:#666;display:block}
+    table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}th{background:#f4f4f4;font-size:12px;text-transform:uppercase}
+    .r{text-align:right}.sum td{border:0;padding:4px 8px}.total td{font-size:18px;font-weight:700;border-top:2px solid #111}
+    .foot{margin-top:28px;color:#666;font-size:12px;display:flex;justify-content:space-between}.sign{margin-top:40px;display:flex;gap:60px}.sign div{flex:1;border-top:1px solid #999;padding-top:4px;font-size:12px;color:#666}
+    @media print{body{margin:12mm}button{display:none}}
+  </style></head><body>
+  <div class="top"><h1>OPUS<b>MARKET</b></h1><div><b>Buyurtma #${esc(o.id)}</b><br>${dt(o.created_at)}</div></div>
+  <div class="grid">
+    <div><small>Mijoz</small>${esc(o.user_name || "—")}</div><div><small>Telefon</small>${esc(fmtPhone(o.user_phone))}</div>
+    <div><small>Yetkazish</small>${o.delivery === "pickup" ? "Do'kondan olib ketish" : esc([o.region, o.address].filter(Boolean).join(", "))}</div>
+    <div><small>To'lov</small>${esc(payName(o.payment))}${o.months ? ` (${o.months} oy)` : ""}</div>
+    ${o.note ? `<div style="grid-column:1/-1"><small>Izoh</small>${esc(o.note)}</div>` : ""}
+  </div>
+  <table><thead><tr><th>#</th><th>Mahsulot</th><th class="r">Soni</th><th class="r">Narxi</th><th class="r">Summa</th></tr></thead><tbody>${rows}</tbody></table>
+  <table class="sum" style="margin-top:8px">
+    <tr><td class="r">Mahsulotlar:</td><td class="r" style="width:170px">${fmt(o.subtotal)}</td></tr>
+    ${o.discount ? `<tr><td class="r">Chegirma${o.promo ? ` (${esc(o.promo)})` : ""}:</td><td class="r">−${fmt(o.discount)}</td></tr>` : ""}
+    <tr><td class="r">Yetkazib berish:</td><td class="r">${o.ship ? fmt(o.ship) : "Bepul"}</td></tr>
+    <tr class="total"><td class="r">JAMI:</td><td class="r">${fmt(o.total)}</td></tr>
+  </table>
+  <div class="sign"><div>Topshirdi</div><div>Qabul qildi (mijoz)</div></div>
+  <div class="foot"><span>Holat: ${esc(o.status)}</span><span>Xaridingiz uchun rahmat!</span></div>
+  <script>onload=function(){print()}<\/script></body></html>`;
+  const w = open("", "_blank", "width=820,height=900");
+  if (!w) { toast("⚠️ Brauzer yangi oynani blokladi — ruxsat bering"); return; }
+  w.document.write(html); w.document.close();
+}
+
+// ---------- Sharhlar ----------
+function renderReviews() {
+  const q = ($("#rSearch").value || "").trim().toLowerCase(), f = $("#rFilter").value;
+  const pname = (id) => (S.data.PRODUCTS.find((p) => p.id === id) || {}).name || "ID " + id;
+  const R = S.reviews.filter((r) =>
+    (!f || (f === "noreply" && !r.reply && !r.hidden) || (f === "low" && r.rating <= 2) || (f === "hidden" && r.hidden)) &&
+    (!q || [pname(r.product_id), r.user_name, r.text].join(" ").toLowerCase().includes(q)));
+  $("#reviewList").innerHTML = R.length ? R.map((r) => {
+    const p = S.data.PRODUCTS.find((x) => x.id === r.product_id);
+    return `<article class="ad-review${r.hidden ? " hidden-rv" : ""}" data-rid="${r.id}">
+      <header>
+        ${p ? `<img class="ad-thumb" src="${esc(srcOf(p.img))}" alt="" />` : ""}
+        <div><b>${esc(pname(r.product_id))}</b><small>${r.user_id ? `<button class="ad-link" data-user="${r.user_id}">${esc(r.user_name || "—")}</button>` : "o'chirilgan mijoz"} · ${dt(r.created_at)}${r.verified ? ` · <span class="chip ok">✓ Xarid qilgan</span>` : ""}${r.hidden ? ` · <span class="chip bad">Yashirilgan</span>` : ""}</small></div>
+        <span class="ad-rv-stars">${"★".repeat(r.rating)}<i>${"★".repeat(5 - r.rating)}</i></span>
+      </header>
+      <p>${esc(r.text)}</p>
+      <form class="ad-reply" data-reply="${r.id}">
+        <input name="reply" value="${esc(r.reply || "")}" placeholder="Do'kon nomidan javob yozing…" maxlength="1000" />
+        <button class="btn btn-primary btn-sm">${r.reply ? "Javobni yangilash" : "Javob berish"}</button>
+      </form>
+      <div class="ad-actions">
+        <button data-rv-hide>${r.hidden ? "👁 Ko'rsatish" : "🙈 Yashirish"}</button>
+        <button data-rv-del class="ad-danger">O'chirish</button>
+      </div>
+    </article>`;
+  }).join("") : `<p class="ad-empty">${S.reviews.length ? "Hech narsa topilmadi" : "Hali sharh yo'q. Mijozlar mahsulot oynasida sharh qoldirganda shu yerda ko'rinadi."}</p>`;
+}
+$("#rSearch").addEventListener("input", renderReviews);
+$("#rFilter").addEventListener("change", renderReviews);
+$("#rReload").addEventListener("click", () => reloadServer("↻ Yangilandi"));
+$("#reviewList").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = +e.target.dataset.reply, reply = e.target.elements.reply.value.trim();
+  try {
+    await api("PATCH", "/api/admin/reviews/" + id, { reply });
+    S.reviews.find((r) => r.id === id).reply = reply || null;
+    renderAll(); toast(reply ? "💬 Javob saqlandi — saytda ko'rinadi" : "Javob olib tashlandi");
+  } catch (ex) { toast("❌ " + apiError(ex)); }
+});
+$("#reviewList").addEventListener("click", async (e) => {
+  const card = e.target.closest("[data-rid]");
+  if (!card) return;
+  const id = +card.dataset.rid, r = S.reviews.find((x) => x.id === id);
+  const del = e.target.closest("[data-rv-del]");
+  try {
+    if (e.target.closest("[data-rv-hide]")) {
+      await api("PATCH", "/api/admin/reviews/" + id, { hidden: !r.hidden });
+      r.hidden = !r.hidden; renderAll();
+      toast(r.hidden ? "🙈 Sharh saytdan yashirildi" : "👁 Sharh saytda ko'rinadi");
+    } else if (del) {
+      if (!del.classList.contains("confirm")) {
+        del.classList.add("confirm"); del.textContent = "Ha, o'chirilsin";
+        setTimeout(() => { if (del.isConnected) { del.classList.remove("confirm"); del.textContent = "O'chirish"; } }, 3500);
+        return;
+      }
+      await api("DELETE", "/api/admin/reviews/" + id);
+      S.reviews = S.reviews.filter((x) => x.id !== id); renderAll();
+      toast("Sharh o'chirildi");
+    }
+  } catch (ex) { toast("❌ " + apiError(ex)); }
+});
+
+// ---------- Yangi buyurtma signali ----------
+// Har 30 soniyada statistikani tekshiramiz; yangi buyurtma bo'lsa — ovoz, xabar va sarlavhada belgi.
+const baseTitle = document.title;
+let unseen = 0;
+function chime() {
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    [880, 1175, 1568].forEach((f, i) => {
+      const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + i * 0.14;
+      o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+      o.connect(g).connect(ac.destination); o.start(t); o.stop(t + 0.4);
+    });
+  } catch {}
+}
+async function pollOrders() {
+  if (!S.token || !S.data) return;
+  try {
+    const st = await api("GET", "/api/admin/stats");
+    if (st.lastOrderAt > S.lastOrderAt && S.lastOrderAt) {
+      const prev = S.orders.length;
+      await loadServer();
+      const fresh = Math.max(1, S.orders.length - prev);
+      unseen += fresh;
+      document.title = `(${unseen}) 🔔 ${baseTitle}`;
+      renderAll(); chime();
+      const o = S.orders[0];
+      toast(`🔔 Yangi buyurtma #${o.id}: ${o.user_name || "mijoz"} — ${fmt(o.total)}`);
+      if ("Notification" in window && Notification.permission === "granted" && document.hidden)
+        new Notification("OPUS MARKET — yangi buyurtma", { body: `#${o.id} · ${o.user_name || ""} · ${fmt(o.total)}`, icon: "icons/apple-touch-icon.png" });
+    } else {
+      S.stats = st; S.lastOrderAt = Math.max(S.lastOrderAt, st.lastOrderAt || 0);
+      renderKpis(); renderChart();
+    }
+  } catch {}
+}
+setInterval(pollOrders, 30000);
+addEventListener("focus", () => { unseen = 0; document.title = baseTitle; });
+// Birinchi bosishda brauzer bildirishnomalariga ruxsat so'raymiz (panel boshqa oynada bo'lsa ham xabar keladi)
+addEventListener("click", () => { if ("Notification" in window && Notification.permission === "default") Notification.requestPermission(); }, { once: true });
 
 // ---------- Promo-kodlar ----------
 function renderPromos() {
