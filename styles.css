@@ -1206,7 +1206,7 @@ select:focus { border-color: var(--primary); }
 .order-cancel.confirm { color: #fff; background: var(--primary); text-decoration: none; padding: 8px 12px; border-radius: 10px; }
 
 /* ---------- Telegram orqali tasdiqlash ---------- */
-.tgc { text-align: left; display: grid; gap: 14px; margin: 16px 0; padding: 18px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); animation: slideIn .4s both; }
+.tgc { text-align: left; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; min-width: 0; max-width: 100%; margin: 16px 0; padding: 18px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); animation: tgcIn .35s ease both; }
 .tgc-head { display: flex; align-items: center; gap: 12px; }
 .tgc-head small { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
 .tgc-logo { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, #37aee2, #1e96c8); box-shadow: 0 8px 20px rgba(30,150,200,.35); animation: float2 3s ease-in-out infinite; }
@@ -1227,3 +1227,11 @@ select:focus { border-color: var(--primary); }
 [data-theme="dark"] .order-card .status.pending { color: #ffb020; }
 .order-confirm { margin-top: 6px; }
 @media (max-width: 480px) { .tgc-form { flex-direction: column; } .tgc-form input { font-size: 22px; } }
+.tgc > * { min-width: 0; }
+.tgc-head > div { min-width: 0; overflow-wrap: anywhere; }
+.order-card .tgc { margin: 12px 0 4px; padding: 14px; }
+.order-card .tgc-steps { font-size: 13px; }
+.order-card .tgc-form input { font-size: 20px; letter-spacing: .3em; padding: 12px 8px; }
+
+@keyframes tgcIn { from { opacity: 0; } }
+.local-badge { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 9999; padding: 8px 14px; border-radius: 99px; background: #ffb020; color: #1a0a00; font-size: 12.5px; font-weight: 800; box-shadow: 0 8px 24px rgba(0,0,0,.35); white-space: nowrap; }
