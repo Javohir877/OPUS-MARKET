@@ -101,8 +101,30 @@ setTimeout(() => $("#loader").classList.add("hide"), 1400);
 const applyTheme = (t) => { document.documentElement.dataset.theme = t; store.set("theme", t); };
 applyTheme(store.get("theme", matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
 $("#themeBtn").addEventListener("click", () => { applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"); sfx("toggle"); });
-// Ovozni o'chirish / yoqish
-$("#soundBtn").addEventListener("click", () => { window.SFX && SFX.toggle(); toast(window.SFX && SFX.on ? "🔊 Ovoz effektlari yoqildi" : "🔇 Ovoz effektlari o'chirildi"); });
+// Ovoz sozlamalari: yoqish/o'chirish, balandlik, telefonda tebranish
+(() => {
+  const btn = $("#soundBtn");
+  if (!window.SFX) { btn.hidden = true; return; }
+  const pop = document.createElement("div");
+  pop.className = "sp-pop"; pop.hidden = true;
+  pop.innerHTML = `<b>Ovoz effektlari</b>
+    <label class="sp-row"><span>Ovoz</span><input type="checkbox" id="spOn" class="sp-switch" data-sfx="none" /></label>
+    <label class="sp-row sp-vol"><span>Balandlik</span><input type="range" id="spVol" min="0" max="100" step="5" /></label>
+    ${SFX.canVibrate ? `<label class="sp-row"><span>Tebranish (telefon)</span><input type="checkbox" id="spHap" class="sp-switch" data-sfx="none" /></label>` : ""}
+    <div class="sp-test"><button type="button" data-sfx="none" data-try="add">🛒</button><button type="button" data-sfx="none" data-try="success">🎉</button><button type="button" data-sfx="none" data-try="notify">🔔</button><button type="button" data-sfx="none" data-try="error">⚠️</button></div>`;
+  btn.parentElement.appendChild(pop);
+  const sync = () => {
+    $("#spOn").checked = SFX.on; $("#spVol").value = Math.round(SFX.volume * 100);
+    $("#spVol").disabled = !SFX.on; if ($("#spHap")) $("#spHap").checked = SFX.haptic;
+  };
+  btn.addEventListener("click", (e) => { e.stopPropagation(); sync(); pop.hidden = !pop.hidden; sfx(pop.hidden ? "close" : "open"); });
+  document.addEventListener("click", (e) => { if (!pop.hidden && !pop.contains(e.target) && e.target !== btn) pop.hidden = true; });
+  $("#spOn").addEventListener("change", (e) => { SFX.setOn(e.target.checked); sync(); });
+  $("#spVol").addEventListener("change", () => SFX.play("notify"));
+  $("#spVol").addEventListener("input", (e) => SFX.setVolume(e.target.value / 100));
+  $("#spHap")?.addEventListener("change", (e) => SFX.setHaptic(e.target.checked));
+  pop.addEventListener("click", (e) => { const t = e.target.closest("[data-try]"); if (t) SFX.play(t.dataset.try); });
+})();
 
 // ---------- Header ----------
 const header = $("#header");
@@ -1177,17 +1199,19 @@ function toast(msg) {
 
 // ---------- Ovoz: bosish va kartalar ustidan o'tish ----------
 // Savatga qo'shish, ochish/yopish kabi o'z ovozi bor tugmalar uchun click chalinmaydi
-const OWN_SOUND = "[data-add], #pmAdd, [data-d], .rm, .close, [data-close], #themeBtn, #soundBtn, #cartBtn, #ordersBtn, #accBtn, [data-open]";
-document.addEventListener("click", (e) => {
-  const b = e.target.closest("button, .btn, .chip, a[href^='#']");
-  if (b && !b.closest(OWN_SOUND)) sfx("click");
-}, true);
+// Barcha tugmalar ovozini sfx.js o'zi beradi; bu yerda o'z ovozini kodda chaladigan tugmalar
+// (savatga qo'shish, +/−, o'chirish, oyna ochish va h.k.) ikki marta jaranglamasligi uchun ro'yxatdan o'tkaziladi.
+if (window.SFX) ["[data-add]", "#pmAdd", "[data-d]", ".rm", "#themeBtn", "#soundBtn", "#cartBtn", "#ordersBtn", "#accBtn", "[data-open]", "#checkoutBtn", "#pmBuy", "#cbOpen", "[data-cmp]", "#pmCmp", "[data-news]", ".sp-pop"].forEach((sel) => SFX.skip(sel));
 document.addEventListener("mouseover", (e) => {
   if (!matchMedia("(hover: hover)").matches) return;
   const c = e.target.closest(".card, .cat, .news-card");
   if (c && !c.contains(e.relatedTarget)) sfx("hover");
 });
-document.addEventListener("input", (e) => { if (e.target.matches(".tgc-form input, input[name=password], input[name=phone]")) sfx("tick"); });
+document.addEventListener("input", (e) => { if (e.target.matches(".tgc-form input, input[name=password], input[name=phone], #searchInput, #promoInput, input[name=code]")) sfx("tick"); });
+// "/" — qidiruvga o'tish (matn yozilayotgan joyda emas)
+document.addEventListener("keydown", (e) => {
+  if (e.key === "/" && !e.target.closest("input, textarea, select, [contenteditable]")) { e.preventDefault(); $("#searchInput").focus(); sfx("tab"); }
+});
 
 // ---------- Ripple ----------
 document.addEventListener("pointerdown", (e) => {
@@ -1244,6 +1268,7 @@ function toggleCompare(id) {
     state.compare.push(id);
     toast(`⇄ "${p.name}" solishtirishga qo'shildi`);
   }
+  sfx(state.compare.includes(id) ? "checkOn" : "checkOff");
   store.set("compare", state.compare);
   $$("#productGrid .card").forEach((c) => $("[data-cmp]", c)?.classList.toggle("on", state.compare.includes(+c.dataset.id)));
   renderCompareBar();
