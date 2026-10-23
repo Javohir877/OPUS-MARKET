@@ -6,9 +6,15 @@ compatibility_date = "2026-09-01"
 # Saytga ruxsat berilgan manzillar (CORS). Lokal ishlab chiqishda localhost avtomatik ruxsat etiladi.
 [vars]
 ALLOWED_ORIGINS = "https://javohir877.github.io"
+# Telegram bot nomi (token emas!). Token: wrangler secret put TELEGRAM_TOKEN
+TELEGRAM_BOT = "opussmarketbot"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "opus-market"
 # `wrangler d1 create opus-market` bergan ID shu yerga yoziladi
 database_id = "534c663a-bdcb-48db-be25-ffbbfd5d7ca1"
+
+# Har daqiqada: Telegram bot xabarlarini o'qiydi va 2 soatda tasdiqlanmagan buyurtmalarni bekor qiladi
+[triggers]
+crons = ["* * * * *"]
