@@ -883,7 +883,7 @@ $("#orderItems").addEventListener("click", async (e) => {
     try {
       const r = await api("POST", `/api/orders/${encodeURIComponent(o.id)}/code`);
       if (r.confirmed) { await loadOrders(); renderOrders(); return; }
-      mountConfirm(slot, o, r, () => { renderOrders(); confetti(160); });
+      mountConfirm(slot, o, r, () => { renderOrders(); confetti(160, "check"); });
     } catch (ex) { toast("⚠️ " + ex.message); }
     cf.disabled = false;
     return;
@@ -1099,11 +1099,18 @@ async function placeOrder() {
     $("#successNote").textContent = "";
     $("#payBox").innerHTML = "";
     $(".check-anim", $("#successPane")).classList.add("wait");
-    mountConfirm($("#confirmBox"), order, confirm, (done) => { showPaid(done, pay, true); confetti(240); });
+    mountConfirm($("#confirmBox"), order, confirm, (done) => { showPaid(done, pay, true); playCheck(); confetti(240, null); });
     return;
   }
   showPaid(order, pay);
-  confetti(240);
+  playCheck();
+  confetti(240, null);
+}
+// Galochka chizilishini boshidan ko'rsatib, unga mos ovozni chalamiz (doira → galochka "ding")
+function playCheck() {
+  const svg = $("#successPane .check-anim svg");
+  if (svg) svg.replaceWith(svg.cloneNode(true));
+  sfx("check");
 }
 function showPaid(order, pay, confirmedNow) {
   $("#confirmBox").innerHTML = "";
@@ -1189,6 +1196,7 @@ $("#newsForm").addEventListener("submit", (e) => {
 // ---------- Toast ----------
 function toast(msg) {
   if (/^(⚠️|❌|⛔)/.test(msg)) sfx("error");
+  else if (/^✅/.test(msg) && !/savatga/.test(msg)) sfx("ok");
   else if (/^(🔔|📨|🙏|👋|🎉)/.test(msg)) sfx("notify");
   const el = document.createElement("div");
   el.className = "toast";
@@ -1227,8 +1235,8 @@ document.addEventListener("pointerdown", (e) => {
 });
 
 // ---------- Confetti ----------
-function confetti(n = 150) {
-  sfx("success");
+function confetti(n = 150, sound = "success") {
+  if (sound) sfx(sound);
   const cv = $("#confetti"), ctx = cv.getContext("2d");
   cv.width = innerWidth; cv.height = innerHeight;
   const colors = ["#e10f2a", "#ff4d2e", "#ffb020", "#ffffff", "#8f0618"];
