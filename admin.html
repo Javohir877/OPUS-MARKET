@@ -8,29 +8,53 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=18" />
-  <link rel="stylesheet" href="admin.css?v=18" />
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=20" />
+  <link rel="stylesheet" href="admin.css?v=20" />
 </head>
 <body class="admin">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="2.8" /></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2" /><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" /></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14" /></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 19.5h14" /></symbol>
+      <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2" /><circle cx="9" cy="10" r="1.6" /><path d="M20.5 16l-5-5-8 8" /></symbol>
+      <symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h4" /></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3.5L10.5 14M21 3.5l-6.5 17-4-6.5-6.5-4z" /></symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5h4" /></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 4l2.4 5 5.4.6-4 3.7 1.1 5.4L12 16l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z" /></symbol>
+      <symbol id="i-news" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8 9h8M8 12.5h8M8 16h5" /></symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1" /></symbol>
+      <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 12.5V4h8.5l8.5 8.5-8.5 8.5z" /><circle cx="8" cy="8.5" r="1.4" /></symbol>
+      <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M5.6 18.4l1.6-1.6M16.8 7.2l1.6-1.6" /></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></symbol>
+      <symbol id="i-out" viewBox="0 0 24 24"><path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5" /></symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v7" /></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4l9 16H3z" /><path d="M12 10v4.5M12 17.2v.3" /></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 11v5.5M12 7.8v.3" /></symbol>
+      <symbol id="i-printer" viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 17h-2M7 14h10v6H7z" /></symbol>
+      <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="14" r="3.5" /><path d="M10.5 11.5L19 3M15.5 6.5l2.5 2.5M13.5 8.5l2 2" /></symbol>
+    </defs>
+  </svg>
 
   <!-- Parol -->
   <section class="ad-login" id="lock">
     <div class="ad-login-card ad-lock-card">
-      <a href="./" class="logo"><span class="logo-mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="none" stroke="#fff" stroke-width="3.4"/></svg></span><span class="logo-text">OPUS<b>ADMIN</b></span></a>
-      <div class="ad-lock-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 1a5 5 0 015 5v3h1a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V11a2 2 0 012-2h1V6a5 5 0 015-5zm0 12a2 2 0 00-1 3.7V19h2v-2.3A2 2 0 0012 13zm0-10a3 3 0 00-3 3v3h6V6a3 3 0 00-3-3z"/></svg></div>
-      <h1>Admin panel himoyalangan</h1>
-      <p class="muted">Davom etish uchun admin parolini kiriting.</p>
+      <a href="./" class="logo"><span class="logo-mark" aria-hidden="true"></span><span class="logo-text">OPUS<b>boshqaruv</b></span></a>
+      <h1>Boshqaruv paneliga kirish</h1>
+      <p class="muted">Faqat do'kon xodimlari uchun. Parolni kiriting.</p>
       <form id="lockForm" autocomplete="off">
         <label for="lockInput">Parol</label>
         <div class="ad-pass">
           <input id="lockInput" type="password" autocomplete="current-password" required />
-          <button type="button" class="ad-eye" id="lockEye" aria-label="Parolni ko'rsatish">👁</button>
+          <button type="button" class="ad-eye" id="lockEye" aria-label="Parolni ko'rsatish"><svg class="ic"><use href="#i-eye" /></svg></button>
         </div>
         <p class="ad-error" id="lockError" hidden></p>
         <button class="btn btn-primary btn-block" id="lockBtn">Ochish</button>
       </form>
-      <a class="ad-link" href="./">← Do'konga qaytish</a>
+      <a class="ad-link" href="./">Do'konga qaytish</a>
     </div>
   </section>
 
@@ -39,7 +63,7 @@
   <!-- Panel -->
   <div class="ad-app" id="app" hidden>
     <aside class="ad-side">
-      <a href="./" class="logo"><span class="logo-mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="none" stroke="#fff" stroke-width="3.4"/></svg></span><span class="logo-text">OPUS<b>ADMIN</b></span></a>
+      <a href="./" class="logo"><span class="logo-mark" aria-hidden="true"></span><span class="logo-text">OPUS<b>boshqaruv</b></span></a>
       <nav class="ad-nav" id="adNav">
         <button data-view="dash" class="active"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>Boshqaruv</button>
         <button data-view="products"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v10H4V5zm2 0v8h12V5H6zM1 17h22v1a2 2 0 01-2 2H3a2 2 0 01-2-2v-1z"/></svg>Mahsulotlar <span class="ad-count" id="navProducts"></span></button>
@@ -62,15 +86,15 @@
           <p class="muted" id="syncInfo"></p>
         </div>
         <div class="ad-top-actions">
-          <a class="btn btn-ghost btn-sm" href="./" target="_blank" rel="noopener">Saytni ochish ↗</a>
-          <button class="btn btn-ghost btn-sm" id="previewBtn" hidden title="E'lon qilinmagan o'zgarishlarni saytda ko'rish">👁 Oldindan ko'rish</button>
+          <a class="btn btn-ghost btn-sm" href="./" target="_blank" rel="noopener"><svg class="ic"><use href="#i-out" /></svg>Saytni ochish</a>
+          <button class="btn btn-ghost btn-sm" id="previewBtn" hidden title="E'lon qilinmagan o'zgarishlarni saytda ko'rish"><svg class="ic"><use href="#i-eye" /></svg><span>Oldindan ko'rish</span></button>
           <button class="btn btn-ghost btn-sm" id="discardBtn" hidden>Bekor qilish</button>
           <button class="btn btn-primary btn-sm" id="publishBtn" disabled>E'lon qilish <span class="ad-dirty" id="dirtyCount" hidden></span></button>
         </div>
       </header>
 
       <div class="ad-banner" id="draftBanner" hidden>
-        <span>💾 Oldingi seansdan e'lon qilinmagan qoralama bor.</span>
+        <span>Oldingi seansdan e'lon qilinmagan qoralama qolgan.</span>
         <button class="btn btn-primary btn-sm" id="draftRestore">Tiklash</button>
         <button class="btn btn-ghost btn-sm" id="draftDrop">O'chirish</button>
       </div>
@@ -116,8 +140,8 @@
             <option value="sale">Chegirmada</option>
             <option value="notorig">Original belgisisiz</option>
           </select>
-          <button class="btn btn-ghost btn-sm" id="csvExport" title="Excel'da ochiladigan CSV fayl">⬇ CSV</button>
-          <label class="btn btn-ghost btn-sm" title="CSV'dagi narx, ombor va boshqa ustunlarni ID bo'yicha yangilaydi">⬆ CSV import<input type="file" id="csvImport" accept=".csv,text/csv" hidden /></label>
+          <button class="btn btn-ghost btn-sm" id="csvExport" title="Excel'da ochiladigan CSV fayl"><svg class="ic"><use href="#i-download" /></svg>CSV</button>
+          <label class="btn btn-ghost btn-sm" title="CSV'dagi narx, ombor va boshqa ustunlarni ID bo'yicha yangilaydi"><svg class="ic"><use href="#i-upload" /></svg>CSV import<input type="file" id="csvImport" accept=".csv,text/csv" hidden /></label>
           <button class="btn btn-primary btn-sm" id="addProduct">+ Yangi mahsulot</button>
         </div>
         <div class="ad-bulk" id="bulkBar" hidden>
@@ -168,7 +192,7 @@
           <input type="search" id="oSearch" placeholder="Buyurtma raqami, ism yoki telefon…" />
           <select id="oStatus" aria-label="Holat bo'yicha"><option value="">Barcha holatlar</option></select>
           <button class="btn btn-ghost btn-sm" id="oReload" title="Yangilash">↻</button>
-          <button class="btn btn-ghost btn-sm" id="oExport">⬇ CSV</button>
+          <button class="btn btn-ghost btn-sm" id="oExport"><svg class="ic"><use href="#i-download" /></svg>CSV</button>
         </div>
         <div class="ad-table-wrap"><table class="ad-table" id="oTable"></table></div>
         <p class="muted ad-hint">Holatni o'zgartirsangiz, mijoz uni saytdagi "Buyurtmalarim" bo'limida darhol ko'radi. "Bekor qilindi" — mahsulotlar omborga qaytadi.</p>
@@ -194,10 +218,10 @@
         <div class="ad-toolbar">
           <input type="search" id="uSearch" placeholder="Ism, telefon yoki email…" />
           <button class="btn btn-ghost btn-sm" id="uReload" title="Yangilash">↻</button>
-          <button class="btn btn-ghost btn-sm" id="uExport">⬇ CSV</button>
+          <button class="btn btn-ghost btn-sm" id="uExport"><svg class="ic"><use href="#i-download" /></svg>CSV</button>
         </div>
         <div class="ad-table-wrap"><table class="ad-table" id="uTable"></table></div>
-        <p class="muted ad-hint">🔒 Mijozlar parollari shifrlangan (PBKDF2) holda saqlanadi — ularni hech kim ko'ra olmaydi. Mijoz parolini unutsa, "Parolni tiklash" vaqtinchalik parol beradi.</p>
+        <p class="muted ad-hint">Mijozlar parollari shifrlangan (PBKDF2) holda saqlanadi — ularni hech kim ko'ra olmaydi. Mijoz parolini unutsa, "Parolni tiklash" vaqtinchalik parol beradi.</p>
       </section>
 
       <!-- Promo-kodlar -->
@@ -225,7 +249,7 @@
             <div><label for="sFree">Bepul yetkazish (so'mdan)</label><input id="sFree" name="freeShipFrom" type="number" min="0" step="10000" /></div>
             <div><label for="sShip">Yetkazish narxi (so'm)</label><input id="sShip" name="shipPrice" type="number" min="0" step="1000" /></div>
           </div>
-          <div class="ad-panel-head"><h3>💳 Onlayn to'lov (QR-kod)</h3><span class="ad-mode demo" id="payState">Ulanmagan</span></div>
+          <div class="ad-panel-head"><h3>Onlayn to'lov (QR-kod)</h3><span class="ad-mode demo" id="payState">Ulanmagan</span></div>
           <p class="muted ad-hint">Bu ID'larni Click va Payme bilan shartnoma tuzganingizda (biznes kabinetida) beriladi. Kiritilgach, mijoz buyurtma berganda shu tizimning QR-kodi va "ilovada to'lash" tugmasi chiqadi. Bo'sh qolsa — operator to'lov havolasini o'zi yuboradi.</p>
           <div class="ad-grid2">
             <div><label for="sPmMerchant">Payme — Merchant ID</label><input id="sPmMerchant" name="pmMerchant" placeholder="masalan 587f72c72cac0d162c722ae2" spellcheck="false" /></div>
@@ -244,17 +268,17 @@
           </div>
         </form>
         <div class="ad-panel ad-tg" id="tgPanel">
-          <div class="ad-panel-head"><h3>✈️ Telegram bot</h3><span class="ad-mode demo" id="tgState">Tekshirilmoqda…</span></div>
+          <div class="ad-panel-head"><h3>Telegram bot</h3><span class="ad-mode demo" id="tgState">Tekshirilmoqda…</span></div>
           <p class="muted ad-hint">Mijoz buyurtma berganda bot unga tasdiqlash kodini yuboradi; kod to'g'ri kiritilsa — mijozga chek, sizga esa buyurtmachining to'liq ma'lumotlari keladi. Bot tokeni serverda maxfiy saqlanadi va saytda ko'rinmaydi.</p>
           <div class="ad-tg-info" id="tgInfo"></div>
           <div class="ad-top-actions">
             <button type="button" class="btn btn-primary btn-sm" id="tgLink">Admin Telegram'ini ulash / almashtirish</button>
-            <button type="button" class="btn btn-ghost btn-sm" id="tgTest">🔔 Sinov xabari</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="tgTest"><svg class="ic"><use href="#i-bell" /></svg>Sinov xabari</button>
           </div>
           <div id="tgLinkBox"></div>
         </div>
         <form class="ad-panel ad-form" id="passForm" autocomplete="off">
-          <div class="ad-panel-head"><h3>🔒 Admin parolini o'zgartirish</h3></div>
+          <div class="ad-panel-head"><h3>Admin paroli</h3></div>
           <p class="muted ad-hint">Yangi parol darhol kuchga kiradi. Kamida 8 belgi: harf, raqam va belgi aralash bo'lsa yaxshi.</p>
           <label for="pOld">Hozirgi parol</label>
           <input id="pOld" type="password" autocomplete="current-password" required />
@@ -279,14 +303,14 @@
     <div class="ad-sheet" id="adSheet" hidden>
       <div class="ad-sheet-grip"></div>
       <div class="ad-sheet-grid">
-        <button data-view="reviews"><span>⭐</span>Sharhlar</button>
-        <button data-view="news"><span>📰</span>Yangiliklar</button>
-        <button data-view="cats"><span>🗂</span>Kategoriyalar</button>
-        <button data-view="promos"><span>🎟</span>Promo-kodlar</button>
-        <button data-view="settings"><span>⚙️</span>Sozlamalar</button>
-        <button data-view="history"><span>🕘</span>Tarix</button>
-        <a href="./" target="_blank" rel="noopener"><span>↗</span>Saytni ochish</a>
-        <button id="sheetLock"><span>🔒</span>Qulflash</button>
+        <button data-view="reviews"><svg class="ic"><use href="#i-star" /></svg>Sharhlar</button>
+        <button data-view="news"><svg class="ic"><use href="#i-news" /></svg>Yangiliklar</button>
+        <button data-view="cats"><svg class="ic"><use href="#i-grid" /></svg>Kategoriyalar</button>
+        <button data-view="promos"><svg class="ic"><use href="#i-tag" /></svg>Promo-kodlar</button>
+        <button data-view="settings"><svg class="ic"><use href="#i-gear" /></svg>Sozlamalar</button>
+        <button data-view="history"><svg class="ic"><use href="#i-clock" /></svg>Tarix</button>
+        <a href="./" target="_blank" rel="noopener"><svg class="ic"><use href="#i-out" /></svg>Saytni ochish</a>
+        <button id="sheetLock"><svg class="ic"><use href="#i-lock" /></svg>Chiqish</button>
       </div>
       <p class="muted ad-sheet-mode" id="sheetMode"></p>
     </div>
@@ -303,7 +327,7 @@
       <div class="ad-img-edit">
         <div class="ad-img-preview" id="imgPreview"></div>
         <div>
-          <label class="btn btn-ghost btn-sm ad-upload">📷 Rasm yuklash<input type="file" id="imgFile" accept="image/*" hidden /></label>
+          <label class="btn btn-ghost btn-sm ad-upload"><svg class="ic"><use href="#i-image" /></svg>Rasm yuklash<input type="file" id="imgFile" accept="image/*" hidden /></label>
           <p class="muted ad-hint">Rasm avtomatik 800px gacha kichraytiriladi.</p>
           <input id="fImg" name="img" placeholder="yoki rasm yo'li / URL" />
         </div>
@@ -349,7 +373,7 @@
       <div class="ad-img-edit">
         <div class="ad-img-preview" id="nImgPreview"></div>
         <div>
-          <label class="btn btn-ghost btn-sm ad-upload">📷 Rasm yuklash<input type="file" id="nImgFile" accept="image/*" hidden /></label>
+          <label class="btn btn-ghost btn-sm ad-upload"><svg class="ic"><use href="#i-image" /></svg>Rasm yuklash<input type="file" id="nImgFile" accept="image/*" hidden /></label>
           <p class="muted ad-hint">Yoki mavjud rasm yo'lini yozing (masalan mahsulot rasmi).</p>
           <input id="nImg" name="img" placeholder="img/… yoki URL" />
         </div>
@@ -359,7 +383,7 @@
       <div class="ad-grid3">
         <div><label for="nTag">Turi</label><input id="nTag" name="tag" list="nTags" placeholder="Yangilik" /><datalist id="nTags"><option>Yangilik</option><option>Aksiya</option><option>Yangi kelgan</option><option>Maslahat</option><option>Sharh</option></datalist></div>
         <div><label for="nDate">Sana</label><input id="nDate" name="date" type="date" required /></div>
-        <div><label class="ad-check" style="margin-top:34px"><input type="checkbox" id="nPinned" name="pinned" /> 📌 Tepada</label></div>
+        <div><label class="ad-check" style="margin-top:34px"><input type="checkbox" id="nPinned" name="pinned" /> Tepada qadab qo'yish</label></div>
       </div>
       <label for="nExcerpt">Qisqa matn (kartochkada ko'rinadi)</label>
       <textarea id="nExcerpt" name="excerpt" rows="2" maxlength="220"></textarea>
@@ -383,9 +407,8 @@
 
   <div class="toasts" id="toasts"></div>
 
-  <script src="sfx.js?v=18"></script>
-  <script src="assets.js?v=18"></script>
-  <script src="admin.js?v=18"></script>
-  <script src="admin-bg.js?v=18"></script>
+  <script src="sfx.js?v=20"></script>
+  <script src="assets.js?v=20"></script>
+  <script src="admin.js?v=20"></script>
 </body>
 </html>
