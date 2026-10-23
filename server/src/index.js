@@ -671,6 +671,12 @@ route("GET", "/api/products/:id/reviews", async (req, env, p) => {
   const avg = list.length ? Math.round(list.reduce((s, x) => s + x.rating, 0) / list.length * 10) / 10 : 0;
   return json({ reviews: list, count: list.length, avg }, 200, { "Cache-Control": "public, max-age=20" });
 });
+// Bosh sahifa uchun: eng so'nggi yaxshi baholangan (4–5★) ochiq sharhlar
+route("GET", "/api/reviews/latest", async (req, env) => {
+  const r = await env.DB.prepare(`SELECT r.*, u.name AS user_name FROM reviews r LEFT JOIN users u ON u.id = r.user_id
+    WHERE r.hidden = 0 AND r.rating >= 4 AND LENGTH(r.text) >= 12 ORDER BY r.verified DESC, r.created_at DESC LIMIT 12`).all();
+  return json({ reviews: r.results.map(reviewOut) }, 200, { "Cache-Control": "public, max-age=60" });
+});
 route("POST", "/api/products/:id/reviews", async (req, env, p) => {
   const u = await currentUser(req, env), b = await body(req);
   const pid = +p.id, rating = Math.round(+b.rating), text = str(b.text, 1000);
