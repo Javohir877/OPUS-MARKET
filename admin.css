@@ -367,3 +367,41 @@ body.admin { background: var(--bg); min-height: 100vh; }
 .ad-uorder p { color: var(--muted); }
 #userDrawer .drawer-body { display: flex; flex-direction: column; gap: 14px; }
 .ad-table a[href^="tel"] { white-space: nowrap; }
+
+/* ---------- Savdo grafigi va top mahsulotlar ---------- */
+.ad-two-wide { grid-template-columns: 1.6fr 1fr; }
+.ad-chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.ad-grid-line { stroke: var(--line); stroke-dasharray: 3 4; }
+.ad-axis { font-size: 11px; fill: var(--muted); }
+.ad-bar-n { font-size: 10.5px; font-weight: 700; fill: var(--text, currentColor); }
+.ad-bar rect + rect { transform-box: fill-box; transform-origin: bottom; animation: barUp .7s cubic-bezier(.2,.9,.3,1.15) both; animation-delay: calc(var(--i) * 35ms); transition: filter .2s; }
+.ad-bar:hover rect + rect { filter: brightness(1.25) drop-shadow(0 4px 10px rgba(var(--prgb), .45)); }
+.ad-bar.today .ad-axis { fill: var(--primary); font-weight: 800; }
+@keyframes barUp { from { transform: scaleY(0); } }
+.ad-top { list-style: none; display: grid; gap: 10px; margin: 0; padding: 0; }
+.ad-top li { display: flex; align-items: center; gap: 10px; }
+.ad-top-n { width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; font-size: 12px; background: rgba(var(--prgb), .12); color: var(--primary); flex: none; }
+.ad-top li:first-child .ad-top-n { background: var(--grad); color: #fff; }
+.ad-top div { flex: 1; min-width: 0; }
+.ad-top b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
+.ad-top small { color: var(--muted); font-size: 12px; }
+.ad-top i { display: block; height: 4px; margin-top: 4px; border-radius: 4px; background: var(--grad); width: var(--w); animation: growW .8s both; }
+@keyframes growW { from { width: 0; } }
+
+/* ---------- Sharhlar ---------- */
+.ad-reviews { display: grid; gap: 12px; }
+.ad-review { padding: 16px; border-radius: 18px; border: 1px solid var(--line); background: color-mix(in srgb, var(--card) 88%, transparent); backdrop-filter: blur(6px); display: grid; gap: 10px; }
+.ad-review.hidden-rv { opacity: .6; }
+.ad-review header { display: flex; align-items: center; gap: 12px; }
+.ad-review header > div { flex: 1; min-width: 0; }
+.ad-review header b { display: block; }
+.ad-review header small { color: var(--muted); font-size: 12.5px; }
+.ad-rv-stars { color: #ffb020; font-size: 16px; letter-spacing: 1px; white-space: nowrap; }
+.ad-rv-stars i { font-style: normal; color: var(--line); }
+.ad-review p { white-space: pre-line; word-break: break-word; }
+.ad-reply { display: flex; gap: 8px; }
+.ad-reply input { flex: 1; min-width: 0; }
+.ad-ostatus { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.ad-actions .confirm { background: var(--primary) !important; color: #fff !important; }
+@media (max-width: 900px) { .ad-two-wide { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .ad-reply { flex-direction: column; } }
