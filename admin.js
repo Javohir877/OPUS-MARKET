@@ -32,14 +32,25 @@ document.documentElement.dataset.theme = safe(() => JSON.parse(localStorage.getI
   (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
 
 // ---------- Umumiy ----------
-function toast(msg) {
+function toast(msg, quiet) {
   // Ovoz: sfx.js (sayt bilan umumiy sozlamalar)
-  if (window.SFX && !/^🔔/.test(msg)) SFX.play(/^(❌|⚠️|⛔)/.test(msg) ? "error" : /^🚀/.test(msg) ? "success" : "select", { noHaptic: true }); // 🔔 — yangi buyurtma: o'z signali (chime) bor
+  if (window.SFX && !quiet && !/^🔔/.test(msg)) SFX.play(/^(❌|⚠️|⛔)/.test(msg) ? "error" : /^🚀/.test(msg) ? "success" : "select", { noHaptic: true }); // 🔔 — yangi buyurtma: o'z signali (chime) bor
   const el = document.createElement("div");
   el.className = "toast";
   el.textContent = msg;
   $("#toasts").appendChild(el);
   setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 300); }, 3200);
+}
+// Muvaffaqiyat: ekran markazida chiziladigan galochka + "check" ovozi
+function checkFx(msg) {
+  document.querySelector(".ad-done")?.remove();
+  const el = document.createElement("div");
+  el.className = "ad-done";
+  el.innerHTML = `<div class="ad-done-box"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="23" /><path d="M15 27l7.5 7.5L37.5 19" /></svg><b></b></div>`;
+  el.querySelector("b").textContent = msg;
+  document.body.appendChild(el);
+  if (window.SFX) setTimeout(() => SFX.play("check", { noHaptic: true }), 380); // chiziq tugashi bilan
+  setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 350); }, 1500);
 }
 const srcOf = (img) => (img ? S.uploads[img] || IMG(img) : "");
 const catName = (id) => (S.data.CATEGORIES.find((c) => c.id === id) || {}).name || id;
@@ -270,7 +281,7 @@ function renderChart() {
 function renderTop() {
   const t = (S.stats && S.stats.top) || [];
   const max = Math.max(...t.map((x) => x.qty), 1);
-  $("#topProducts").innerHTML = t.length ? `<ol class="ad-top">${t.map((x, i) => {
+  $("#topProducts").innerHTML = t.length ? `<ol class="ad-toplist">${t.map((x, i) => {
     const p = S.data.PRODUCTS.find((y) => y.id === x.id);
     return `<li style="--w:${(x.qty / max) * 100}%"><span class="ad-top-n">${i + 1}</span>${p ? `<img class="ad-thumb" src="${esc(srcOf(p.img))}" alt="" />` : ""}
       <div><b>${esc(x.name)}</b><small>${x.qty} dona · ${fmt(x.revenue)}</small><i></i></div></li>`;
@@ -606,7 +617,8 @@ form.addEventListener("submit", (e) => {
     const old = S.data.PRODUCTS[i];
     // Asosiy rasm o'zgarsa, eski qo'shimcha fotolar endi mos kelmaydi
     S.data.PRODUCTS[i] = build(old.id, old.gallery && old.img === val.img ? old.gallery : null);
-    toast("✓ Saqlandi — saytda ko'rinishi uchun \"E'lon qilish\" ni bosing");
+    checkFx("Saqlandi");
+    toast("✓ Saqlandi — saytda ko'rinishi uchun \"E'lon qilish\" ni bosing", true);
   } else {
     // Yangi mahsulot uchun yuklangan rasm nomini haqiqiy ID ga moslaymiz
     const id = nextId();
@@ -615,7 +627,8 @@ form.addEventListener("submit", (e) => {
       S.uploads[np] = S.uploads[val.img]; delete S.uploads[val.img]; val.img = np;
     }
     S.data.PRODUCTS.unshift(build(id, null));
-    toast("✓ Yangi mahsulot qo'shildi");
+    checkFx("Mahsulot qo'shildi");
+    toast("✓ Yangi mahsulot qo'shildi — saytda ko'rinishi uchun \"E'lon qilish\" ni bosing", true);
   }
   closeEdit(); update();
 });
@@ -707,7 +720,8 @@ nForm.addEventListener("submit", (e) => {
     S.data.NEWS.unshift({ id: Math.max(0, ...S.data.NEWS.map((x) => x.id)) + 1, ...v });
   }
   closeEdit(); update();
-  toast("✓ Yangilik saqlandi — saytda ko'rinishi uchun \"E'lon qilish\" ni bosing");
+  checkFx("Yangilik saqlandi");
+  toast("✓ Yangilik saqlandi — saytda ko'rinishi uchun \"E'lon qilish\" ni bosing", true);
 });
 $("#nDelete").addEventListener("click", () => {
   const b = $("#nDelete");
@@ -1182,7 +1196,8 @@ async function publish() {
     ls.del("opus_admin_draft");
     renderAll();
     $("#syncInfo").textContent = `E'lon qilindi: ${new Date().toLocaleTimeString("ru-RU")} · saytda darhol ko'rinadi`;
-    toast("🚀 E'lon qilindi! O'zgarishlar saytda darhol ko'rinadi.");
+    checkFx("E'lon qilindi");
+    toast("🚀 E'lon qilindi! O'zgarishlar saytda darhol ko'rinadi.", true);
   } catch (ex) {
     toast("❌ " + apiError(ex));
   } finally {
