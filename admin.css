@@ -428,3 +428,16 @@ body.admin { background: var(--bg); min-height: 100vh; }
 @keyframes adCheckOut { to { opacity: 0; transform: scale(1.04); } }
 @keyframes fadeIn { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .ad-done * { animation-duration: .01s !important; animation-delay: 0s !important; } }
+
+/* Sarlavha — panellar bilan bir xil shisha karta, chapda qizil nur, pastda neon chiziq */
+@media (min-width: 901px) {
+  .ad-top { top: 12px; margin-top: 0; padding: 16px 20px 16px 24px; align-items: center; border-radius: 20px; border: 1px solid var(--line);
+    background: linear-gradient(100deg, rgba(var(--prgb), .16), transparent 38%), color-mix(in srgb, var(--card) 86%, transparent);
+    backdrop-filter: blur(12px); box-shadow: 0 14px 34px rgba(0,0,0,.28); overflow: hidden; }
+  .ad-top::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 4px; border-radius: 0 4px 4px 0; background: var(--grad); box-shadow: 0 0 14px rgba(var(--prgb), .7); }
+  .ad-top::after { content: ""; position: absolute; left: 24px; right: 24px; bottom: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--prgb), .7), transparent); background-size: 200% 100%; animation: adTopLine 6s linear infinite; }
+  .ad-top h2 { font-family: "Orbitron", "Inter", sans-serif; font-size: 22px; letter-spacing: .5px; }
+  .ad-top-actions { align-items: center; }
+}
+@keyframes adTopLine { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .ad-top::after { animation: none; } }
