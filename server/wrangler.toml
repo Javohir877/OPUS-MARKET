@@ -8,6 +8,8 @@ compatibility_date = "2026-09-01"
 ALLOWED_ORIGINS = "https://javohir877.github.io"
 # Telegram bot nomi (token emas!). Token: wrangler secret put TELEGRAM_TOKEN
 TELEGRAM_BOT = "opussmarketbot"
+# Telegram Mini App ochadigan sayt manzili
+SHOP_URL = "https://javohir877.github.io/OPUS-MARKET/"
 
 [[d1_databases]]
 binding = "DB"
