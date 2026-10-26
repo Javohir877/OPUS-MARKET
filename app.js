@@ -46,6 +46,8 @@ async function api(method, path, body) {
   return data;
 }
 const auth = { token: store.get("token", null), user: store.get("user", null) };
+// Telegram Mini App ichida ochilganmi (initData faqat Telegram ichida bo'ladi)
+const TG = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData ? Telegram.WebApp : null;
 function setAuth(token, user) {
   auth.token = token || null;
   auth.user = token ? user : null;
@@ -929,12 +931,13 @@ function openLayer(el) {
   el.classList.add("open");
   overlay.classList.add("show");
   document.body.classList.add("lock");
+  if (TG) TG.BackButton.show();
 }
 function closeAll(keepOverlay, quiet) {
   const opened = $$(".drawer.open, .modal.open");
   if (opened.length && !quiet) sfx("close");
   opened.forEach((x) => x.classList.remove("open"));
-  if (!keepOverlay) { overlay.classList.remove("show"); document.body.classList.remove("lock"); }
+  if (!keepOverlay) { overlay.classList.remove("show"); document.body.classList.remove("lock"); if (TG) TG.BackButton.hide(); }
   if (location.hash.startsWith("#news-")) history.replaceState(null, "", location.pathname + location.search);
 }
 overlay.addEventListener("click", () => closeAll());
@@ -1530,6 +1533,7 @@ async function authSubmit(formEl, path, body) {
   try {
     const r = await api("POST", path, body);
     setAuth(r.token, r.user);
+    if (TG) tgAuth(); // Telegram ichida kirgan bo'lsa — shu Telegram akkauntini bog'laymiz
     formEl.reset();
     closeAll();
     toast(path.endsWith("register") ? `🎉 Xush kelibsiz, ${r.user.name}! Akkaunt ochildi.` : `👋 Salom, ${r.user.name}!`);
@@ -1721,5 +1725,26 @@ renderAccBtn();
 loadCatalog();
 // Saqlangan seans hali amaldami (admin bloklagan yoki parolni tiklagan bo'lishi mumkin)
 if (auth.token) api("GET", "/api/me").then((r) => setAuth(auth.token, r.user), () => {});
+// ---------- Telegram Mini App ----------
+// Bot menyusidagi "🛒 Do'kon" tugmasi saytni Telegram ichida ochadi. Telegram akkaunti saytdagi akkauntga
+// bog'langan bo'lsa — parolsiz kiramiz (Telegram imzosini server tekshiradi).
+async function tgAuth() {
+  try {
+    const r = await api("POST", "/api/auth/telegram", { initData: TG.initData });
+    if (r.token) {
+      setAuth(r.token, r.user);
+      toast(`👋 Salom, ${r.user.name}!`);
+    } else if (r.user) setAuth(auth.token, r.user);
+  } catch {}
+}
+if (TG) {
+  document.documentElement.classList.add("tg-app");
+  TG.ready();
+  TG.expand();
+  try { TG.setHeaderColor("#0c0708"); TG.setBackgroundColor("#0c0708"); TG.setBottomBarColor?.("#0c0708"); } catch {}
+  try { TG.disableVerticalSwipes?.(); } catch {}
+  TG.BackButton.onClick(() => closeAll());
+  tgAuth();
+}
 // Yangilik havolasi orqali kelganda (#news-3) — maqolani ochamiz
 { const m = location.hash.match(/^#news-(\d+)$/); if (m) setTimeout(() => openNews(+m[1]), 1500); }
