@@ -2,7 +2,7 @@
 //
 // Ochiq:   GET  /api/catalog                     — katalog (sozlamalar, kategoriyalar, mahsulotlar, yangiliklar)
 //          GET  /img/:name                       — admin yuklagan rasmlar
-// Mijoz:   POST /api/auth/register | /api/auth/login | /api/auth/logout
+// Mijoz:   POST /api/auth/register | /api/auth/login | /api/auth/logout | /api/auth/telegram (Mini App)
 //          GET  /api/me    PATCH /api/me    POST /api/me/password
 //          GET  /api/orders    POST /api/orders    POST /api/orders/:id/cancel
 //          GET  /api/products/:id/reviews (ochiq)   POST /api/products/:id/reviews
@@ -197,6 +197,44 @@ route("POST", "/api/auth/login", async (req, env) => {
   return json({ token, user: publicUser(user) });
 });
 
+// Telegram Mini App: Telegram imzolagan initData orqali kirish.
+// Telegram akkaunti saytdagi akkauntga bog'langan bo'lsa — parolsiz kiradi.
+// Mijoz saytda (parol bilan) kirgan bo'lsa — shu Telegram akkauntini unga bog'laymiz.
+async function verifyInitData(env, initData) {
+  if (!env.TELEGRAM_TOKEN || typeof initData !== "string" || initData.length > 4096) return null;
+  const params = new URLSearchParams(initData);
+  const hash = params.get("hash");
+  if (!hash) return null;
+  params.delete("hash");
+  const check = [...params.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, v]) => `${k}=${v}`).join("\n");
+  const hmac = async (key, data) => crypto.subtle.sign("HMAC", await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]), enc.encode(data));
+  const secret = await hmac(enc.encode("WebAppData"), env.TELEGRAM_TOKEN);
+  if (!safeEqual(hex(await hmac(secret, check)), hash)) return null;
+  if (Date.now() / 1000 - +params.get("auth_date") > 86400) return null; // 24 soatdan eski imzo qabul qilinmaydi
+  try { const u = JSON.parse(params.get("user") || "null"); return u && u.id ? u : null; } catch { return null; }
+}
+route("POST", "/api/auth/telegram", async (req, env) => {
+  const b = await body(req, 10000);
+  await checkLimit(env, "tgauth:" + ip(req), 30, 15 * 60e3);
+  const tu = await verifyInitData(env, b.initData);
+  if (!tu) { await recordFail(env, "tgauth:" + ip(req)); fail(401, "Telegram ma'lumotlari tasdiqlanmadi"); }
+  const chat = String(tu.id);
+  const me = await currentUser(req, env);
+  if (me) {
+    if (me.tg_chat_id !== chat) {
+      await env.DB.prepare("UPDATE users SET tg_chat_id = NULL WHERE tg_chat_id = ? AND id != ?").bind(chat, me.id).run();
+      await env.DB.prepare("UPDATE users SET tg_chat_id = ?, tg_pending_chat = NULL, tg_link_token = NULL WHERE id = ?").bind(chat, me.id).run();
+      await tgSend(env, chat, "✅ Telegram akkauntingiz OPUS MARKET akkauntiga ulandi! Endi do'kon shu yerda parolsiz ochiladi, tasdiqlash kodlari va chek ham shu yerga keladi.");
+    }
+    return json({ linked: true, user: publicUser(await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(me.id).first()) });
+  }
+  const user = await env.DB.prepare("SELECT * FROM users WHERE tg_chat_id = ?").bind(chat).first();
+  if (!user) return json({ linked: false });
+  if (user.blocked) fail(403, "Akkauntingiz bloklangan. Do'kon bilan bog'laning.");
+  await env.DB.prepare("UPDATE users SET last_login = ? WHERE id = ?").bind(Date.now(), user.id).run();
+  return json({ linked: true, token: await createSession(env, user.id, "user", USER_SESSION_DAYS * 864e5), user: publicUser(user) });
+});
+
 route("POST", "/api/auth/logout", async (req, env) => {
   const t = bearer(req);
   if (t) await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(await sha256(t)).run();
@@ -313,6 +351,7 @@ const kvGet = async (env, k) => (await env.DB.prepare("SELECT value FROM kv WHER
 const kvSet = (env, k, v) => env.DB.prepare("INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(k, v).run();
 const adminChat = async (env) => (await kvGet(env, "tg_admin_chat")) || env.TG_ADMIN_CHAT || null;
 const botLink = (env, payload) => `https://t.me/${env.TELEGRAM_BOT}?start=${payload}`;
+const shopKb = (env) => (env.SHOP_URL ? { reply_markup: { inline_keyboard: [[{ text: "🛒 Do'konni ochish", web_app: { url: env.SHOP_URL } }]] } } : {});
 
 // Buyurtma tarkibi (mijoz cheki va admin xabari uchun umumiy qism)
 function orderLines(o) {
@@ -430,7 +469,7 @@ async function handleUpdate(env, upd) {
       return;
     }
     const linked = await env.DB.prepare("SELECT name FROM users WHERE tg_chat_id = ?").bind(chat).first();
-    if (linked) await tgSend(env, chat, `${isAdmin ? "👑 Siz OPUS MARKET adminisiz — yangi buyurtmalar shu yerga keladi.\n" : ""}Salom, <b>${hh(linked.name)}</b>! Buyurtmalaringiz tasdiqlash kodlari va holati shu yerga keladi.`);
+    if (linked) await tgSend(env, chat, `${isAdmin ? "👑 Siz OPUS MARKET adminisiz — yangi buyurtmalar shu yerga keladi.\n" : ""}Salom, <b>${hh(linked.name)}</b>! Buyurtmalaringiz tasdiqlash kodlari va holati shu yerga keladi.\n\nDo'konni shu yerning o'zida ochish uchun pastdagi tugmani bosing 👇`, shopKb(env));
     else await askContact(env, chat, `${isAdmin ? "👑 Siz OPUS MARKET adminisiz — yangi buyurtmalar shu yerga keladi.\n\n" : ""}OPUS MARKET botiga xush kelibsiz! 🛒`);
     return;
   }
@@ -452,6 +491,7 @@ async function handleUpdate(env, upd) {
     await env.DB.prepare("UPDATE users SET tg_chat_id = NULL WHERE tg_chat_id = ? AND id != ?").bind(chat, u.id).run();
     await env.DB.prepare("UPDATE users SET tg_chat_id = ?, tg_pending_chat = NULL, tg_link_token = NULL WHERE id = ?").bind(chat, u.id).run();
     await tgSend(env, chat, "✅ Telegram akkauntingizga ulandi! Endi tasdiqlash kodlari va buyurtma holati shu yerga keladi.", { reply_markup: { remove_keyboard: true } });
+    if (env.SHOP_URL) await tgSend(env, chat, "🛒 Do'kon endi Telegram ichida parolsiz ochiladi:", shopKb(env));
     const pending = await env.DB.prepare("SELECT * FROM orders WHERE user_id = ? AND confirmed = 0 AND status = 'Yangi' ORDER BY created_at DESC LIMIT 3").bind(u.id).all();
     for (const o of pending.results) await sendCode(env, o, chat);
     if (!pending.results.length) await tgSend(env, chat, "ℹ️ Hozircha tasdiqlanishi kerak bo'lgan buyurtmangiz yo'q.\n\nSaytda buyurtma bering — oxirgi bosqichdan keyin 6 xonali kod darhol shu yerga keladi. 🛒");
@@ -459,7 +499,14 @@ async function handleUpdate(env, upd) {
   }
 
   if (!(await env.DB.prepare("SELECT 1 FROM users WHERE tg_chat_id = ?").bind(chat).first())) return askContact(env, chat, isAdmin ? "👑 Admin: yangi buyurtmalar avtomatik keladi." : "Botdan foydalanish uchun raqamingizni ulang.");
-  await tgSend(env, chat, isAdmin ? "👑 Admin: yangi buyurtmalar avtomatik keladi. Batafsil — admin panelda." : "Tasdiqlash kodi saytda buyurtma berganingizda shu yerga keladi. Savollar bo'lsa — do'kon operatoriga murojaat qiling.");
+  await tgSend(env, chat, isAdmin ? "👑 Admin: yangi buyurtmalar avtomatik keladi. Batafsil — admin panelda." : "Tasdiqlash kodi saytda buyurtma berganingizda shu yerga keladi. Savollar bo'lsa — do'kon operatoriga murojaat qiling.", shopKb(env));
+}
+
+// Bot menyusidagi "🛒 Do'kon" tugmasi (Mini App). Manzil o'zgarganda bir marta qayta o'rnatiladi.
+async function setupMenuButton(env) {
+  if (!env.TELEGRAM_TOKEN || !env.SHOP_URL || (await kvGet(env, "tg_menu_url")) === env.SHOP_URL) return;
+  const r = await tg(env, "setChatMenuButton", { menu_button: { type: "web_app", text: "🛒 Do'kon", web_app: { url: env.SHOP_URL } } });
+  if (r && r.ok) await kvSet(env, "tg_menu_url", env.SHOP_URL);
 }
 
 // Mijoz: kodni qayta yuborish / bot havolasini olish
@@ -763,7 +810,7 @@ route("POST", "/api/admin/images", async (req, env) => {
 
 // ---------- Kirish nuqtasi ----------
 export default {
-  async scheduled(event, env) { await pollUpdates(env); await expireUnconfirmed(env); },
+  async scheduled(event, env) { await pollUpdates(env); await expireUnconfirmed(env); await setupMenuButton(env); },
   async fetch(req, env) {
     const cors = corsHeaders(req, env);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
