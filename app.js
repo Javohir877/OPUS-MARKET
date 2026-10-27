@@ -56,6 +56,22 @@ function setAuth(token, user) {
   if (!token) state.orders = [];
   renderAccBtn();
 }
+// Reyting va sharhlar soni — serverdagi haqiqiy sharhlardan (katalogdagi qo'lda yozilgan sonlar ishlatilmaydi)
+let RV = store.get("rv_summary", {});
+function applyReviewStats() {
+  PRODUCTS.forEach((p) => { const s = RV[p.id]; p.reviews = s ? s[0] : 0; p.rating = s ? s[1] : 0; });
+}
+applyReviewStats();
+async function loadReviewStats() {
+  try {
+    const r = await api("GET", "/api/reviews/summary");
+    RV = r.s || {}; store.set("rv_summary", RV);
+    applyReviewStats(); renderProducts(); renderRecent();
+  } catch {}
+}
+const ratingHTML = (p, long) => p.reviews
+  ? `${stars(p.rating)} <small>${p.rating} ${long ? `· ${p.reviews} ta sharh` : `(${p.reviews})`}</small>`
+  : `<small class="muted">☆ Hali baho yo'q</small>`;
 const MONTHS = [3, 6, 12, 24];
 const MAX_PRICE = 45000000;
 
@@ -398,7 +414,7 @@ function productCard(p, i) {
     <button class="cmp ${compared ? "on" : ""}" data-cmp title="Solishtirish">${CMP_ICON}</button>
     <div class="card-body">
       <h4 data-open>${p.name}</h4>
-      <div class="rating">${stars(p.rating)} <small>${p.rating} (${p.reviews})</small></div>
+      <div class="rating">${ratingHTML(p)}</div>
       <div class="price-row">
         <div>
           ${p.old ? `<span class="old">${fmt(p.old)}</span>` : ""}
@@ -564,7 +580,7 @@ function openProduct(id) {
     <div>
       <div class="pm-badges"><span class="pill">${c.name} · ${p.brand}</span>${p.original !== false ? `<span class="tag orig">${ORIG_ICON}Original</span>` : ""}</div>
       <h2>${p.name}</h2>
-      <div class="rating">${stars(p.rating)} <small>${p.rating} · ${p.reviews} ta sharh</small></div>
+      <div class="rating">${ratingHTML(p, true)}</div>
       <p style="margin-top:10px">${p.desc}</p>
       <table class="specs">${Object.entries(p.specs).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("")}</table>
       ${p.old ? `<span class="old">${fmt(p.old)}</span>` : ""}
@@ -1322,7 +1338,7 @@ function renderCompare() {
         <tbody>
           ${row("Narx", list.map((p) => ({ v: fmt(p.price), best: p.price === minPrice })))}
           ${row("Bo'lib to'lash", list.map((p) => ({ v: fmt(p.price / 12) + "/oy" })))}
-          ${row("Reyting", list.map((p) => ({ v: "★ " + p.rating, best: p.rating === maxRating })))}
+          ${row("Reyting", list.map((p) => ({ v: p.reviews ? "★ " + p.rating : "—", best: p.reviews > 0 && p.rating === maxRating })))}
           ${row("Sharhlar", list.map((p) => ({ v: p.reviews + " ta" })))}
           ${row("Omborda", list.map((p) => ({ v: p.stock + " dona" })))}
           ${keys.map((k) => row(k, list.map((p) => ({ v: p.specs[k] || "—" })))).join("")}
@@ -1677,6 +1693,7 @@ async function loadReviews(p, fresh) {
       await api("POST", `/api/products/${p.id}/reviews`, { rating, text });
       toast("🙏 Rahmat! Sharhingiz qo'shildi");
       loadReviews(p, true);
+      loadReviewStats(); renderTestimonials();
     } catch (err) {
       btn.disabled = false;
       if (err.status === 401) return requireLogin("Seans tugagan — qayta kiring", () => openProduct(p.id));
@@ -1698,6 +1715,7 @@ async function loadCatalog() {
     Object.keys(SETTINGS).forEach((k) => delete SETTINGS[k]);
     Object.assign(SETTINGS, d.SETTINGS);
     applySettings();
+    applyReviewStats();
     state.cart = state.cart.filter((x) => byId(x.id));
     if (state.promo && !PROMOS[state.promo]) state.promo = null;
     if (SETTINGS.topbar) $("#topbarText").textContent = SETTINGS.topbar;
@@ -1729,6 +1747,27 @@ renderCart();
 renderRecent();
 renderCompareBar();
 renderNews();
+loadReviewStats();
+renderTestimonials();
+// "Mijozlar fikri": haqiqiy xaridorlarning so'nggi sharhlari (4–5★). Sharh bo'lmasa — bo'lim yashiriladi.
+async function renderTestimonials() {
+  const box = $("#testis");
+  if (!box) return;
+  let L = [];
+  try { L = (await api("GET", "/api/reviews/latest")).reviews || []; } catch { return; }
+  $("#reviews").hidden = !L.length;
+  box.innerHTML = L.slice(0, 6).map((r) => {
+    const p = byId(r.product_id), name = String(r.author || "Mijoz");
+    return `<div class="testi">
+      <div class="stars">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</div>
+      <p>"${esc(r.text)}"</p>
+      ${r.reply ? `<p class="testi-reply"><b>OPUS MARKET:</b> ${esc(r.reply)}</p>` : ""}
+      <div class="testi-user"><span class="avatar">${esc(name.slice(0, 2).toUpperCase())}</span><div><b>${esc(name)}${r.verified ? ` <span class="rv-ver">✓ Xarid qilgan</span>` : ""}</b>
+        ${p ? `<button class="testi-prod" data-tp="${p.id}">${esc(p.name)} →</button>` : ""}<small>${timeAgo(r.created_at)}</small></div></div>
+    </div>`;
+  }).join("");
+}
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-tp]"); if (b) openProduct(+b.dataset.tp); });
 updateBadges();
 renderAccBtn();
 loadCatalog();
