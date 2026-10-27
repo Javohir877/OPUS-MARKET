@@ -1266,3 +1266,6 @@ select:focus { border-color: var(--primary); }
   .search { order: 3; max-width: none; flex-basis: 100%; }
   .header-actions { margin-left: auto; gap: 2px; }
 }
+
+/* OPUS Android ilovasi ichida: o'rnatish/yuklab olish takliflari ko'rinmaydi */
+html.in-app #app, html.in-app #installBtn { display: none !important; }
