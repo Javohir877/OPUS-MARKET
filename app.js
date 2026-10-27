@@ -1755,6 +1755,7 @@ async function renderTestimonials() {
   if (!box) return;
   let L = [];
   try { L = (await api("GET", "/api/reviews/latest")).reviews || []; } catch { return; }
+  L = L.filter((r) => byId(r.product_id)); // o'chirilgan mahsulotlarning sharhlari ko'rsatilmaydi
   $("#reviews").hidden = !L.length;
   box.innerHTML = L.slice(0, 6).map((r) => {
     const p = byId(r.product_id), name = String(r.author || "Mijoz");
