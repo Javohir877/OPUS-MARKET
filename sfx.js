@@ -106,6 +106,54 @@
     coin:    [() => { tone(988, 0, 0.08, "square", 0.06); tone(1319, 0.07, 0.25, "square", 0.06); }, 0],
   };
 
+  SOUNDS.confetti = SOUNDS.success;
+
+  // ---------- Yozib olingan ovozlar (sounds/*.mp3, myinstants.com) ----------
+  // Har bir effekt: [fayl, balandlik, eng uzun davomiyligi (s)] — uzun ovozlar silliq qisqartiriladi.
+  // Fayl hali yuklanmagan bo'lsa yoki yuklanmasa — yuqoridagi sintez ovoz chalinadi.
+  const SAMPLES = {
+    click: ["click", 0.55, 0.3], icon: ["click", 0.5, 0.3], link: ["click", 0.45, 0.3], toggle: ["click", 0.5, 0.3], submit: ["click", 0.6, 0.3],
+    nav: ["open", 0.45, 0.45], next: ["open", 0.45, 0.45], open: ["open", 0.4, 0.5],
+    back: ["close", 0.45, 0.45], close: ["close", 0.4, 0.45],
+    tab: ["tab", 0.6, 0.35], chip: ["pop", 0.7, 0.3], select: ["pop", 0.6, 0.3], checkOn: ["pop", 0.7, 0.3], plus: ["pop", 0.55, 0.25], minus: ["pop", 0.45, 0.25],
+    add: ["add", 0.6, 1.1], remove: ["remove", 0.6, 0.5], danger: ["remove", 0.6, 0.5], checkOff: ["remove", 0.45, 0.4],
+    notify: ["notify", 0.6, 1.2], ok: ["notify", 0.5, 1.2], error: ["error", 0.55, 0.9],
+    success: ["success", 0.7, 2.2], check: ["success", 0.7, 2.2], confetti: ["confetti", 0.6, 1.8],
+  };
+  const base = (() => { try { return new URL("sounds/", document.currentScript.src).href; } catch { return "sounds/"; } })();
+  const buffers = {};
+  let loading = false;
+  function loadSamples() {
+    if (loading) return;
+    loading = true;
+    const c = ac(); if (!c) return;
+    [...new Set(Object.values(SAMPLES).map((x) => x[0]))].forEach((f) => {
+      fetch(base + f + ".mp3").then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
+        .then((ab) => new Promise((ok, no) => c.decodeAudioData(ab, ok, no)))
+        .then((buf) => {
+          // Boshidagi jimlikni o'tkazib yuboramiz va balandlikni tenglashtiramiz (har xil fayllar bir xil eshitilsin)
+          const d = buf.getChannelData(0);
+          let peak = 0; for (let i = 0; i < d.length; i++) { const v = Math.abs(d[i]); if (v > peak) peak = v; }
+          let st = 0; while (st < d.length && Math.abs(d[st]) < peak * 0.05) st++;
+          buffers[f] = { buf, off: Math.max(0, st / buf.sampleRate - 0.005), norm: peak > 0.01 ? Math.min(4, 0.9 / peak) : 1 };
+        }).catch(() => {});
+    });
+  }
+  function sample(name) {
+    const sm = SAMPLES[name], b = sm && buffers[sm[0]];
+    if (!b) return false;
+    const c = ac(), src = c.createBufferSource(), g = c.createGain(), t = c.currentTime;
+    src.buffer = b.buf;
+    const len = b.buf.duration - b.off, dur = Math.min(len, sm[2]), v = sm[1] * b.norm;
+    g.gain.setValueAtTime(v, t);
+    if (len > sm[2]) { g.gain.setValueAtTime(v, t + dur - 0.12); g.gain.linearRampToValueAtTime(0.0001, t + dur); }
+    src.connect(g).connect(bus || master);
+    src.start(t, b.off); src.stop(t + dur + 0.02);
+    return true;
+  }
+  // Fayllarni birinchi teginishda yuklaymiz (brauzer ovozni faqat shundan keyin ruxsat beradi)
+  ["pointerdown", "keydown", "touchstart"].forEach((ev) => addEventListener(ev, () => { if (on) loadSamples(); }, { once: true, capture: true, passive: true }));
+
   // Bir xil ovoz ketma-ket juda tez chalinmasin
   const last = {}, history = [];
   let total = 0, hushUntil = 0;
@@ -114,7 +162,7 @@
     if (!s || document.hidden) return;
     const now = performance.now();
     const main = name === "check" || name === "success";
-    if (!main && now < hushUntil) return; // galochka jaranglayotganda boshqa ovozlar chalinmaydi
+    if (!main && name !== "confetti" && now < hushUntil) return; // galochka jaranglayotganda boshqa ovozlar chalinmaydi
     if (main) hushUntil = now + (name === "check" ? 1300 : 900);
     if (now - (last[name] || 0) < (name === "hover" || name === "tick" ? 60 : 35)) return;
     last[name] = now;
@@ -127,7 +175,7 @@
           bus = c.createGain(); bus.connect(master); voices.add(bus);
           const mine = bus; setTimeout(() => voices.delete(mine), 1600);
         }
-        s[0]();
+        if (!sample(name)) s[0]();
       } catch {} finally { bus = null; }
     }
     if (haptic && s[1] && !(opts && opts.noHaptic) && navigator.vibrate && matchMedia("(pointer: coarse)").matches) { try { navigator.vibrate(s[1]); } catch {} }
@@ -190,7 +238,7 @@
     document.documentElement.classList.toggle("sound-off", !on);
     if (master) master.gain.value = vol;
   }
-  function setOn(v) { on = v; ls.set("opus_sound", v ? "1" : "0"); apply(); if (v) { ac(); play("toggle"); } }
+  function setOn(v) { on = v; ls.set("opus_sound", v ? "1" : "0"); apply(); if (v) { ac(); loadSamples(); play("toggle"); } }
   function setVolume(v) { vol = Math.max(0, Math.min(1, v)); ls.set("opus_sound_vol", String(vol)); if (master) master.gain.value = vol; }
   function setHaptic(v) { haptic = v; ls.set("opus_haptic", v ? "1" : "0"); if (v && navigator.vibrate) navigator.vibrate(20); }
   apply();
@@ -200,6 +248,7 @@
     toggle: () => setOn(!on), setOn, setVolume, setHaptic,
     get on() { return on; }, get volume() { return vol; }, get haptic() { return haptic; },
     get canVibrate() { return !!navigator.vibrate; },
+    get loaded() { return Object.keys(buffers); }, // yozib olingan ovozlardan qaysilari yuklangan
     get history() { return history.slice(); }, get total() { return total; }, // tekshirish uchun: oxirgi chalingan ovozlar
   };
 })();
