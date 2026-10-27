@@ -147,6 +147,7 @@ function markDirty() {
   $("#dirtyCount").textContent = n;
   if (n) ls.set("opus_admin_draft", { data: S.data, uploads: S.uploads, at: Date.now() });
   else ls.del("opus_admin_draft");
+  renderTasks();
 }
 function update() { renderAll(); markDirty(); }
 
@@ -157,8 +158,8 @@ async function start() {
   enterApp();
 }
 function refreshMode() {
-  $("#adUser").innerHTML = `<span class="ad-mode">Serverga ulangan</span><span class="muted">"E'lon qilish" o'zgarishlarni saytga darhol yozadi</span>`
-    + `<button class="ad-link" id="lockNowBtn">🔒 Chiqish</button>`;
+  $("#adUser").innerHTML = `<b>👑 Administrator</b><span class="ad-mode">Serverga ulangan</span><span class="muted">"E'lon qilish" o'zgarishlarni saytga darhol yozadi</span>`
+    + `<button class="ad-pop-item ad-danger" id="lockNowBtn" type="button">🔒 Chiqish (qulflash)</button>`;
   $("#lockNowBtn").addEventListener("click", lockNow);
   $("#publishBtn").title = "Saytga e'lon qilish (Ctrl+S)";
   $("#sheetMode").textContent = "Serverga ulangan — o'zgarishlar \"E'lon qilish\" bilan saytga yoziladi";
@@ -172,6 +173,8 @@ function enterApp() {
   markDirty();
   const draft = ls.get("opus_admin_draft", null);
   if (draft && JSON.stringify(draft.data) !== S.baseJSON) $("#draftBanner").hidden = false;
+  const last = ls.get("opus_admin_view", "dash");
+  if (TITLES[last] && last !== "dash") go(last);
 }
 
 $("#draftRestore").addEventListener("click", () => {
@@ -202,8 +205,14 @@ function go(view) {
   $("#moreBtn").classList.toggle("active", SHEET_VIEWS.includes(view));
   $$(".ad-view").forEach((v) => (v.hidden = v.dataset.view !== view));
   $("#viewTitle").textContent = TITLES[view];
+  $("#viewCrumb").textContent = GROUPS[view];
+  $("#viewCrumb2").textContent = TITLES[view];
+  ls.set("opus_admin_view", view);
+  closePops();
   scrollTo({ top: 0 });
 }
+const GROUPS = { dash: "Savdo", orders: "Savdo", users: "Savdo", reviews: "Savdo", products: "Katalog", cats: "Katalog", news: "Katalog", promos: "Katalog", settings: "Tizim", history: "Tizim" };
+const NAV_ORDER = ["dash", "orders", "users", "reviews", "products", "cats", "news", "promos", "settings", "history"];
 ["#adNav", "#adTabbar", "#adSheet"].forEach((s) => $(s).addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (b) go(b.dataset.view); }));
 
 // Telefon: "Yana" menyusi (pastdan chiqadigan oyna)
@@ -226,35 +235,52 @@ function renderAll() {
   $("#navNews").textContent = (S.data.NEWS || []).length;
   $("#navReviews").textContent = S.reviews.filter((r) => !r.reply && !r.hidden).length || "";
   renderKpis(); renderChart(); renderTop(); renderLow(); renderRecentOrders(); renderCats();
+  renderHero(); renderTasks(); renderPay(); renderStatusBars(); renderBoard();
   renderProducts(); renderOrders(); renderUsers(); renderReviews(); renderPromos(); renderSettings();
   renderNewsList(); renderCatEditor();
 }
 
 function renderKpis() {
-  const P = S.data.PRODUCTS, st = S.stats || {};
+  const P = S.data.PRODUCTS, st = S.stats || {}, ser = st.series || [];
   const units = P.reduce((s, p) => s + (+p.stock || 0), 0);
   const value = P.reduce((s, p) => s + p.price * (+p.stock || 0), 0);
   const low = P.filter((p) => p.stock <= 5), out = P.filter((p) => p.stock <= 0);
   const sale = P.filter((p) => p.old && p.old > p.price);
   const avgDisc = sale.length ? Math.round(sale.reduce((s, p) => s + (1 - p.price / p.old) * 100, 0) / sale.length) : 0;
+  const vis = S.reviews.filter((r) => !r.hidden), rating = vis.length ? (vis.reduce((a, r) => a + r.rating, 0) / vis.length).toFixed(1) : "—";
+  // Kechagi kun bilan solishtirish (o'sish/pasayish)
+  const y = ser.length > 1 ? ser[ser.length - 2] : null;
+  const trend = (now, prev) => !prev ? "" : now >= prev ? `<span class="ad-up">▲ ${Math.round(((now - prev) / prev) * 100)}%</span>` : `<span class="ad-down">▼ ${Math.round(((prev - now) / prev) * 100)}%</span>`;
   const tiles = [
-    { t: "Bugungi savdo", v: fmt(st.todayRevenue), e: `${st.todayOrders || 0} ta buyurtma bugun`, hot: true },
-    { t: "Buyurtmalar", v: st.orders || 0, e: [(st.byStatus || {})["Yangi"] ? `🔔 ${st.byStatus["Yangi"]} tasi yangi` : "Jami: " + fmt(st.revenue), st.unconfirmed ? `⏳ ${st.unconfirmed} tasi kod kutmoqda` : ""].filter(Boolean).join(" · "), warn: !!(st.byStatus || {})["Yangi"] },
-    { t: "Mijozlar", v: st.users || 0, e: st.newUsers ? `+${st.newUsers} ta oxirgi 7 kunda` : "Ro'yxatdan o'tganlar" },
-    { t: "Sharhlar", v: st.reviews || 0, e: st.newReviews ? `+${st.newReviews} ta shu hafta` : "Mijozlar fikri" },
-    { t: "Mahsulotlar", v: P.length, e: `${S.data.CATEGORIES.length} ta kategoriya` },
-    { t: "Omborda", v: num(units) + " dona", e: "Qiymati: " + fmt(value) },
-    { t: "Kam qolgan", v: low.length, e: out.length ? `⛔ ${out.length} tasi tugagan` : "≤ 5 dona qolganlar", warn: low.length > 0 },
-    { t: "Chegirmada", v: sale.length, e: sale.length ? `O'rtacha −${avgDisc}%` : "Chegirma yo'q" },
-    { t: "Original belgisi", v: `${P.filter((p) => p.original !== false).length}/${P.length}`, e: "✓ belgili mahsulotlar" },
-    { t: "Yangiliklar", v: (S.data.NEWS || []).length, e: (S.data.NEWS || []).length ? "Oxirgisi: " + (S.data.NEWS.map((n) => n.date).sort().pop() || "—") : "Hali yo'q" },
+    { t: "💰 Bugungi savdo", v: fmt(st.todayRevenue), e: `${st.todayOrders || 0} ta buyurtma ${y ? trend(st.todayRevenue || 0, y.revenue) : ""}`, hot: true, spark: ser.map((d) => d.revenue) },
+    { t: "📦 Buyurtmalar", v: st.orders || 0, e: [(st.byStatus || {})["Yangi"] ? `🔔 ${st.byStatus["Yangi"]} tasi yangi` : "Jami: " + fmt(st.revenue), st.unconfirmed ? `⏳ ${st.unconfirmed} tasi kod kutmoqda` : ""].filter(Boolean).join(" · "), warn: !!(st.byStatus || {})["Yangi"], spark: ser.map((d) => d.orders), go: "orders" },
+    { t: "👥 Mijozlar", v: st.users || 0, e: st.newUsers ? `+${st.newUsers} ta oxirgi 7 kunda` : "Ro'yxatdan o'tganlar", go: "users" },
+    { t: "⭐ Reyting", v: rating, e: `${vis.length} ta sharh${st.newReviews ? ` · +${st.newReviews} shu hafta` : ""}`, go: "reviews" },
   ];
-  $("#kpis").innerHTML = tiles.map((k) => `<div class="ad-kpi ${k.warn ? "warn" : ""} ${k.hot ? "hot" : ""}"><small>${k.t}</small><b>${k.v}</b><em>${k.e}</em></div>`).join("");
+  $("#kpis").innerHTML = tiles.map((k) => `<div class="ad-kpi ${k.warn ? "warn" : ""} ${k.hot ? "hot" : ""}"${k.go ? ` data-goto="${k.go}" role="button" tabindex="0"` : ""}><small>${k.t}</small><b>${k.v}</b><em>${k.e}</em>${k.spark ? spark(k.spark) : ""}</div>`).join("");
+  const mini = [
+    { i: "🛍", t: "Mahsulotlar", v: P.length, go: "products" },
+    { i: "🏬", t: "Omborda", v: num(units) + " dona", sub: fmt(value) },
+    { i: "⚠️", t: "Kam qolgan", v: low.length, sub: out.length ? `${out.length} tasi tugagan` : "", warn: low.length > 0, go: "products" },
+    { i: "🏷", t: "Chegirmada", v: sale.length, sub: sale.length ? `o'rtacha −${avgDisc}%` : "" },
+    { i: "✅", t: "Original", v: `${P.filter((p) => p.original !== false).length}/${P.length}` },
+    { i: "📰", t: "Yangiliklar", v: (S.data.NEWS || []).length, go: "news" },
+  ];
+  $("#kpiMini").innerHTML = mini.map((m) => `<div class="ad-mini-i${m.warn ? " warn" : ""}"${m.go ? ` data-goto="${m.go}" role="button" tabindex="0"` : ""}><span>${m.i}</span><div><small>${m.t}</small><b>${m.v}</b>${m.sub ? `<em>${m.sub}</em>` : ""}</div></div>`).join("");
+}
+// Kichik chiziqli grafik (sparkline)
+function spark(vals) {
+  if (!vals.length) return "";
+  const W = 120, H = 34, max = Math.max(...vals, 1), step = W / Math.max(1, vals.length - 1);
+  const pts = vals.map((v, i) => `${(i * step).toFixed(1)},${(H - 3 - (v / max) * (H - 8)).toFixed(1)}`).join(" ");
+  return `<svg class="ad-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,${H} ${pts} ${W},${H}" class="ad-spark-a"/><polyline points="${pts}" class="ad-spark-l"/></svg>`;
 }
 
 // 14 kunlik savdo — ustunli grafik (SVG, kutubxonasiz)
 function renderChart() {
-  const s = (S.stats && S.stats.series) || [];
+  const range = ls.get("opus_admin_range", 14);
+  $$("#chartRange button").forEach((b) => b.classList.toggle("active", +b.dataset.range === range));
+  const s = ((S.stats && S.stats.series) || []).slice(-range);
   const box = $("#salesChart");
   if (!s.length) { box.innerHTML = `<p class="ad-empty">Ma'lumot yo'q</p>`; return; }
   const max = Math.max(...s.map((d) => d.revenue), 1), total = s.reduce((a, d) => a + d.revenue, 0);
@@ -295,7 +321,7 @@ function renderLow() {
       <td><img class="ad-thumb" src="${esc(srcOf(p.img))}" alt="" /></td>
       <td class="ad-pname"><b>${esc(p.name)}</b><small>${esc(catName(p.cat))}</small></td>
       <td>${stockChip(p.stock)}</td>
-      <td class="num"><input class="cell sm" type="number" min="0" data-field="stock" value="${p.stock}" aria-label="Ombor" /></td>
+      <td class="num"><span class="ad-restock"><input class="cell sm" type="number" min="0" data-field="stock" value="${p.stock}" aria-label="Ombor" /><button type="button" data-add="5">+5</button><button type="button" data-add="10">+10</button></span></td>
     </tr>`).join("")}</table>` : `<p class="ad-empty">✓ Barcha mahsulotlar yetarli</p>`;
 }
 
@@ -531,6 +557,7 @@ overlay.addEventListener("click", closeEdit);
 $$(".drawer [data-close]").forEach((b) => b.addEventListener("click", closeEdit));
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && $(".drawer.open")) closeEdit();
+  if (e.key === "Escape") { closeCmd(); closePops(); $("#keys").hidden = true; }
   // Ctrl+S — e'lon qilish
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s" && S.data) { e.preventDefault(); if (!$("#publishBtn").disabled) publish(); }
 });
@@ -827,19 +854,25 @@ $("#oExport").addEventListener("click", () => {
 $("#oTable").addEventListener("change", async (e) => {
   const id = e.target.dataset.order;
   if (!id) return;
-  const sel = e.target, o = S.orders.find((x) => x.id === id), prev = o.status;
+  const sel = e.target;
   sel.disabled = true;
-  try {
-    await api("PATCH", "/api/admin/orders/" + encodeURIComponent(id), { status: sel.value });
-    o.status = sel.value;
-    toast(`Buyurtma #${id}: ${sel.value}`);
-    // Bekor qilish / qayta tiklash ombor qoldig'ini o'zgartiradi — katalog va statistikani yangilaymiz
-    if ((prev === "Bekor qilindi") !== (sel.value === "Bekor qilindi")) await refreshStock();
-    S.stats = await api("GET", "/api/admin/stats");
-    renderAll();
-  } catch (ex) { sel.value = prev; toast("❌ " + apiError(ex)); }
+  if (!(await setOrderStatus(id, sel.value))) sel.value = S.orders.find((x) => x.id === id).status;
   sel.disabled = false;
 });
+async function setOrderStatus(id, status) {
+  const o = S.orders.find((x) => x.id === id), prev = o.status;
+  if (prev === status) return true;
+  try {
+    await api("PATCH", "/api/admin/orders/" + encodeURIComponent(id), { status });
+    o.status = status;
+    toast(`Buyurtma #${id}: ${status}`);
+    // Bekor qilish / qayta tiklash ombor qoldig'ini o'zgartiradi — katalog va statistikani yangilaymiz
+    if ((prev === "Bekor qilindi") !== (status === "Bekor qilindi")) await refreshStock();
+    S.stats = await api("GET", "/api/admin/stats");
+    renderAll();
+    return true;
+  } catch (ex) { toast("❌ " + apiError(ex)); renderBoard(); return false; }
+}
 // Server ombor qoldig'ini o'zi o'zgartirgan — qoralamadagi boshqa o'zgarishlarni saqlagan holda faqat "stock" ni olamiz
 async function refreshStock() {
   const d = await api("GET", "/api/catalog"), base = JSON.parse(S.baseJSON);
@@ -1072,13 +1105,15 @@ async function pollOrders() {
       renderAll(); chime();
       const o = S.orders.find((x) => x.confirmed !== 0) || S.orders[0];
       toast(`🔔 Yangi buyurtma #${o.id}: ${o.user_name || "mijoz"} — ${fmt(o.total)}`);
+      pushEvent("🛒", `Yangi buyurtma #${o.id} — ${o.user_name || "mijoz"}, ${fmt(o.total)}`, "orders");
       if ("Notification" in window && Notification.permission === "granted" && document.hidden)
         new Notification("OPUS MARKET — yangi buyurtma", { body: `#${o.id} · ${o.user_name || ""} · ${fmt(o.total)}`, icon: "icons/apple-touch-icon.png" });
     } else {
       S.stats = st; S.lastOrderAt = Math.max(S.lastOrderAt, st.lastOrderAt || 0);
-      renderKpis(); renderChart();
+      renderKpis(); renderChart(); renderHero();
     }
-  } catch {}
+    setLive(true);
+  } catch { setLive(false); }
 }
 setInterval(pollOrders, 30000);
 addEventListener("focus", () => { unseen = 0; document.title = baseTitle; });
@@ -1267,3 +1302,338 @@ async function lockNow() {
 // Sahifa ochilganda: shu seansda kirilgan bo'lsa — to'g'ridan-to'g'ri panel, aks holda parol
 if (S.token) unlocked();
 else setTimeout(() => $("#lockInput").focus(), 100);
+
+// =====================================================================
+// ---------- Yangi imkoniyatlar: salomlashuv, maqsad, vazifalar ----------
+// =====================================================================
+const UZ_DAYS = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
+const UZ_MONTHS = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"];
+const uzDate = (d) => `${UZ_DAYS[d.getDay()]}, ${d.getDate()}-${UZ_MONTHS[d.getMonth()]}, ${d.getFullYear()}`;
+const hello = () => { const h = new Date().getHours(); return h < 5 ? "Xayrli tun" : h < 11 ? "Xayrli tong" : h < 17 ? "Xayrli kun" : h < 22 ? "Xayrli kech" : "Xayrli tun"; };
+function renderHero() {
+  const st = S.stats || {}, n = tasks().length;
+  $("#heroDate").textContent = uzDate(new Date());
+  $("#heroHello").textContent = `${hello()}, Admin 👋`;
+  $("#heroSummary").innerHTML = `Bugun <b>${st.todayOrders || 0} ta</b> buyurtma, <b>${fmt(st.todayRevenue)}</b> savdo. ${n ? `Sizni <b>${n} ta vazifa</b> kutmoqda.` : "Barcha vazifalar bajarilgan ✨"}`;
+  // Kunlik maqsad halqasi
+  const goal = ls.get("opus_admin_goal", 10000000), done = st.todayRevenue || 0, pct = Math.min(100, Math.round((done / goal) * 100));
+  const C = 2 * Math.PI * 52;
+  $("#goalRing").innerHTML = `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" class="ad-ring-bg"/><circle cx="60" cy="60" r="52" class="ad-ring" style="stroke-dasharray:${C};stroke-dashoffset:${C * (1 - pct / 100)}"/></svg>
+    <span><b>${pct}%</b><small>kunlik maqsad</small><em>${short(done)} / ${short(goal)}</em></span>`;
+  $("#goalRing").classList.toggle("done", pct >= 100);
+}
+const short = (n) => n >= 1e9 ? (n / 1e9).toFixed(1) + " mlrd" : n >= 1e6 ? +(n / 1e6).toFixed(1) + " mln" : n >= 1e3 ? Math.round(n / 1e3) + " ming" : String(Math.round(n || 0));
+$("#goalRing").addEventListener("click", () => {
+  const f = $("#goalForm");
+  f.hidden = !f.hidden;
+  if (!f.hidden) { $("#goalInput").value = ls.get("opus_admin_goal", 10000000); $("#goalInput").focus(); }
+});
+$("#goalForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const v = Math.round(+$("#goalInput").value);
+  if (!(v >= 100000)) { toast("⚠️ Maqsad kamida 100 000 so'm bo'lsin"); return; }
+  ls.set("opus_admin_goal", v); $("#goalForm").hidden = true; renderHero();
+  checkFx("Maqsad saqlandi");
+});
+
+// Vazifalar — boshqaruvdagi ro'yxat va bildirishnomalar uchun umumiy manba
+function tasks() {
+  if (!S.data) return [];
+  const P = S.data.PRODUCTS;
+  const fresh = S.orders.filter((o) => o.status === "Yangi" && o.confirmed !== 0).length;
+  const pend = S.orders.filter(isPending).length;
+  const noReply = S.reviews.filter((r) => !r.reply && !r.hidden).length;
+  const out = P.filter((p) => p.stock <= 0).length, low = P.filter((p) => p.stock > 0 && p.stock <= 5).length;
+  const dirty = diff().n;
+  return [
+    fresh && { i: "📦", t: `${fresh} ta yangi buyurtma ishlov kutmoqda`, s: "Mijoz bilan bog'lanib, holatini o'zgartiring", go: "orders", f: "Yangi", lvl: "hot" },
+    pend && { i: "⏳", t: `${pend} ta buyurtma Telegram kodini kutmoqda`, s: "2 soatda tasdiqlanmasa avtomatik bekor bo'ladi", go: "orders", f: "__pending" },
+    noReply && { i: "💬", t: `${noReply} ta sharhga javob berilmagan`, s: "Javob mijozlar ishonchini oshiradi", go: "reviews", rf: "noreply" },
+    out && { i: "⛔", t: `${out} ta mahsulot tugagan`, s: "Saytda \"Tugagan\" bo'lib turibdi", go: "products", ps: "out", lvl: "hot" },
+    low && { i: "⚠️", t: `${low} ta mahsulot kam qolgan`, s: "5 donadan kam", go: "products", ps: "low" },
+    dirty && { i: "✏️", t: `${dirty} ta o'zgarish e'lon qilinmagan`, s: "Saytda ko'rinishi uchun \"E'lon qilish\" ni bosing", cmd: "publish" },
+  ].filter(Boolean);
+}
+const taskHTML = (t, i) => `<button type="button" class="ad-task${t.lvl ? " " + t.lvl : ""}" data-task="${i}"><span class="ad-task-i">${t.i}</span><span><b>${t.t}</b><small>${t.s}</small></span><i>→</i></button>`;
+function renderTasks() {
+  const T = tasks();
+  $("#todoCount").textContent = T.length ? `${T.length} ta` : "";
+  $("#todoList").innerHTML = T.length ? T.map(taskHTML).join("") : `<p class="ad-empty">🎉 Hammasi joyida — bajariladigan ish yo'q</p>`;
+  renderBell();
+}
+function openTask(t) {
+  if (!t) return;
+  if (t.cmd === "publish") { if (!$("#publishBtn").disabled) publish(); return; }
+  if (t.f) { $("#oStatus").value = t.f; renderOrders(); }
+  if (t.rf) { $("#rFilter").value = t.rf; renderReviews(); }
+  if (t.ps) { $("#pStock").value = t.ps; $("#pCat").value = ""; renderProducts(); }
+  go(t.go);
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-task]");
+  if (b) openTask(tasks()[+b.dataset.task]);
+});
+
+// ---------- Bildirishnomalar markazi ----------
+S.events = [];
+let seenEvents = 0;
+function pushEvent(icon, text, go) {
+  S.events.unshift({ icon, text, go, at: Date.now() });
+  S.events = S.events.slice(0, 20);
+  renderBell();
+}
+function renderBell() {
+  const T = tasks(), fresh = S.events.length - seenEvents, n = T.length + Math.max(0, fresh);
+  $("#bellCount").hidden = !n; $("#bellCount").textContent = n > 9 ? "9+" : n;
+  $("#bellBtn").classList.toggle("ring", fresh > 0);
+  $("#bellList").innerHTML = (T.length ? `<p class="ad-pop-h">Bajarilishi kerak</p>` + T.map(taskHTML).join("") : "")
+    + (S.events.length ? `<p class="ad-pop-h">So'nggi voqealar</p>` + S.events.map((ev, i) => `<button type="button" class="ad-task${i < fresh ? " unread" : ""}" data-goto="${ev.go}"><span class="ad-task-i">${ev.icon}</span><span><b>${esc(ev.text)}</b><small>${new Date(ev.at).toLocaleTimeString("ru-RU").slice(0, 5)}</small></span></button>`).join("") : "")
+    || `<p class="ad-empty">🔕 Yangi bildirishnoma yo'q</p>`;
+}
+function togglePop(btn, pop) {
+  const open = pop.hidden;
+  closePops();
+  if (open) { pop.hidden = false; btn.setAttribute("aria-expanded", "true"); if (window.SFX) SFX.play("open", { noHaptic: true }); }
+}
+function closePops() {
+  [["#bellBtn", "#bellPop"], ["#profileBtn", "#profilePop"]].forEach(([b, p]) => { $(p).hidden = true; $(b).setAttribute("aria-expanded", "false"); });
+}
+$("#bellBtn").addEventListener("click", (e) => { e.stopPropagation(); togglePop($("#bellBtn"), $("#bellPop")); });
+$("#profileBtn").addEventListener("click", (e) => { e.stopPropagation(); togglePop($("#profileBtn"), $("#profilePop")); });
+$("#bellRead").addEventListener("click", () => { seenEvents = S.events.length; renderBell(); });
+document.addEventListener("click", (e) => { if (!e.target.closest(".ad-pop-wrap")) closePops(); });
+
+// ---------- To'lov usullari (halqa diagramma) ----------
+const PAY_COLORS = ["#ff2a40", "#ff7a2e", "#ffb020", "#a8081d", "#ff5c8a", "#7a0b3a", "#e8e8e8", "#c2410c"];
+function renderPay() {
+  const O = S.orders.filter((o) => o.confirmed !== 0 && o.status !== "Bekor qilindi");
+  const by = {};
+  O.forEach((o) => { by[o.payment] = (by[o.payment] || 0) + o.total; });
+  const rows = Object.entries(by).sort((a, b) => b[1] - a[1]), total = rows.reduce((a, r) => a + r[1], 0);
+  if (!total) { $("#payDonut").innerHTML = `<p class="ad-empty">Hali tasdiqlangan buyurtma yo'q</p>`; return; }
+  const C = 2 * Math.PI * 40;
+  let off = 0;
+  const arcs = rows.map(([k, v], i) => {
+    const len = (v / total) * C, a = `<circle cx="60" cy="60" r="40" stroke="${PAY_COLORS[i % PAY_COLORS.length]}" style="stroke-dasharray:${len} ${C - len};stroke-dashoffset:${-off}"><title>${esc(payName(k))}: ${fmt(v)}</title></circle>`;
+    off += len; return a;
+  }).join("");
+  $("#payDonut").innerHTML = `<svg viewBox="0 0 120 120" class="ad-donut-svg">${arcs}<text x="60" y="57" text-anchor="middle" class="ad-donut-n">${O.length}</text><text x="60" y="72" text-anchor="middle" class="ad-axis">buyurtma</text></svg>
+    <ul>${rows.map(([k, v], i) => `<li><i style="background:${PAY_COLORS[i % PAY_COLORS.length]}"></i><span>${esc(payName(k))}</span><b>${Math.round((v / total) * 100)}%</b></li>`).join("")}</ul>`;
+}
+
+// ---------- Buyurtma holatlari (gorizontal ustunlar) ----------
+function renderStatusBars() {
+  const cols = [["__pending", "⏳ Kod kutilmoqda"], ...STATUSES.map((x) => [x, x])];
+  const cnt = (k) => S.orders.filter((o) => (k === "__pending" ? isPending(o) : o.status === k && !isPending(o))).length;
+  const data = cols.map(([k, t]) => ({ k, t, n: cnt(k) })), max = Math.max(1, ...data.map((d) => d.n));
+  $("#statusBars").innerHTML = data.map((d) => `<button type="button" class="ad-sbar${d.k === "Bekor qilindi" ? " bad" : d.k === "Yetkazildi" ? " ok" : ""}" data-sfilter="${esc(d.k)}" style="--w:${(d.n / max) * 100}%"><span>${esc(d.t)}</span><i></i><b>${d.n}</b></button>`).join("");
+}
+$("#statusBars").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-sfilter]");
+  if (b) { $("#oStatus").value = b.dataset.sfilter; renderOrders(); go("orders"); }
+});
+
+// ---------- Buyurtmalar: Kanban doska ----------
+const BOARD_COLS = [["__pending", "⏳ Kod kutilmoqda"], ["Yangi", "🆕 Yangi"], ["Tasdiqlandi", "✅ Tasdiqlandi"], ["Yig'ilmoqda", "📦 Yig'ilmoqda"], ["Yo'lda", "🚚 Yo'lda"], ["Yetkazildi", "🎉 Yetkazildi"], ["Bekor qilindi", "✕ Bekor qilindi"]];
+function setOrderMode(mode) {
+  ls.set("opus_admin_omode", mode);
+  $$("#oMode button").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
+  $("#oTableWrap").hidden = mode === "board";
+  $("#oBoard").hidden = mode !== "board";
+  $("#oStatus").hidden = mode === "board";
+  renderBoard();
+}
+$("#oMode").addEventListener("click", (e) => { const b = e.target.closest("[data-mode]"); if (b) setOrderMode(b.dataset.mode); });
+function renderBoard() {
+  const box = $("#oBoard");
+  if (box.hidden) return;
+  const q = ($("#oSearch").value || "").trim().toLowerCase();
+  const O = S.orders.filter((o) => !q || [o.id, o.user_name, o.user_phone, fmtPhone(o.user_phone)].join(" ").toLowerCase().includes(q));
+  box.innerHTML = BOARD_COLS.map(([k, t]) => {
+    const list = O.filter((o) => (k === "__pending" ? isPending(o) : o.status === k && !isPending(o)));
+    const sum = list.reduce((a, o) => a + o.total, 0);
+    const next = STATUSES[STATUSES.indexOf(k) + 1];
+    return `<div class="ad-col${k === "__pending" ? " locked" : ""}" data-col="${esc(k)}">
+      <header><b>${t}</b><span>${list.length}</span></header>
+      <small class="muted">${list.length ? fmt(sum) : "—"}</small>
+      <div class="ad-col-body">${list.map((o) => `<article class="ad-card" draggable="true" data-card="${esc(o.id)}">
+        <header><b>#${esc(o.id)}</b><small>${new Date(o.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</small></header>
+        <p>${o.user_id ? `<button class="ad-link" data-user="${o.user_id}">${esc(o.user_name || "—")}</button>` : "<i>o'chirilgan mijoz</i>"}</p>
+        <small class="muted">${esc(itemsText(o).slice(0, 2).join(", "))}${(o.items || []).length > 2 ? " …" : ""}</small>
+        <footer><b>${fmt(o.total)}</b>${next && k !== "__pending" && k !== "Bekor qilindi" ? `<button type="button" class="ad-next" data-next="${esc(next)}" title="Keyingi bosqich: ${esc(next)}">${esc(next)} →</button>` : ""}</footer>
+      </article>`).join("") || `<p class="ad-col-empty">Bo'sh</p>`}</div>
+    </div>`;
+  }).join("");
+}
+$("#oSearch").addEventListener("input", renderBoard);
+let dragId = null;
+$("#oBoard").addEventListener("dragstart", (e) => {
+  const c = e.target.closest("[data-card]");
+  if (!c) return;
+  dragId = c.dataset.card; c.classList.add("drag");
+  e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", dragId);
+});
+$("#oBoard").addEventListener("dragend", () => { dragId = null; $$(".ad-card.drag, .ad-col.over").forEach((x) => x.classList.remove("drag", "over")); });
+$("#oBoard").addEventListener("dragover", (e) => {
+  const col = e.target.closest("[data-col]");
+  if (!col || !dragId || col.classList.contains("locked")) return;
+  e.preventDefault();
+  $$(".ad-col.over").forEach((x) => x !== col && x.classList.remove("over"));
+  col.classList.add("over");
+});
+$("#oBoard").addEventListener("drop", async (e) => {
+  const col = e.target.closest("[data-col]");
+  if (!col || !dragId || col.classList.contains("locked")) return;
+  e.preventDefault();
+  const id = dragId; dragId = null;
+  col.classList.remove("over");
+  await setOrderStatus(id, col.dataset.col);
+});
+$("#oBoard").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-next]");
+  if (!b) return;
+  b.disabled = true;
+  await setOrderStatus(b.closest("[data-card]").dataset.card, b.dataset.next);
+});
+
+// ---------- Kam qolganlar: +5 / +10 ----------
+$("#lowStock").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-add]");
+  if (!b) return;
+  const p = S.data.PRODUCTS.find((x) => x.id === +b.closest("[data-id]").dataset.id);
+  p.stock = (+p.stock || 0) + +b.dataset.add;
+  update();
+  toast(`📦 ${p.name}: omborda endi ${p.stock} dona — "E'lon qilish" ni bosing`);
+});
+
+// ---------- Grafik oralig'i ----------
+$("#chartRange").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-range]");
+  if (b) { ls.set("opus_admin_range", +b.dataset.range); renderChart(); }
+});
+
+// ---------- Ctrl+K: tezkor qidiruv va buyruqlar ----------
+const ACTIONS = [
+  { i: "➕", t: "Yangi mahsulot qo'shish", k: "newProduct", h: "N" },
+  { i: "📰", t: "Yangi yangilik yozish", k: "newNews" },
+  { i: "🎟", t: "Promo-kod yaratish", k: "newPromo" },
+  { i: "🚀", t: "E'lon qilish", k: "publish", h: "Ctrl S" },
+  { i: "▦", t: "Buyurtmalar — Kanban doska", k: "board" },
+  { i: "⬇", t: "Buyurtmalar hisoboti (CSV)", k: "exportOrders" },
+  { i: "↻", t: "Ma'lumotlarni yangilash", k: "reload" },
+  { i: "🌓", t: "Tun / kun rejimi", k: "theme", h: "T" },
+  { i: "⌨️", t: "Klaviatura tugmalari", k: "keys", h: "?" },
+  { i: "↗", t: "Saytni ochish", k: "site" },
+  { i: "🔒", t: "Chiqish (qulflash)", k: "lock" },
+];
+function runCmd(k) {
+  closeCmd(); closePops(); closeSheet();
+  if (k === "newProduct") { go("products"); openEdit(null); }
+  else if (k === "newNews") { go("news"); $("#addNews").click(); }
+  else if (k === "newPromo") { go("promos"); setTimeout(() => $("#promoCode").focus(), 50); }
+  else if (k === "publish") { if (!$("#publishBtn").disabled) publish(); else toast("ℹ️ E'lon qilinadigan o'zgarish yo'q"); }
+  else if (k === "board") { go("orders"); setOrderMode("board"); }
+  else if (k === "exportOrders") $("#oExport").click();
+  else if (k === "reload") reloadServer("↻ Yangilandi");
+  else if (k === "theme") toggleTheme();
+  else if (k === "keys") $("#keys").hidden = false;
+  else if (k === "site") open("./", "_blank", "noopener");
+  else if (k === "lock") lockNow();
+  else if (k === "search") openCmd();
+}
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-cmd]"); if (b) runCmd(b.dataset.cmd); });
+
+let cmdItems = [], cmdSel = 0;
+function openCmd() {
+  if (!S.data) return;
+  $("#cmd").hidden = false; $("#cmdInput").value = ""; renderCmd();
+  setTimeout(() => $("#cmdInput").focus(), 20);
+}
+function closeCmd() { $("#cmd").hidden = true; }
+function renderCmd() {
+  const q = $("#cmdInput").value.trim().toLowerCase();
+  const has = (txt) => !q || txt.toLowerCase().includes(q);
+  const views = NAV_ORDER.filter((v) => has(TITLES[v] + " " + GROUPS[v])).map((v, i) => ({ g: "Bo'limlar", i: "📂", t: TITLES[v], s: GROUPS[v], h: "Alt " + ((NAV_ORDER.indexOf(v) + 1) % 10), run: () => go(v) }));
+  const acts = ACTIONS.filter((a) => has(a.t)).map((a) => ({ g: "Amallar", i: a.i, t: a.t, h: a.h, run: () => runCmd(a.k) }));
+  const prods = q ? S.data.PRODUCTS.filter((p) => has(`${p.name} ${p.brand} ${p.id}`)).slice(0, 6).map((p) => ({ g: "Mahsulotlar", img: srcOf(p.img), t: p.name, s: `${fmt(p.price)} · omborda ${p.stock}`, run: () => { go("products"); openEdit(p.id); } })) : [];
+  const ords = q ? S.orders.filter((o) => has(`#${o.id} ${o.user_name} ${o.user_phone} ${fmtPhone(o.user_phone)}`)).slice(0, 5).map((o) => ({ g: "Buyurtmalar", i: "🧾", t: `#${o.id} — ${o.user_name || "mijoz"}`, s: `${fmt(o.total)} · ${isPending(o) ? "kod kutilmoqda" : o.status}`, run: () => { go("orders"); $("#oSearch").value = o.id; renderOrders(); renderBoard(); } })) : [];
+  const users = q ? S.users.filter((u) => has(`${u.name} ${u.phone} ${fmtPhone(u.phone)} ${u.email || ""}`)).slice(0, 5).map((u) => ({ g: "Mijozlar", i: "👤", t: u.name, s: fmtPhone(u.phone), run: () => openUser(u.id) })) : [];
+  cmdItems = [...views, ...acts, ...prods, ...ords, ...users];
+  cmdSel = Math.min(cmdSel, Math.max(0, cmdItems.length - 1));
+  if (!q) cmdSel = Math.min(cmdSel, cmdItems.length - 1);
+  let g = "";
+  $("#cmdList").innerHTML = cmdItems.length ? cmdItems.map((x, i) => {
+    const head = x.g !== g ? `<p class="ad-cmd-g">${(g = x.g)}</p>` : "";
+    return head + `<button type="button" class="ad-cmd-i${i === cmdSel ? " sel" : ""}" data-ci="${i}" role="option">
+      ${x.img ? `<img src="${esc(x.img)}" alt="" />` : `<span class="ad-cmd-ic">${x.i}</span>`}
+      <span><b>${esc(x.t)}</b>${x.s ? `<small>${esc(x.s)}</small>` : ""}</span>${x.h ? `<kbd>${x.h}</kbd>` : ""}</button>`;
+  }).join("") : `<p class="ad-empty">"${esc(q)}" bo'yicha hech narsa topilmadi</p>`;
+  $(".ad-cmd-i.sel")?.scrollIntoView({ block: "nearest" });
+}
+$("#cmdInput").addEventListener("input", () => { cmdSel = 0; renderCmd(); });
+$("#cmdInput").addEventListener("keydown", (e) => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    cmdSel = (cmdSel + (e.key === "ArrowDown" ? 1 : -1) + cmdItems.length) % Math.max(1, cmdItems.length);
+    renderCmd();
+  } else if (e.key === "Enter" && cmdItems[cmdSel]) { e.preventDefault(); const x = cmdItems[cmdSel]; closeCmd(); x.run(); }
+});
+$("#cmdList").addEventListener("click", (e) => { const b = e.target.closest("[data-ci]"); if (b) { const x = cmdItems[+b.dataset.ci]; closeCmd(); x.run(); } });
+$("#cmd").addEventListener("click", (e) => { if (e.target.id === "cmd") closeCmd(); });
+$("#cmdOpen").addEventListener("click", openCmd);
+$("#keys").addEventListener("click", (e) => { if (e.target.id === "keys" || e.target.closest("[data-keys-close]")) $("#keys").hidden = true; });
+
+// Klaviatura: Ctrl+K, /, ?, N, B, T, [, Alt+1…0
+document.addEventListener("keydown", (e) => {
+  if (!S.data || $("#app").hidden) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); $("#cmd").hidden ? openCmd() : closeCmd(); return; }
+  if (e.altKey && /^[0-9]$/.test(e.key)) { e.preventDefault(); const v = NAV_ORDER[(+e.key + 9) % 10]; if (v) go(v); return; }
+  const typing = e.target.closest("input, textarea, select, [contenteditable]");
+  if (typing || e.ctrlKey || e.metaKey || e.altKey || $(".drawer.open") || !$("#cmd").hidden) return;
+  if (e.key === "/") { e.preventDefault(); openCmd(); }
+  else if (e.key === "?") $("#keys").hidden = false;
+  else if (e.key.toLowerCase() === "n") { e.preventDefault(); runCmd("newProduct"); }
+  else if (e.key.toLowerCase() === "b") togglePop($("#bellBtn"), $("#bellPop"));
+  else if (e.key.toLowerCase() === "t") toggleTheme();
+  else if (e.key === "[") toggleRail();
+});
+// KPI kartalari klaviaturadan ham ochiladi
+document.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.matches("[data-goto][role=button]")) go(e.target.dataset.goto); });
+
+// ---------- Mavzu, yon menyu, soat, aloqa holati ----------
+function toggleTheme() {
+  const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = t;
+  ls.set("opus_theme", t); // sayt bilan umumiy
+  $("#themeBtn").textContent = t === "dark" ? "🌙" : "☀️";
+}
+$("#themeBtn").textContent = document.documentElement.dataset.theme === "dark" ? "🌙" : "☀️";
+$("#themeBtn").addEventListener("click", toggleTheme);
+function toggleRail() {
+  const mini = !document.body.classList.contains("rail-mini");
+  document.body.classList.toggle("rail-mini", mini);
+  ls.set("opus_admin_rail", mini);
+}
+document.body.classList.toggle("rail-mini", !!ls.get("opus_admin_rail", false));
+$("#railToggle").addEventListener("click", toggleRail);
+function tick() {
+  const d = new Date();
+  $("#adClock").innerHTML = `<b>${d.toLocaleTimeString("ru-RU").slice(0, 5)}</b><small>${d.toLocaleDateString("ru-RU")}</small>`;
+}
+tick(); setInterval(tick, 15000);
+function setLive(ok) {
+  $("#adLive").classList.toggle("off", !ok);
+  $("#adLive").title = ok ? "Server bilan aloqa bor — yangi buyurtmalar har 30 soniyada tekshiriladi" : "Server bilan aloqa yo'q";
+  $("#adLive span").textContent = ok ? "Jonli" : "Oflayn";
+}
+const TIPS = [
+  "Ctrl+K — istalgan mahsulot, buyurtma yoki mijozni bir zumda toping.",
+  "Buyurtmalarni Kanban doskada sudrab, holatini o'zgartiring.",
+  "Kunlik maqsad halqasini bosib, savdo rejangizni belgilang.",
+  "Kam qolgan mahsulotni +5 / +10 tugmasi bilan to'ldiring.",
+  "\"?\" tugmasi — barcha klaviatura buyruqlari.",
+  "Ctrl+S — o'zgarishlarni saytga e'lon qilish.",
+];
+let tipN = 0;
+setInterval(() => { const el = $("#sideTip"); if (el) { tipN = (tipN + 1) % TIPS.length; el.textContent = TIPS[tipN]; } }, 12000);
+setOrderMode(ls.get("opus_admin_omode", "table"));
