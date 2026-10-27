@@ -1366,6 +1366,15 @@ async function installApp() {
     $("#appHowto").hidden = !$("#appHowto").hidden;
   }
 }
+// OPUS Android ilovasi ichida ochilgan bo'lsa: "Ilovani yuklab oling" bo'limi kerak emas,
+// telefonning "Orqaga" tugmasi esa avval ochiq oynani (savat, mahsulot…) yopadi (MainActivity.onBackPressed)
+const IN_APP = /OPUSApp\//.test(navigator.userAgent);
+if (IN_APP) document.documentElement.classList.add("in-app");
+window.__opusBack = () => {
+  if (!$$(".drawer.open, .modal.open").length) return false;
+  closeAll();
+  return true;
+};
 // Android APK, iPhone yo'riqnomasi, QR-kod va telefon maketi
 (() => {
   const apk = SETTINGS.apk;
