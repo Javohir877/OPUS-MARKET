@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=28" />
+  <link rel="stylesheet" href="styles.css?v=29" />
 </head>
 <body>
   <!-- Loader -->
@@ -275,16 +275,12 @@
   </section>
 
   <!-- Testimonials -->
-  <section class="section container" id="reviews" data-node="Fikrlar">
+  <section class="section container" id="reviews" data-node="Fikrlar" hidden>
     <div class="section-head reveal">
       <h2>Mijozlar fikri</h2>
-      <p>Bizga ishonganlar</p>
+      <p>Haqiqiy xaridorlarning so'nggi sharhlari</p>
     </div>
-    <div class="testimonials">
-      <div class="testi reveal"><div class="stars">★★★★★</div><p>"Noutbuk ertasi kuni yetib keldi, qadoqlash a'lo darajada. Rahmat OPUS MARKET!"</p><div class="testi-user"><span class="avatar">AR</span><div><b>Aziz R.</b><small>Toshkent</small></div></div></div>
-      <div class="testi reveal"><div class="stars">★★★★★</div><p>"O'yin kompyuterini bo'lib to'lashga oldim. Konsultantlar juda yaxshi maslahat berishdi."</p><div class="testi-user"><span class="avatar">DK</span><div><b>Dilnoza K.</b><small>Samarqand</small></div></div></div>
-      <div class="testi reveal"><div class="stars">★★★★☆</div><p>"Narxlar boshqa do'konlarga qaraganda arzonroq, aksessuarlar tanlovi katta."</p><div class="testi-user"><span class="avatar">JM</span><div><b>Jasur M.</b><small>Farg'ona</small></div></div></div>
-    </div>
+    <div class="testimonials" id="testis"></div>
   </section>
 
   <!-- FAQ -->
@@ -653,9 +649,9 @@
     // Telegram Mini App: Telegram kutubxonasini faqat bot ichida ochilganda yuklaymiz
     try { if (/tgWebApp/.test(location.hash) || sessionStorage.getItem("__telegram__initParams")) document.write('<script src="https://telegram.org/js/telegram-web-app.js"><\/script>'); } catch (e) {}
   </script>
-  <script src="sfx.js?v=28"></script>
-  <script src="assets.js?v=28"></script>
-  <script src="data.js?v=28"></script>
+  <script src="sfx.js?v=29"></script>
+  <script src="assets.js?v=29"></script>
+  <script src="data.js?v=29"></script>
   <script>
     // Admin paneldan "Oldindan ko'rish": e'lon qilinmagan qoralamani faqat shu brauzerda ko'rsatamiz
     (function () {
@@ -672,9 +668,9 @@
       } catch (e) {}
     })();
   </script>
-  <script src="app.js?v=28"></script>
+  <script src="app.js?v=29"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="showcase.js?v=28"></script>
-  <script src="scrollfx.js?v=28"></script>
+  <script src="showcase.js?v=29"></script>
+  <script src="scrollfx.js?v=29"></script>
 </body>
 </html>
