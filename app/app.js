@@ -113,9 +113,10 @@ function push(def) {
   const el = make(def);
   stacks[tab].push(el);
   stage.appendChild(el);
-  el.classList.add("enter");
+  const anim = def.anim || "enter";
+  el.classList.add(anim);
   if (prev) { prev.classList.add("under"); setTimeout(() => { prev.classList.remove("under"); prev.setAttribute("inert", ""); }, 320); }
-  setTimeout(() => el.classList.remove("enter"), 340);
+  setTimeout(() => el.classList.remove(anim), 360);
   mount(el); syncTabbar();
   return el;
 }
@@ -213,7 +214,7 @@ const fallbackIcon = (p) => `<span class="fb"><svg viewBox="0 0 24 24">${ICONS[c
 function card(p, o) {
   const d = disc(p), q = inCart(p.id), out = (p.stock || 0) <= 0, drop = S.drops && S.drops[p.id] > p.price;
   return `<article class="pc${out ? " out" : ""}" data-pid="${p.id}">
-    <div class="pc-img">${fallbackIcon(p)}<img src="${esc(pic(p.img))}" alt="" loading="lazy" onload="this.classList.add('ld')" onerror="this.remove()" />
+    <div class="pc-img">${fallbackIcon(p)}<img src="${esc(hi(p.img, 330))}" alt="" loading="lazy" onload="this.classList.add('ld')" onerror="imgErr(this)" />
       <button class="fav${S.fav.includes(p.id) ? " on" : ""}" data-fav="${p.id}" aria-label="Saralanganga">${heartSvg}</button>
       <div class="tags">${d ? `<span class="tag">−${d}%</span>` : ""}${drop ? `<span class="tag drop">📉 Arzonladi</span>` : ""}${p.badge === "Yangi" ? `<span class="tag new">Yangi</span>` : p.badge === "Xit" ? `<span class="tag hit">Xit</span>` : ""}</div>
     </div>
@@ -303,7 +304,7 @@ function homeScreen() {
     top && { cls: "red", small: "Aksiya", b: S.settings.dealTitle || "Katta chegirmalar", span: "Eng zo'r takliflar bir joyda", img: top.img, act: "deals" },
     { cls: "violet", small: "Uzum Nasiya", b: "0% bo'lib to'lash", span: "3, 6, 12 yoki 24 oyga — ortiqcha to'lovsiz", img: (P[1] || top || {}).img, act: "nasiya" },
     { cls: "green", small: "Yetkazib berish", b: "Bepul yetkazamiz", span: `${num(S.settings.freeShipFrom || 1000000)} so'mdan yuqori xaridlarda`, img: (P[2] || top || {}).img, act: "ship" },
-    pinned && { cls: "dark", small: pinned.tag || "Yangilik", b: pinned.title, span: pinned.excerpt || "", img: pinned.img, act: "news:" + pinned.id },
+    pinned && { cls: "dark", small: pinned.tag || "Yangilik", b: pinned.title, span: pinned.excerpt || "", img: newsCover(pinned), act: "news:" + pinned.id },
   ].filter(Boolean);
   const name = auth.user ? auth.user.name.split(" ")[0] : "";
   const upd = updateInfo();
@@ -317,23 +318,24 @@ function homeScreen() {
       <div class="sb pad-bar" id="homeSb">
         <div class="ptr" id="ptr">${svg(IC.refresh)}</div>
         ${upd ? `<button class="upd" data-upd>🚀 <span><b>Yangi versiya ${esc(upd.version)}</b><small>Ilovani yangilash uchun bosing</small></span><i>›</i></button>` : ""}
-        <div class="stories" id="stories">${storiesData().map((st, i) => `<button class="story-b${seenStory(st.id) ? " seen" : ""}" data-story="${i}"><span class="ring"><img src="${esc(pic(st.cover))}" alt="" onerror="this.remove()" />${st.emoji ? `<em>${st.emoji}</em>` : ""}</span><small>${esc(st.name)}</small></button>`).join("")}</div>
+        <div class="stories" id="stories">${storiesData().map((st, i) => `<button class="story-b${seenStory(st.id) ? " seen" : ""}" data-story="${i}"><span class="ring"><img src="${esc(hi(st.cover, 330))}" alt="" onerror="imgErr(this)" />${st.emoji ? `<em>${st.emoji}</em>` : ""}</span><small>${esc(st.name)}</small></button>`).join("")}</div>
         ${name ? `<div class="sec hello"><h2>Salom, ${esc(name)} 👋</h2><small class="muted">${hello()}</small></div>` : ""}
-        <div class="banners" id="banners">${banners.map((b) => `<button class="bn ${b.cls}" data-bn="${b.act}"><img src="${esc(pic(b.img))}" alt="" onerror="this.remove()" /><small>${esc(b.small)}</small><b>${esc(b.b)}</b><span>${esc(b.span)}</span></button>`).join("")}</div>
+        <div class="banners" id="banners">${banners.map((b) => `<button class="bn ${b.cls}" data-bn="${b.act}"><img src="${esc(hi(b.img, 500))}" alt="" onerror="imgErr(this)" /><small>${esc(b.small)}</small><b>${esc(b.b)}</b><span>${esc(b.span)}</span></button>`).join("")}</div>
         <div class="dots" id="bnDots">${banners.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>
-        <div class="sec"><div class="cats">${S.cats.map((c) => `<button class="cat" data-cat="${esc(c.id)}"><span class="ci"><img src="${esc(pic(c.img))}" alt="" loading="lazy" onerror="this.remove()" /></span>${esc(c.name)}</button>`).join("")}</div></div>
+        <div class="sec"><div class="cats">${S.cats.map((c) => `<button class="cat" data-cat="${esc(c.id)}"><span class="ci"><img src="${esc(hi(c.img, 330))}" alt="" loading="lazy" onerror="imgErr(this)" /></span>${esc(c.name)}</button>`).join("")}</div></div>
         ${deals.length ? `<div class="sec"><div class="sec-h"><h2>⚡ Kun takliflari <span class="timer" id="dealTimer"></span></h2><button data-open="deals">Barchasi</button></div><div class="hscroll">${deals.map((p) => card(p, { deal: true })).join("")}</div></div>` : ""}
-        ${top10.length ? `<div class="sec"><div class="sec-h"><h2>🏆 TOP-10</h2><small class="muted">eng ko'p tanlanganlar</small></div><div class="hscroll t10s">${top10.map((p, i) => `<button class="t10" data-pid="${p.id}"><b class="t10-n">${i + 1}</b><span class="t10-i"><img src="${esc(pic(p.img))}" alt="" loading="lazy" onerror="this.remove()" /></span><span class="t10-t">${esc(p.name)}</span><small>${fmt(p.price)}</small></button>`).join("")}</div></div>` : ""}
-        ${forYou.length ? `<div class="sec"><div class="sec-h"><h2>✨ Sizga yoqishi mumkin</h2></div><div class="hscroll">${forYou.map((p) => card(p)).join("")}</div></div>` : ""}
+        ${brandsRow()}${top10.length ? `<div class="sec"><div class="sec-h"><h2>🏆 TOP-10</h2><small class="muted">eng ko'p tanlanganlar</small></div><div class="hscroll t10s">${top10.map((p, i) => `<button class="t10" data-pid="${p.id}"><b class="t10-n">${i + 1}</b><span class="t10-i"><img src="${esc(hi(p.img, 330))}" alt="" loading="lazy" onerror="imgErr(this)" /></span><span class="t10-t">${esc(p.name)}</span><small>${fmt(p.price)}</small></button>`).join("")}</div></div>` : ""}
+        ${lowRow()}${forYou.length ? `<div class="sec"><div class="sec-h"><h2>✨ Sizga yoqishi mumkin</h2></div><div class="hscroll">${forYou.map((p) => card(p)).join("")}</div></div>` : ""}
         ${fresh.length ? `<div class="sec"><div class="sec-h"><h2>🆕 Yangi kelganlar</h2></div><div class="hscroll">${fresh.map((p) => card(p)).join("")}</div></div>` : ""}
         ${recent.length ? `<div class="sec"><div class="sec-h"><h2>👀 Siz ko'rganlar</h2><button data-recent>Barchasi</button></div><div class="hscroll">${recent.map((p) => card(p)).join("")}</div></div>` : ""}
-        ${S.news.length ? `<div class="sec"><div class="sec-h"><h2>📰 Yangiliklar</h2></div><div class="hscroll">${S.news.slice(0, 8).map((n) => `<button class="news-c" data-news="${n.id}"><img src="${esc(pic(n.img))}" alt="" loading="lazy" onerror="this.remove()" /><div><small>${esc(n.tag || "Yangilik")}</small><b>${esc(n.title)}</b></div></button>`).join("")}</div></div>` : ""}
+        ${S.news.length ? `<div class="sec"><div class="sec-h"><h2>📰 Yangiliklar</h2><button data-allnews>Barchasi</button></div><div class="hscroll reels">${S.news.slice(0, 8).map((n, i) => reel(n, i)).join("")}</div></div>` : ""}
         <div class="sec"><div class="sec-h"><h2>🔥 Siz uchun</h2></div><div id="feed">${grid(popular.slice(0, 20))}</div><div class="more" id="feedMore">${popular.length > 20 ? "Yuklanmoqda…" : "Hammasi ko'rsatildi ✨"}</div></div>
       </div>`,
     mount(el) {
       const sb = $("#homeSb", el), hh = $("#hh", el);
       $("[data-search]", el).onclick = () => openSearch();
       $("[data-notifs]", el).onclick = () => openNotifs();
+      const an = $("[data-allnews]", el); if (an) an.onclick = () => openNewsFeed();
       const r = $("[data-recent]", el); if (r) r.onclick = () => openList({ title: "👀 Siz ko'rganlar", ids: S.recent.slice(), keepOrder: true });
       const u = $("[data-upd]", el); if (u) u.onclick = () => { location.href = upd.url; };
       $$("[data-open]", el).forEach((b) => (b.onclick = () => openList({ title: "⚡ Kun takliflari", deals: true })));
@@ -405,7 +407,7 @@ function catalogScreen() {
   return {
     html: `<div class="home-hdr"><h1 style="font-size:22px">Katalog</h1><button class="searchbar" data-search>${svg(IC.search)}<span>Qidirish</span></button></div>
       <div class="sb pad-bar">
-        <div class="sec"><div class="ctiles">${S.cats.map((c) => `<button class="ctile" data-cat="${esc(c.id)}"><img src="${esc(pic(c.img))}" alt="" loading="lazy" onerror="this.remove()" /><b>${esc(c.name)}</b><small>${count(c.id)} ta mahsulot</small></button>`).join("")}</div></div>
+        <div class="sec"><div class="ctiles">${S.cats.map((c) => `<button class="ctile" data-cat="${esc(c.id)}"><img src="${esc(hi(c.img, 330))}" alt="" loading="lazy" onerror="imgErr(this)" /><b>${esc(c.name)}</b><small>${count(c.id)} ta mahsulot</small></button>`).join("")}</div></div>
         <div class="sec"><div class="sec-h"><h2>Brendlar</h2></div><div class="recent">${brands.map((b) => `<button data-brand="${esc(b)}">${esc(b)}</button>`).join("")}</div></div>
         <div class="sec"><div class="sec-h"><h2>Tanlovlar</h2></div><div class="recent"><button data-sel="deals">⚡ Chegirmalar</button><button data-sel="new">🆕 Yangi</button><button data-sel="top">⭐ Eng yuqori reyting</button><button data-sel="cheap">💸 1 mln gacha</button></div></div>
       </div>`,
@@ -514,7 +516,7 @@ function openList(o) {
 function rowCard(p) {
   const d = disc(p), q = inCart(p.id), out = (p.stock || 0) <= 0;
   return `<article class="rc${out ? " out" : ""}" data-pid="${p.id}">
-    <div class="rc-img"><img src="${esc(pic(p.img))}" alt="" loading="lazy" onerror="this.remove()" />${d ? `<span class="tag">−${d}%</span>` : ""}</div>
+    <div class="rc-img"><img src="${esc(hi(p.img, 330))}" alt="" loading="lazy" onerror="imgErr(this)" />${d ? `<span class="tag">−${d}%</span>` : ""}</div>
     <div class="rc-b"><p class="pc-n">${esc(p.name)}</p><span class="pc-r"><b>★</b> ${p.rating || "—"} · ${p.reviews || 0} sharh</span>
       <span class="pc-m">${num(p.price / 12)} so'm/oy</span>
       <div class="pc-p"><div>${d ? `<s>${num(p.old)}</s>` : ""}<b class="${d ? "sale" : ""}">${num(p.price)} <small>so'm</small></b></div>
@@ -571,16 +573,16 @@ function openProduct(id) {
   const together = complementary(p, 10);
   const freeFrom = S.settings.freeShipFrom || 1000000;
   push({
-    noTab: true,
+    noTab: true, anim: S.hero ? "hero-in" : "enter",
     html: `<header class="hdr clear phdr" id="ph"><button class="ib" data-back aria-label="Orqaga">${svg(IC.back)}</button><div class="ph-t"><b>${esc(p.name)}</b><small>${fmt(p.price)}</small></div><button class="ib" data-share aria-label="Ulashish">${svg(IC.share)}</button><button class="ib${S.fav.includes(p.id) ? " on" : ""}" data-pfav aria-label="Saralangan">${svg(IC.heart)}</button></header>
       <div class="sb pad-bar" id="psb">
-        <div class="gal-wrap"><div class="gal" id="gal">${imgs.map((s, i) => `<img src="${esc(pic(s))}" alt="" data-gi="${i}" onerror="this.remove()" />`).join("")}</div>
+        <div class="gal-wrap"><div class="gal" id="gal">${imgs.map((s, i) => `<img src="${esc(hi(s, 960))}" alt="" data-gi="${i}" onerror="imgErr(this)" />`).join("")}</div>
           ${imgs.length > 1 ? `<div class="dots" id="gd">${imgs.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}<span class="gal-hint">🔍 Kattalashtirish uchun bosing</span></div>
         <div class="pd">
           <div class="pd-price"><b class="${d ? "sale" : ""}">${fmt(p.price)}</b>${d ? `<s>${fmt(p.old)}</s><span class="tag">−${d}%</span>` : ""}</div>
           ${d ? `<div class="save">💰 Tejaysiz: <b>${fmt(p.old - p.price)}</b></div>` : ""}
           <h2 class="pd-name">${esc(p.name)}</h2>
-          <div class="pd-meta"><button data-torv><b>★ ${p.rating || "—"}</b> · <span>${p.reviews || 0}</span> sharh</button><button data-brand-go>${esc(p.brand)} ›</button>${p.original !== false ? `<span>🛡 Original</span>` : ""}</div>
+          <div class="pd-meta"><button data-torv><b>★ ${p.rating || "—"}</b> · <span>${p.reviews || 0}</span> sharh</button><button data-brand-go>${esc(p.brand)} ›</button>${p.original !== false ? `<span>🛡 Original</span>` : ""}<button class="cmp-btn${S.compare.includes(p.id) ? " on" : ""}" data-cmp="${p.id}">⚖️ Taqqoslash</button></div>
           <button class="nasiya" id="nas"><span>💜</span><div><b id="nasB">${fmt(p.price / S.months)} × ${S.months} oy</b><small>Uzum Nasiya orqali 0% bo'lib to'lash</small></div><span>›</span></button>
           <div class="box">
             <div class="row"><span class="ri">📦</span><div><b class="${stock <= 0 ? "stock-out" : stock <= 5 ? "stock-low" : "stock-ok"}">${stock <= 0 ? "Tugagan" : stock <= 5 ? `Tez tugaydi — ${stock} dona qoldi` : `Omborda ${stock} dona bor`}</b><small>OPUS MARKET omboridan</small></div></div>
@@ -599,6 +601,7 @@ function openProduct(id) {
       <div class="buybar" id="buy"></div>`,
     mount(el) {
       const gal = $("#gal", el), gd = $$("#gd i", el), sb = $("#psb", el), ph = $("#ph", el);
+      heroFly(el);
       gal.addEventListener("scroll", () => { const i = Math.round(gal.scrollLeft / gal.clientWidth); gd.forEach((x, k) => x.classList.toggle("on", k === i)); }, { passive: true });
       // Aylantirganda sarlavha qattiq fonga o'tadi va mahsulot nomi chiqadi
       sb.addEventListener("scroll", () => ph.classList.toggle("solid", sb.scrollTop > gal.offsetHeight - 80), { passive: true });
@@ -654,6 +657,10 @@ async function loadReviews(p, el) {
     ${r.count ? `<div class="rv-sum"><b>${r.avg}</b><div><span class="st" style="color:var(--gold)">${"★".repeat(Math.round(r.avg))}</span><br><small class="muted">${r.count} ta mijoz baholadi</small></div></div>` : `<p class="muted">Hali sharh yo'q — birinchi bo'lib fikr bildiring!</p>`}
     ${r.reviews.slice(0, 6).map((v) => `<div class="rv"><header><b>${esc(v.user_name || "Mijoz")}</b><span class="st">${stars(v.rating)}</span></header>
       <small class="muted">${new Date(v.created_at).toLocaleDateString("ru-RU")}${v.verified ? " · ✓ Xarid qilgan" : ""}</small><p>${esc(v.text)}</p>${v.reply ? `<div class="reply"><b>OPUS MARKET:</b> ${esc(v.reply)}</div>` : ""}</div>`).join("")}`;
+  if (r.count) {
+    const cnt = [5, 4, 3, 2, 1].map((k) => r.reviews.filter((v) => v.rating === k).length);
+    $(".rv-sum", box).insertAdjacentHTML("beforeend", `<div class="rv-bars">${cnt.map((c, i) => `<span><small>${5 - i}★</small><i style="--w:${(c / r.count) * 100}%"></i><small>${c}</small></span>`).join("")}</div>`);
+  }
   $("[data-write]", box).onclick = () => requireAuth(() => writeReview(p, el), "Sharh yozish uchun akkauntingizga kiring");
 }
 function writeReview(p, el) {
@@ -672,14 +679,6 @@ function writeReview(p, el) {
         } catch (ex) { $("#rvErr", box).textContent = ex.message; $("#rvErr", box).hidden = false; b.disabled = false; }
       }
     });
-  });
-}
-
-function openNews(id) {
-  const n = S.news.find((x) => x.id === id);
-  if (!n) return;
-  push({
-    html: hdr(n.tag || "Yangilik") + `<div class="sb"><article class="article"><img src="${esc(pic(n.img))}" alt="" onerror="this.remove()" /><small class="muted">${esc(n.date || "")}</small><h2>${esc(n.title)}</h2>${String(n.body || n.excerpt || "").split(/\n\s*\n/).map((x) => `<p>${esc(x)}</p>`).join("")}</article></div>`,
   });
 }
 
@@ -707,7 +706,7 @@ function cartScreen() {
       <div class="sb" style="padding-bottom:calc(170px + var(--safe-b))"><div class="sec" style="display:flex;flex-direction:column;gap:10px">
         <div class="ship-prog" style="--w:${Math.min(100, (T.subtotal / T.free) * 100)}%">${left ? `<span>🚚 Bepul yetkazish uchun yana <b>${fmt(left)}</b> xarid qiling</span>` : `<span>🎉 Yetkazib berish <b>bepul!</b></span>`}<i></i></div>
         ${T.items.map((x) => `<div class="ci-row" data-row="${x.id}">
-          <button class="thumb" data-pid="${x.id}"><img src="${esc(pic(x.p.img))}" alt="" onerror="this.remove()" /></button>
+          <button class="thumb" data-pid="${x.id}"><img src="${esc(hi(x.p.img, 330))}" alt="" onerror="imgErr(this)" /></button>
           <div class="info"><p>${esc(x.p.name)}</p><div>${disc(x.p) ? `<s>${num(x.p.old * x.qty)}</s> ` : ""}<b>${fmt(x.p.price * x.qty)}</b></div>
             <div class="ctrl"><div class="stepper sm"><button data-dq="-1">−</button><span>${x.qty}</span><button data-dq="1">+</button></div>
               <span><button class="del" data-favc="${x.id}" aria-label="Saralangan" style="${S.fav.includes(x.id) ? "color:var(--red2)" : ""}">${svg(IC.heart)}</button><button class="del" data-del aria-label="O'chirish">${svg(IC.trash)}</button></span></div></div>
@@ -1065,7 +1064,7 @@ function openOrders(f0) {
         if (!S.orders) { $("#ol", el).innerHTML = `<div class="skel" style="height:130px"></div><div class="skel" style="height:130px"></div>`; return; }
         const L = S.orders.filter((o) => f === "all" || (f === "active" && !["Yetkazildi", "Bekor qilindi"].includes(o.status)) || (f === "done" && o.status === "Yetkazildi") || (f === "cancel" && o.status === "Bekor qilindi"));
         $("#ol", el).innerHTML = L.length ? L.map((o) => `<button class="ord" data-oid="${esc(o.id)}"><header><div><b>#${esc(o.id)}</b><br><small>${new Date(o.created_at).toLocaleString("ru-RU").slice(0, 17)}</small></div>${pill(o)}</header>
-          <div class="thumbs">${(o.items || []).slice(0, 4).map((i) => `<img src="${esc(pic((byId(i.id) || i).img))}" alt="" onerror="this.remove()" />`).join("")}${(o.items || []).length > 4 ? `<span>+${o.items.length - 4}</span>` : ""}</div>
+          <div class="thumbs">${(o.items || []).slice(0, 4).map((i) => `<img src="${esc(hi((byId(i.id) || i).img, 330))}" alt="" onerror="imgErr(this)" />`).join("")}${(o.items || []).length > 4 ? `<span>+${o.items.length - 4}</span>` : ""}</div>
           <footer><span class="muted">${(o.items || []).reduce((a, i) => a + i.qty, 0)} ta mahsulot</span><b>${fmt(o.total)}</b></footer></button>`).join("")
           : emptyBox("📦", "Buyurtma yo'q", f === "all" ? "Birinchi xaridingizni qiling — buyurtmalar shu yerda kuzatiladi" : "Bu bo'limda buyurtma yo'q");
       };
@@ -1087,10 +1086,10 @@ function openOrder(o) {
   push({
     html: hdr("#" + o.id) + `<div class="sb"><div class="sec" style="display:flex;flex-direction:column;gap:12px">
       <div class="box"><div class="sec-h" style="margin:0"><h3>Holat</h3>${pill(o)}</div>
-        ${cancelled ? `<p class="muted">Buyurtma bekor qilingan. Mahsulotlar omborga qaytarildi.</p>` : `<div class="tl">${STATUSES.map((s, i) => `<div class="${i < idx ? "done" : i === idx ? "done cur" : ""}">${s === "Yangi" && isPending(o) ? "Telegram kodi kutilmoqda" : s}</div>`).join("")}</div>`}
+        ${tracker(o)}${cancelled ? `<p class="muted">Buyurtma bekor qilingan. Mahsulotlar omborga qaytarildi.</p>` : `<div class="tl">${STATUSES.map((s, i) => `<div class="${i < idx ? "done" : i === idx ? "done cur" : ""}">${s === "Yangi" && isPending(o) ? "Telegram kodi kutilmoqda" : s}</div>`).join("")}</div>`}
         ${isPending(o) ? `<button class="btn tg block" id="oConf">${svg(IC.tg)} Telegram kodi bilan tasdiqlash</button>` : ""}
       </div>
-      <div class="box"><h3>Mahsulotlar</h3>${(o.items || []).map((i) => `<div class="row" data-pid="${i.id}"><img src="${esc(pic((byId(i.id) || i).img))}" alt="" style="width:52px;height:52px;border-radius:10px;background:#fff;object-fit:contain;padding:3px" onerror="this.remove()" /><div><span style="font-size:13.5px">${esc(i.name)}</span><small>${i.qty} × ${fmt(i.price)}</small></div></div>`).join("")}</div>
+      <div class="box"><h3>Mahsulotlar</h3>${(o.items || []).map((i) => `<div class="row" data-pid="${i.id}"><img src="${esc(hi((byId(i.id) || i).img, 330))}" alt="" style="width:52px;height:52px;border-radius:10px;background:#fff;object-fit:contain;padding:3px" onerror="imgErr(this)" /><div><span style="font-size:13.5px">${esc(i.name)}</span><small>${i.qty} × ${fmt(i.price)}</small></div></div>`).join("")}</div>
       <div class="box"><div class="sum">
         <div><span>Mahsulotlar</span><span>${fmt(o.subtotal)}</span></div>
         ${o.discount ? `<div class="disc"><span>Chegirma${o.promo ? " (" + esc(o.promo) + ")" : ""}</span><span>−${fmt(o.discount)}</span></div>` : ""}
@@ -1179,94 +1178,13 @@ function updateInfo() {
   return null;
 }
 
-// ---------- Stories ----------
-const seenStory = (id) => store.get("app_seen_stories", []).includes(id);
-function storiesData() {
-  const P = S.products.filter((p) => (p.stock || 0) > 0);
-  const slideOf = (p, kicker) => ({ img: p.img, kicker, title: p.name, text: disc(p) ? `${fmt(p.price)} · avval ${fmt(p.old)}` : `${fmt(p.price)} · oyiga ${fmt(p.price / 12)}`, cta: { t: "Mahsulotni ko'rish", pid: p.id } });
-  const out = [];
-  const deals = P.filter((p) => disc(p)).sort((a, b) => disc(b) - disc(a));
-  if (deals.length) out.push({ id: "deals", name: "Aksiyalar", emoji: "🔥", cover: deals[0].img, slides: deals.slice(0, 5).map((p) => slideOf(p, `🔥 −${disc(p)}% chegirma`)) });
-  const fresh = P.filter((p) => p.badge === "Yangi");
-  if (fresh.length) out.push({ id: "new", name: "Yangi", emoji: "🆕", cover: fresh[0].img, slides: fresh.slice(0, 5).map((p) => slideOf(p, "🆕 Yangi kelgan")) });
-  out.push({ id: "nasiya", name: "Nasiya 0%", emoji: "💜", cover: (P[3] || P[0] || {}).img, slides: [
-    { bg: "violet", kicker: "💜 Uzum Nasiya", title: "0% bo'lib to'lash", text: "Istalgan mahsulotni 3, 6, 12 yoki 24 oyga ortiqcha foizsiz oling.", cta: { t: "Xarid qilish", list: "all" } },
-    { bg: "violet", kicker: "Qanday ishlaydi?", title: "1. Savatga qo'shing\n2. \"Uzum Nasiya\" ni tanlang\n3. Muddatni belgilang", text: "Operatorimiz qolganini o'zi rasmiylashtiradi." }] });
-  S.cats.slice(0, 6).forEach((c) => {
-    const L = P.filter((p) => p.cat === c.id).sort((a, b) => (b.popular || 0) - (a.popular || 0)).slice(0, 3);
-    if (L.length) out.push({ id: "c-" + c.id, name: c.name, cover: c.img, slides: L.map((p) => slideOf(p, `⭐ ${c.name}: eng ommabop`)) });
-  });
-  if (S.news.length) out.push({ id: "news", name: "Yangiliklar", emoji: "📰", cover: S.news[0].img, slides: S.news.slice(0, 4).map((n) => ({ img: n.img, kicker: n.tag || "Yangilik", title: n.title, text: n.excerpt || "", cta: { t: "O'qish", news: n.id } })) });
-  out.push({ id: "ship", name: "Yetkazish", emoji: "🚚", cover: (P[5] || P[0] || {}).img, slides: [
-    { bg: "green", kicker: "🚚 Yetkazib berish", title: "Toshkent bo'ylab 24 soatda", text: `${num(S.settings.freeShipFrom || 1000000)} so'mdan yuqori xaridlarda — bepul. Viloyatlarga 2–4 kunda.` }] });
-  return out;
-}
-let storyState = null;
-function openStories(gi) {
-  const groups = storiesData();
-  const box = document.createElement("div");
-  box.className = "story";
-  document.body.appendChild(box);
-  sfx("open");
-  const st = storyState = { gi, si: 0, t0: 0, elapsed: 0, paused: false, raf: 0, box, groups };
-  const DUR = 5200;
-  const markSeen = (id) => { const s = store.get("app_seen_stories", []); if (!s.includes(id)) store.set("app_seen_stories", [...s, id].slice(-40)); };
-  const draw = () => {
-    const g = groups[st.gi], s = g.slides[st.si];
-    markSeen(g.id);
-    box.innerHTML = `<div class="st-bars">${g.slides.map((_, i) => `<i><b style="width:${i < st.si ? 100 : 0}%"></b></i>`).join("")}</div>
-      <div class="st-top"><span class="st-av"><img src="${esc(pic(g.cover))}" alt="" onerror="this.remove()" /></span><b>${esc(g.name)}</b><small>OPUS MARKET</small><button class="ib" data-stx aria-label="Yopish">${svg(IC.close)}</button></div>
-      <div class="st-media ${s.bg || ""}">${s.img ? `<img src="${esc(pic(s.img))}" alt="" onerror="this.remove()" />` : `<div class="st-art">${g.emoji || "✨"}</div>`}</div>
-      <div class="st-text"><small>${esc(s.kicker || "")}</small><h2>${esc(s.title).replace(/\n/g, "<br>")}</h2>${s.text ? `<p>${esc(s.text)}</p>` : ""}${s.cta ? `<button class="btn block" data-stcta>${esc(s.cta.t)}</button>` : ""}</div>`;
-    st.elapsed = 0; st.t0 = performance.now();
-    $(".st-media", box).classList.add("kb");
-  };
-  const step = (dir) => {
-    const g = groups[st.gi];
-    if (dir > 0) { if (st.si < g.slides.length - 1) st.si++; else if (st.gi < groups.length - 1) { st.gi++; st.si = 0; box.classList.remove("cube"); void box.offsetWidth; box.classList.add("cube"); } else return close(); }
-    else { if (st.si > 0) st.si--; else if (st.gi > 0) { st.gi--; st.si = 0; } }
-    sfx("tick"); draw();
-  };
-  const loop = (now) => {
-    if (!st.paused) {
-      const p = Math.min(1, (st.elapsed + now - st.t0) / DUR);
-      const bar = $$(".st-bars b", box)[st.si]; if (bar) bar.style.width = p * 100 + "%";
-      if (p >= 1) step(1);
-    }
-    st.raf = requestAnimationFrame(loop);
-  };
-  const pause = () => { if (!st.paused) { st.paused = true; st.elapsed += performance.now() - st.t0; } };
-  const resume = () => { if (st.paused) { st.paused = false; st.t0 = performance.now(); } };
-  const close = () => { cancelAnimationFrame(st.raf); box.classList.add("out"); setTimeout(() => box.remove(), 220); storyState = null; sfx("close"); refreshRoot("home"); };
-  st.close = close;
-  let x0 = 0, y0 = 0, tDown = 0;
-  box.addEventListener("pointerdown", (e) => { if (e.target.closest("button")) return; x0 = e.clientX; y0 = e.clientY; tDown = Date.now(); pause(); });
-  box.addEventListener("pointerup", (e) => {
-    if (e.target.closest("button")) return;
-    const dy = e.clientY - y0, dx = e.clientX - x0;
-    if (dy > 90) return close();
-    if (Math.abs(dx) > 60) { step(dx < 0 ? 1 : -1); return resume(); }
-    if (Date.now() - tDown < 250) step(e.clientX < innerWidth / 3 ? -1 : 1);
-    resume();
-  });
-  box.addEventListener("click", (e) => {
-    if (e.target.closest("[data-stx]")) return close();
-    if (e.target.closest("[data-stcta]")) {
-      const c = groups[st.gi].slides[st.si].cta;
-      close();
-      setTimeout(() => { if (c.pid) openProduct(c.pid); else if (c.news) openNews(c.news); else if (c.list) openList({ title: "🛍 Barcha mahsulotlar" }); }, 120);
-    }
-  });
-  draw(); st.raf = requestAnimationFrame(loop);
-}
-
 // ---------- Rasmni to'liq ekranda ko'rish (ikki bosish — kattalashtirish) ----------
 let viewerEl = null;
 function openViewer(imgs, start) {
   const v = viewerEl = document.createElement("div");
   v.className = "viewer";
   v.innerHTML = `<div class="vw-top"><span id="vwN">${start + 1} / ${imgs.length}</span><button class="ib" data-vx aria-label="Yopish">${svg(IC.close)}</button></div>
-    <div class="vw-track">${imgs.map((s) => `<div class="vw-slide"><img src="${esc(pic(s))}" alt="" /></div>`).join("")}</div><p class="vw-hint">Ikki marta bosing — kattalashtirish</p>`;
+    <div class="vw-track">${imgs.map((s) => `<div class="vw-slide"><img src="${esc(hi(s, 960))}" alt="" onerror="imgErr(this)" /></div>`).join("")}</div><p class="vw-hint">Ikki marta bosing — kattalashtirish</p>`;
   document.body.appendChild(v);
   sfx("open");
   const tr = $(".vw-track", v);
@@ -1320,7 +1238,7 @@ function flyToCart(src) {
 // "Savatga qo'shildi" oynasi + birga olinadigan mahsulotlar
 function addedSheet(p) {
   const T = totals(), tog = complementary(p, 8), left = Math.max(0, T.free - T.subtotal);
-  openSheet(`<div class="added"><img src="${esc(pic(p.img))}" alt="" onerror="this.remove()" /><div><b>✅ Savatga qo'shildi</b><small>${esc(p.name)}</small></div></div>
+  openSheet(`<div class="added"><img src="${esc(hi(p.img, 330))}" alt="" onerror="imgErr(this)" /><div><b>✅ Savatga qo'shildi</b><small>${esc(p.name)}</small></div></div>
     <div class="ship-prog" style="--w:${Math.min(100, (T.subtotal / T.free) * 100)}%;margin-top:12px">${left ? `<span>🚚 Bepul yetkazish uchun yana <b>${fmt(left)}</b></span>` : `<span>🎉 Yetkazib berish <b>bepul!</b></span>`}<i></i></div>
     ${tog.length ? `<div class="sec-h" style="margin:16px 0 8px"><h2 style="font-size:16px">🧩 Bu bilan birga olishadi</h2></div><div class="hscroll" style="margin:0 -16px;padding:2px 16px 6px">${tog.map((x) => card(x)).join("")}</div>` : ""}
     <div class="sheet-foot"><button class="btn ghost flex" id="adMore">Davom etish</button><button class="btn flex" id="adCart">Savatga o'tish</button></div>`, (b) => {
@@ -1426,6 +1344,7 @@ function catHits(q) {
   if (!cats.length && !brands.length) return "";
   return `<div class="chips" style="padding-bottom:0">${cats.map((c) => `<button class="chip" data-cat="${esc(c.id)}">🗂 ${esc(c.name)}</button>`).join("")}${brands.map((b) => `<button class="chip" data-brand-q="${esc(b)}">🏷 ${esc(b)}</button>`).join("")}</div>`;
 }
+document.addEventListener("click", (e) => { const c = e.target.closest("[data-cmp]"); if (c) { e.stopPropagation(); toggleCompare(c.dataset.cmp); } });
 document.addEventListener("click", (e) => { const b = e.target.closest("[data-brand-q]"); if (b) openList({ title: b.dataset.brandQ, brand: b.dataset.brandQ }); });
 
 // ---------- Birinchi ochilish: tanishuv ----------
@@ -1481,6 +1400,356 @@ window.__opusBack = () => {
   return __back0();
 };
 
+// =====================================================================
+// ---------- v2.3: aniq rasmlar, o'tish animatsiyalari, taqqoslash ----------
+// =====================================================================
+// Wikimedia'dagi asl fotoning aniq versiyasi (standart o'lchamlar: 330 / 500 / 960). Yuklanmasa — lokal nusxa (imgErr).
+const WM_W = [330, 500, 960];
+function hi(id, w = 330) {
+  if (!id || !id.startsWith("wm:")) return pic(id);
+  const path = id.slice(3), i = path.lastIndexOf("/"), dir = path.slice(0, i), name = path.slice(i + 1);
+  if (/\.(svg|gif|tiff?)$/i.test(name)) return pic(id);
+  w = WM_W.find((x) => x >= w) || 960;
+  if (/\.png$/i.test(name) && w > 500) w = 500; // PNG og'ir — 500 px yetarli
+  const e = encodeURIComponent(name);
+  return `https://upload.wikimedia.org/wikipedia/commons/thumb/${dir}/${e}/${w}px-${e}`;
+}
+// Aniq rasm yuklanmasa — lokal nusxaga o'tamiz, u ham bo'lmasa — elementni olib tashlaymiz
+window.imgErr = (el) => {
+  const m = el.src.match(/upload\.wikimedia\.org\/wikipedia\/commons\/thumb\/.+\/\d+px-(.+)$/);
+  if (m && !el.dataset.f) { el.dataset.f = "1"; el.src = "../img/" + decodeURIComponent(m[1]).replace(/[^A-Za-z0-9._-]/g, "_"); return; }
+  el.remove();
+};
+
+// Wikimedia sekin yoki yopiq bo'lsa: ekrandagi rasm ~8 soniyada yuklanmasa — lokal nusxa
+{
+  const slow = new WeakSet();
+  setInterval(() => {
+    $$("img[src*=\"upload.wikimedia.org\"]:not([data-f])").forEach((im) => {
+      if (im.complete) return;
+      const r = im.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth || !r.width) return;
+      if (slow.has(im)) imgErr(im); else slow.add(im);
+    });
+  }, 4000);
+}
+// Tugmalarda "to'lqin" (ripple) effekti
+document.addEventListener("pointerdown", (e) => {
+  const b = e.target.closest(".btn, .chip, .mi, .opt, .seg button, .pay, .ctile, .recent button, .stats button");
+  if (!b || b.disabled) return;
+  const r = b.getBoundingClientRect(), s = Math.max(r.width, r.height) * 2;
+  const w = document.createElement("span");
+  w.className = "ripple";
+  Object.assign(w.style, { width: s + "px", height: s + "px", left: e.clientX - r.left - s / 2 + "px", top: e.clientY - r.top - s / 2 + "px" });
+  if (getComputedStyle(b).position === "static") b.style.position = "relative";
+  b.style.overflow = "hidden";
+  b.appendChild(w); setTimeout(() => w.remove(), 600);
+}, { passive: true });
+
+// Kartochka rasmi mahsulot sahifasiga "uchib" o'tadi (shared element)
+S.hero = null;
+document.addEventListener("click", (e) => {
+  const c = e.target.closest("[data-pid]");
+  if (!c || e.target.closest("[data-add], [data-fav]")) return;
+  const im = $("img", c);
+  S.hero = im && im.complete && im.naturalWidth ? { rect: im.getBoundingClientRect(), src: im.currentSrc || im.src } : null;
+}, true);
+function heroFly(el) {
+  const h = S.hero; S.hero = null;
+  const target = $("#gal img", el);
+  if (!h || !target) return false;
+  const t = target.getBoundingClientRect();
+  if (!t.width) return false;
+  const f = document.createElement("img");
+  f.src = h.src; f.className = "hero-fly";
+  Object.assign(f.style, { left: h.rect.left + "px", top: h.rect.top + "px", width: h.rect.width + "px", height: h.rect.height + "px" });
+  document.body.appendChild(f);
+  target.style.opacity = "0";
+  const sx = t.width / h.rect.width, sy = t.height / h.rect.height, s = Math.min(sx, sy);
+  f.animate([
+    { transform: "translate(0,0) scale(1)", borderRadius: "16px" },
+    { transform: `translate(${t.left + t.width / 2 - (h.rect.left + h.rect.width / 2)}px, ${t.top + t.height / 2 - (h.rect.top + h.rect.height / 2)}px) scale(${s})`, borderRadius: "0px" },
+  ], { duration: 420, easing: "cubic-bezier(.2,.8,.2,1)" });
+  // Animatsiya qanday tugashidan qat'i nazar rasm albatta ko'rinadi
+  setTimeout(() => { target.style.transition = "opacity .15s"; target.style.opacity = ""; setTimeout(() => f.remove(), 120); }, 430);
+  return true;
+}
+
+// ---------- Taqqoslash (sayt bilan umumiy: opus_compare) ----------
+S.compare = store.get("compare", []).filter((id) => byId(id));
+function toggleCompare(id) {
+  id = +id;
+  const p = byId(id);
+  if (S.compare.includes(id)) { S.compare = S.compare.filter((x) => x !== id); toast("⚖️ Taqqoslashdan olib tashlandi"); }
+  else {
+    const first = byId(S.compare[0]);
+    if (first && first.cat !== p.cat) { S.compare = []; toast("⚖️ Faqat bir xil turdagi mahsulotlar taqqoslanadi — ro'yxat yangilandi"); }
+    if (S.compare.length >= 3) S.compare.shift();
+    S.compare.push(id);
+    if (S.compare.length >= 2) toast(`⚖️ Taqqoslashda ${S.compare.length} ta mahsulot`, { t: "Ko'rish", fn: openCompare });
+    else toast("⚖️ Taqqoslashga qo'shildi — yana bitta tanlang");
+  }
+  store.set("compare", S.compare); sfx("chip");
+  $$(`[data-cmp="${id}"]`).forEach((b) => b.classList.toggle("on", S.compare.includes(id)));
+}
+function openCompare() {
+  push({
+    noTab: true,
+    html: hdr("⚖️ Taqqoslash", `<button class="ib" data-cclear aria-label="Tozalash">${svg(IC.trash)}</button>`) + `<div class="sb" id="cmpSb"></div>`,
+    mount(el) {
+      const draw = () => {
+        const L = S.compare.map(byId).filter(Boolean);
+        if (L.length < 2) { $("#cmpSb", el).innerHTML = emptyBox("⚖️", "Taqqoslash uchun 2–3 ta mahsulot tanlang", "Mahsulot sahifasidagi \"⚖️ Taqqoslash\" tugmasini bosing (bir xil turdagi mahsulotlar)", L.length ? `<p class="muted">Tanlangan: ${esc(L[0].name)}</p>` : ""); return; }
+        const keys = [...new Set(L.flatMap((p) => Object.keys(p.specs || {})))];
+        const minP = Math.min(...L.map((p) => p.price)), maxR = Math.max(...L.map((p) => p.rating || 0));
+        $("#cmpSb", el).innerHTML = `<div class="cmp" style="--n:${L.length}">
+          <div class="cmp-row head">${L.map((p) => `<div class="cmp-c"><button class="cmp-x" data-cx="${p.id}" aria-label="Olib tashlash">✕</button><button data-pid="${p.id}" class="cmp-img"><img src="${esc(hi(p.img, 330))}" alt="" onerror="imgErr(this)" /></button><b>${esc(p.name)}</b></div>`).join("")}</div>
+          <p class="cmp-k">Narx</p><div class="cmp-row">${L.map((p) => `<div class="cmp-c${p.price === minP ? " best" : ""}"><b>${fmt(p.price)}</b>${p.price === minP ? "<small>🏆 eng arzon</small>" : `<small>+${fmt(p.price - minP)}</small>`}</div>`).join("")}</div>
+          <p class="cmp-k">Reyting</p><div class="cmp-row">${L.map((p) => `<div class="cmp-c${(p.rating || 0) === maxR ? " best" : ""}"><b>★ ${p.rating || "—"}</b><small>${p.reviews || 0} sharh</small></div>`).join("")}</div>
+          <p class="cmp-k">Omborda</p><div class="cmp-row">${L.map((p) => `<div class="cmp-c"><b class="${(p.stock || 0) <= 0 ? "stock-out" : (p.stock || 0) <= 5 ? "stock-low" : "stock-ok"}">${(p.stock || 0) <= 0 ? "Tugagan" : p.stock + " dona"}</b></div>`).join("")}</div>
+          ${keys.map((k) => `<p class="cmp-k">${esc(k)}</p><div class="cmp-row">${L.map((p) => `<div class="cmp-c">${esc((p.specs || {})[k] || "—")}</div>`).join("")}</div>`).join("")}
+          <div class="cmp-row" style="margin-top:12px">${L.map((p) => `<div class="cmp-c"><button class="btn sm block" data-cadd="${p.id}" ${(p.stock || 0) <= 0 ? "disabled" : ""}>${inCart(p.id) ? "✓ Savatda" : "Savatga"}</button></div>`).join("")}</div>
+        </div>`;
+      };
+      el.addEventListener("click", (e) => {
+        const x = e.target.closest("[data-cx]"); if (x) { toggleCompare(x.dataset.cx); draw(); }
+        const a = e.target.closest("[data-cadd]"); if (a) { if (!inCart(a.dataset.cadd)) addToCart(a.dataset.cadd); draw(); }
+        if (e.target.closest("[data-cclear]")) { S.compare = []; store.set("compare", []); draw(); }
+      });
+      draw();
+    },
+  });
+}
+
+// ---------- Buyurtmani kuzatish: jonli treker ----------
+function tracker(o) {
+  if (o.status === "Bekor qilindi") return "";
+  const steps = [["🆕", "Qabul"], ["✅", "Tasdiq"], ["📦", "Yig'ish"], ["🚚", "Yo'lda"], ["🎉", "Yetkazildi"]];
+  const i = Math.max(0, STATUSES.indexOf(o.status)), pct = (i / (steps.length - 1)) * 100;
+  return `<div class="trk" style="--p:${pct}%"><div class="trk-line"><i></i><span class="trk-car">${o.status === "Yetkazildi" ? "🎉" : "🚚"}</span></div>
+    <div class="trk-st">${steps.map(([e, t], k) => `<span class="${k < i ? "done" : k === i ? "cur" : ""}"><b>${e}</b>${t}</span>`).join("")}</div>
+    <p class="trk-eta">${o.status === "Yetkazildi" ? "Buyurtma yetkazildi. Xaridingiz uchun rahmat!" : o.status === "Yo'lda" ? "Kuryer yo'lda — bugun yetib boradi" : `Taxminiy yetkazish: ${deliveryDay()}`}</p></div>`;
+}
+
+// ---------- Yangiliklar: "video" muqovalar, lenta va maqola ----------
+// Yangilik rasmi ilova ikonkasi yoki yo'q bo'lsa — matnida tilga olingan mahsulot fotosini olamiz
+function newsProducts(n) {
+  const txt = `${n.title} ${n.excerpt || ""} ${n.body || ""}`.toLowerCase();
+  const byName = S.products.filter((p) => txt.includes(p.name.toLowerCase()) || txt.includes(p.name.toLowerCase().split(" ").slice(0, 3).join(" ")));
+  const byBrand = byName.length ? [] : S.products.filter((p) => p.brand.length > 2 && new RegExp(`\\b${p.brand.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(txt));
+  return [...byName, ...byBrand].filter((p, i, a) => a.indexOf(p) === i).slice(0, 8);
+}
+function newsCover(n) {
+  if (n.img && !/^icons\//.test(n.img)) return n.img;
+  const p = newsProducts(n)[0] || S.products.slice().sort((a, b) => (b.popular || 0) - (a.popular || 0))[0];
+  return p ? p.img : n.img;
+}
+const readMin = (n) => Math.max(1, Math.round(String(n.body || n.excerpt || "").split(/\s+/).length / 180));
+const NEWS_TONE = { "Aksiya": "red", "Yangi kelgan": "green", "Maslahat": "violet", "Sharh": "dark", "Yangilik": "dark" };
+// Bosh sahifa va lenta uchun "reels" kartochka: harakatlanuvchi muqova, nur o'tishi, progress
+function reel(n, i = 0) {
+  return `<button class="reel ${NEWS_TONE[n.tag] || "dark"}" data-news="${n.id}" style="--d:${(i % 3) * 1.3}s">
+    <span class="reel-bg"><img src="${esc(hi(newsCover(n), 500))}" alt="" loading="lazy" onerror="imgErr(this)" /></span>
+    <span class="reel-sh"></span>
+    <span class="reel-top"><em>${esc(n.tag || "Yangilik")}</em>${n.pinned ? "<em>📌</em>" : ""}</span>
+    <span class="reel-play">▶</span>
+    <span class="reel-b"><b>${esc(n.title)}</b><small>${esc(n.date || "")} · ${readMin(n)} daq o'qish</small><i class="reel-prog"></i></span>
+  </button>`;
+}
+function openNewsFeed(tag0) {
+  let tag = tag0 || "";
+  const tags = [...new Set(S.news.map((n) => n.tag || "Yangilik"))];
+  push({
+    html: hdr("📰 Yangiliklar") + `<div class="chips"><button class="chip" data-nt="">Hammasi</button>${tags.map((t) => `<button class="chip" data-nt="${esc(t)}">${esc(t)}</button>`).join("")}</div><div class="sb"><div class="sec" id="nf" style="padding-top:4px"></div></div>`,
+    mount(el) {
+      const draw = () => {
+        $$("[data-nt]", el).forEach((c) => c.classList.toggle("on", c.dataset.nt === tag));
+        const L = S.news.filter((n) => !tag || (n.tag || "Yangilik") === tag).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || String(b.date).localeCompare(String(a.date)));
+        if (!L.length) { $("#nf", el).innerHTML = emptyBox("📰", "Yangilik yo'q", "Bu turdagi yangiliklar hali chiqmagan"); return; }
+        const [f, ...rest] = L;
+        $("#nf", el).innerHTML = `<button class="nf-hero" data-news="${f.id}"><span class="nf-img"><img src="${esc(hi(newsCover(f), 960))}" alt="" onerror="imgErr(this)" /></span><span class="reel-sh"></span>
+            <span class="nf-t"><em>${esc(f.tag || "Yangilik")}</em><b>${esc(f.title)}</b><small>${esc(f.excerpt || "")}</small><small>${esc(f.date || "")} · ${readMin(f)} daq o'qish</small></span></button>
+          <div class="nf-list">${rest.map((n, i) => `<button class="nf-row rv-in" data-news="${n.id}" style="--i:${i}"><span class="nf-th"><img src="${esc(hi(newsCover(n), 330))}" alt="" loading="lazy" onerror="imgErr(this)" /></span><span><em>${esc(n.tag || "Yangilik")}</em><b>${esc(n.title)}</b><small>${esc(n.date || "")} · ${readMin(n)} daq</small></span></button>`).join("")}</div>`;
+      };
+      el.addEventListener("click", (e) => { const c = e.target.closest("[data-nt]"); if (c) { tag = c.dataset.nt; draw(); } });
+      draw();
+    },
+  });
+}
+function openNews(id) {
+  const n = S.news.find((x) => x.id === id);
+  if (!n) return;
+  const prods = newsProducts(n), more = S.news.filter((x) => x.id !== n.id).slice(0, 4);
+  const paras = String(n.body || n.excerpt || "").split(/\n\s*\n|\n(?=\d+\.)/).map((x) => x.trim()).filter(Boolean);
+  push({
+    noTab: true,
+    html: `<header class="hdr clear phdr" id="ah"><button class="ib" data-back aria-label="Orqaga">${svg(IC.back)}</button><div class="ph-t"><b>${esc(n.title)}</b><small>${esc(n.tag || "Yangilik")}</small></div><button class="ib" data-nshare aria-label="Ulashish">${svg(IC.share)}</button></header>
+      <i class="read-prog" id="rp"></i>
+      <div class="sb" id="asb">
+        <div class="art-hero" id="ahero"><img src="${esc(hi(newsCover(n), 960))}" alt="" onerror="imgErr(this)" /><span class="reel-sh"></span>
+          <div class="art-ht"><em>${esc(n.tag || "Yangilik")}</em><h1>${esc(n.title)}</h1><small>📅 ${esc(n.date || "")} · ⏱ ${readMin(n)} daqiqa o'qish</small></div></div>
+        <article class="art">
+          ${n.excerpt ? `<p class="art-lead rv-in">${esc(n.excerpt)}</p>` : ""}
+          ${paras.map((p, i) => `<p class="rv-in" style="--i:${i}">${esc(p)}</p>`).join("")}
+          ${prods.length ? `<div class="rv-in"><div class="sec-h"><h2>🛍 Maqoladagi mahsulotlar</h2></div><div class="hscroll">${prods.map((p) => card(p)).join("")}</div></div>` : ""}
+          ${more.length ? `<div class="rv-in"><div class="sec-h"><h2>📰 Boshqa yangiliklar</h2></div><div class="hscroll">${more.map((x, i) => reel(x, i)).join("")}</div></div>` : ""}
+        </article>
+      </div>`,
+    mount(el) {
+      const sb = $("#asb", el), hero = $("#ahero img", el), ah = $("#ah", el), rp = $("#rp", el);
+      sb.addEventListener("scroll", () => {
+        const y = sb.scrollTop;
+        hero.style.transform = `translateY(${y * 0.45}px) scale(${1 + Math.min(y, 300) / 1500})`; // parallaks
+        ah.classList.toggle("solid", y > 220);
+        rp.style.width = Math.min(100, (y / Math.max(1, sb.scrollHeight - sb.clientHeight)) * 100) + "%";
+      }, { passive: true });
+      // Matn bloklari ekranga chiqqanda ketma-ket paydo bo'ladi
+      const io = new IntersectionObserver((en) => en.forEach((x) => { if (x.isIntersecting) { x.target.classList.add("in"); io.unobserve(x.target); } }), { root: sb, threshold: 0.12 });
+      $$(".rv-in", el).forEach((x) => io.observe(x)); el._io = io;
+      $("[data-nshare]", el).onclick = () => {
+        const url = `https://javohir877.github.io/OPUS-MARKET/#news-${n.id}`;
+        if (navigator.share) navigator.share({ title: n.title, url }).catch(() => {}); else navigator.clipboard?.writeText(url).then(() => toast("🔗 Havola nusxalandi"));
+      };
+    },
+    unmount(el) { el._io && el._io.disconnect(); },
+  });
+}
+
+// ---------- Stories 2.0: 3D kub, barmoq bilan surish, Ken Burns, xira fon ----------
+const seenStory = (id) => store.get("app_seen_stories", []).includes(id);
+function storiesData() {
+  const P = S.products.filter((p) => (p.stock || 0) > 0);
+  const slideOf = (p, kicker) => ({ img: p.img, kicker, title: p.name, text: disc(p) ? `${fmt(p.price)} · avval ${fmt(p.old)}` : `${fmt(p.price)} · oyiga ${fmt(p.price / 12)}`, cta: { t: "Mahsulotni ko'rish", pid: p.id }, price: p });
+  const out = [];
+  const deals = P.filter((p) => disc(p)).sort((a, b) => disc(b) - disc(a));
+  if (deals.length) out.push({ id: "deals", name: "Aksiyalar", emoji: "🔥", cover: deals[0].img, slides: deals.slice(0, 5).map((p) => slideOf(p, `🔥 −${disc(p)}% chegirma`)) });
+  const fresh = P.filter((p) => p.badge === "Yangi");
+  if (fresh.length) out.push({ id: "new", name: "Yangi", emoji: "🆕", cover: fresh[0].img, slides: fresh.slice(0, 5).map((p) => slideOf(p, "🆕 Yangi kelgan")) });
+  if (S.news.length) out.push({ id: "news", name: "Yangiliklar", emoji: "📰", cover: newsCover(S.news[0]), slides: S.news.slice(0, 4).map((n) => ({ img: newsCover(n), kicker: n.tag || "Yangilik", title: n.title, text: n.excerpt || "", cta: { t: "O'qish", news: n.id } })) });
+  out.push({ id: "nasiya", name: "Nasiya 0%", emoji: "💜", cover: (P[3] || P[0] || {}).img, slides: [
+    { bg: "violet", art: "💜", kicker: "Uzum Nasiya", title: "0% bo'lib to'lash", text: "Istalgan mahsulotni 3, 6, 12 yoki 24 oyga ortiqcha foizsiz oling.", cta: { t: "Xarid qilish", list: "all" } },
+    { bg: "violet", art: "🧾", kicker: "Qanday ishlaydi?", title: "1. Savatga qo'shing\n2. \"Uzum Nasiya\" ni tanlang\n3. Muddatni belgilang", text: "Operatorimiz qolganini o'zi rasmiylashtiradi." }] });
+  S.cats.slice(0, 6).forEach((c) => {
+    const L = P.filter((p) => p.cat === c.id).sort((a, b) => (b.popular || 0) - (a.popular || 0)).slice(0, 3);
+    if (L.length) out.push({ id: "c-" + c.id, name: c.name, cover: c.img, slides: L.map((p) => slideOf(p, `⭐ ${c.name}: eng ommabop`)) });
+  });
+  out.push({ id: "ship", name: "Yetkazish", emoji: "🚚", cover: (P[5] || P[0] || {}).img, slides: [
+    { bg: "green", art: "🚚", kicker: "Yetkazib berish", title: "Toshkent bo'ylab 24 soatda", text: `${num(S.settings.freeShipFrom || 1000000)} so'mdan yuqori xaridlarda — bepul. Viloyatlarga 2–4 kunda.` }] });
+  return out;
+}
+let storyState = null;
+function openStories(gi) {
+  const groups = storiesData();
+  const box = document.createElement("div");
+  box.className = "story";
+  document.body.appendChild(box);
+  sfx("open");
+  const st = storyState = { gi, si: 0, t0: 0, elapsed: 0, paused: false, raf: 0, box, groups, kb: 0 };
+  const DUR = 5600;
+  const markSeen = (id) => { const s = store.get("app_seen_stories", []); if (!s.includes(id)) store.set("app_seen_stories", [...s, id].slice(-40)); };
+  const preload = () => { const g = groups[st.gi], nx = g.slides[st.si + 1] || (groups[st.gi + 1] || {}).slides?.[0]; if (nx && nx.img) { const im = new Image(); im.src = hi(nx.img, 960); } };
+  const media = (s, g) => s.img
+    ? `<div class="st-bgimg" style="background-image:url('${esc(hi(s.img, 330))}')"></div><img class="st-img kb${(st.kb++ % 3) + 1}" src="${esc(hi(s.img, 960))}" alt="" onerror="imgErr(this)" />`
+    : `<div class="st-art kb1">${s.art || g.emoji || "✨"}</div><div class="st-orbs"><i></i><i></i><i></i></div>`;
+  const draw = (fresh) => {
+    const g = groups[st.gi], s = g.slides[st.si];
+    markSeen(g.id);
+    if (fresh || !$(".st-bars", box)) {
+      box.innerHTML = `<div class="st-stage"></div><div class="st-bars">${g.slides.map(() => `<i><b></b></i>`).join("")}</div>
+        <div class="st-top"><span class="st-av"><img src="${esc(hi(g.cover, 330))}" alt="" onerror="imgErr(this)" /></span><b>${esc(g.name)}</b><small>OPUS MARKET · hozir</small><button class="ib" data-stx aria-label="Yopish">${svg(IC.close)}</button></div>`;
+    }
+    $$(".st-bars b", box).forEach((b, i) => (b.style.width = i < st.si ? "100%" : "0%"));
+    // Yangi slayd eskisining ustiga silliq chiqadi (crossfade)
+    const stage = $(".st-stage", box), layer = document.createElement("div");
+    layer.className = `st-layer ${s.bg || ""}`;
+    layer.innerHTML = `<div class="st-media">${media(s, g)}</div>
+      <div class="st-text"><small>${esc(s.kicker || "")}</small><h2>${esc(s.title).replace(/\n/g, "<br>")}</h2>${s.text ? `<p>${esc(s.text)}</p>` : ""}${s.cta ? `<button class="btn block" data-stcta>${esc(s.cta.t)} →</button>` : ""}</div>`;
+    stage.appendChild(layer);
+    const olds = $$(".st-layer", stage).slice(0, -1);
+    setTimeout(() => olds.forEach((o) => o.remove()), 450);
+    st.elapsed = 0; st.t0 = performance.now();
+    preload();
+  };
+  const cube = (dir) => { box.classList.remove("cube-n", "cube-p"); void box.offsetWidth; box.classList.add(dir > 0 ? "cube-n" : "cube-p"); sfx("nav"); };
+  const step = (dir) => {
+    const g = groups[st.gi];
+    if (dir > 0) {
+      if (st.si < g.slides.length - 1) { st.si++; sfx("tick"); draw(); }
+      else if (st.gi < groups.length - 1) { st.gi++; st.si = 0; cube(1); draw(true); }
+      else close();
+    } else {
+      if (st.si > 0) { st.si--; sfx("tick"); draw(); }
+      else if (st.gi > 0) { st.gi--; st.si = 0; cube(-1); draw(true); }
+      else { st.elapsed = 0; st.t0 = performance.now(); }
+    }
+  };
+  const loop = (now) => {
+    if (!st.paused) {
+      const p = Math.min(1, (st.elapsed + now - st.t0) / DUR);
+      const bar = $$(".st-bars b", box)[st.si]; if (bar) bar.style.width = p * 100 + "%";
+      if (p >= 1) step(1);
+    }
+    st.raf = requestAnimationFrame(loop);
+  };
+  const pause = () => { if (!st.paused) { st.paused = true; st.elapsed += performance.now() - st.t0; } };
+  const resume = () => { if (st.paused) { st.paused = false; st.t0 = performance.now(); } };
+  const close = () => { cancelAnimationFrame(st.raf); box.classList.add("out"); setTimeout(() => box.remove(), 260); storyState = null; sfx("close"); refreshRoot("home"); };
+  st.close = close;
+  // Barmoq bilan: yon tomonga surish — keyingi/oldingi guruh (3D), pastga — yopish, bosib turish — pauza
+  let x0 = 0, y0 = 0, tDown = 0, drag = false, holdT = 0;
+  box.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("button")) return;
+    x0 = e.clientX; y0 = e.clientY; tDown = Date.now(); drag = true; pause();
+    holdT = setTimeout(() => box.classList.add("hold"), 220);
+  });
+  box.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const dx = e.clientX - x0, dy = e.clientY - y0;
+    if (dy > 10 && dy > Math.abs(dx)) box.style.transform = `translateY(${dy * 0.6}px) scale(${1 - Math.min(dy, 300) / 1500})`;
+    else if (Math.abs(dx) > 10) box.style.transform = `perspective(1100px) rotateY(${(dx / innerWidth) * 50}deg)`, box.style.transformOrigin = dx < 0 ? "left center" : "right center";
+  });
+  const end = (e) => {
+    if (!drag) return;
+    drag = false; clearTimeout(holdT); box.classList.remove("hold");
+    const dx = e.clientX - x0, dy = e.clientY - y0;
+    box.style.transition = "transform .25s"; box.style.transform = "";
+    setTimeout(() => (box.style.transition = ""), 260);
+    if (dy > 110 && dy > Math.abs(dx)) return close();
+    if (Math.abs(dx) > 70) {
+      const dir = dx < 0 ? 1 : -1, g = groups[st.gi];
+      if (dir > 0 && st.gi < groups.length - 1) { st.gi++; st.si = 0; cube(1); draw(true); }
+      else if (dir < 0 && st.gi > 0) { st.gi--; st.si = 0; cube(-1); draw(true); }
+      else if (dir > 0) return close();
+      return resume();
+    }
+    if (Date.now() - tDown < 250 && Math.abs(dx) < 10) step(e.clientX < innerWidth / 3 ? -1 : 1);
+    resume();
+  };
+  box.addEventListener("pointerup", end);
+  box.addEventListener("pointercancel", end);
+  box.addEventListener("click", (e) => {
+    if (e.target.closest("[data-stx]")) return close();
+    if (e.target.closest("[data-stcta]")) {
+      const c = groups[st.gi].slides[st.si].cta;
+      close();
+      setTimeout(() => { if (c.pid) openProduct(c.pid); else if (c.news) openNews(c.news); else if (c.list) openList({ title: "🛍 Barcha mahsulotlar" }); }, 140);
+    }
+  });
+  draw(true); st.raf = requestAnimationFrame(loop);
+}
+
+
+// Bosh sahifa qatorlari: tez tugaydiganlar, brendlar
+function lowRow() {
+  const L = S.products.filter((p) => (p.stock || 0) > 0 && p.stock <= 3).sort((a, b) => (b.popular || 0) - (a.popular || 0)).slice(0, 10);
+  return L.length ? `<div class="sec"><div class="sec-h"><h2>⏳ Tez tugaydi</h2><small class="muted">ulgurib qoling</small></div><div class="hscroll">${L.map((p) => card(p, { deal: true })).join("")}</div></div>` : "";
+}
+function brandsRow() {
+  const cnt = {};
+  S.products.forEach((p) => (cnt[p.brand] = (cnt[p.brand] || 0) + 1));
+  const B = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 12);
+  return `<div class="sec"><div class="sec-h"><h2>🏷 Brendlar</h2></div><div class="hscroll brands">${B.map(([b, n], i) => `<button class="brand-c" data-brand-q="${esc(b)}" style="--h:${(i * 47) % 360}"><b>${esc(b)}</b><small>${n} ta</small></button>`).join("")}</div></div>`;
+}
 const ROOTS = { home: homeScreen, catalog: catalogScreen, cart: cartScreen, fav: favScreen, profile: profileScreen };
 matchMedia("(prefers-color-scheme: light)").addEventListener("change", applyTheme);
 applyTheme();
@@ -1529,6 +1798,8 @@ if (VERSION === "web") {
       th.closest(".menu").insertAdjacentHTML("beforebegin", `<div class="menu">
         <button class="mi" data-x="notifs"><span class="ri">🔔</span><span>Bildirishnomalar</span>${un ? `<i class="cnt">${un}</i>` : ""}</button>
         <button class="mi" data-x="recent"><span class="ri">👀</span><span>Ko'rilgan mahsulotlar</span><small>${S.recent.length || ""}</small></button>
+        <button class="mi" data-x="compare"><span class="ri">⚖️</span><span>Taqqoslash</span><small>${S.compare.length || ""}</small></button>
+        <button class="mi" data-x="news"><span class="ri">📰</span><span>Yangiliklar</span><small>${S.news.length || ""}</small></button>
         ${window.SFX ? `<button class="mi noarrow" data-x="sound"><span class="ri">🔊</span><span>Ovoz effektlari</span><span class="sw${snd ? " on" : ""}"></span></button>
         <button class="mi noarrow" data-x="vib"><span class="ri">📳</span><span>Tebranish</span><span class="sw${vib ? " on" : ""}"></span></button>` : ""}
       </div>`);
@@ -1536,6 +1807,8 @@ if (VERSION === "web") {
         const b = e.target.closest("[data-x]"); if (!b) return;
         const k = b.dataset.x;
         if (k === "notifs") openNotifs();
+        if (k === "compare") openCompare();
+        if (k === "news") openNewsFeed();
         if (k === "recent") openList({ title: "👀 Ko'rilganlar", ids: S.recent.slice(), keepOrder: true });
         if (k === "sound") { SFX.toggle(); $(".sw", b).classList.toggle("on", SFX.on); }
         if (k === "vib") { SFX.setHaptic(!SFX.haptic); $(".sw", b).classList.toggle("on", SFX.haptic); }
