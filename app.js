@@ -1159,7 +1159,7 @@ function mountConfirm(box, order, confirm, onDone) {
       <small class="muted">Buyurtma 2 soat ichida tasdiqlanmasa, avtomatik bekor qilinadi.</small>
     </div>`;
     const f = $(".tgc-form", box), err = $(".tgc-err", box), inp = f.elements.code;
-    inp.addEventListener("input", () => { inp.value = inp.value.replace(/D/g, "").slice(0, 6); if (inp.value.length === 6) f.requestSubmit(); });
+    inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D/g, "").slice(0, 6); if (inp.value.length === 6) f.requestSubmit(); });
     if (c.linked) setTimeout(() => inp.focus(), 300);
     f.addEventListener("submit", async (e) => {
       e.preventDefault();
