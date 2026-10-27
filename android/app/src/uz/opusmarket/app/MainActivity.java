@@ -29,7 +29,7 @@ import android.widget.Toast;
  * - Internet bo'lmasa — ilova ichidagi "Internet yo'q" sahifasi.
  */
 public class MainActivity extends Activity {
-    static final String HOME = "https://javohir877.github.io/OPUS-MARKET/";
+    static final String HOME = "https://javohir877.github.io/OPUS-MARKET/app/";
     static final String HOST = "javohir877.github.io";
     static final String PATH = "/OPUS-MARKET";
     static final int FILE_REQ = 7;
@@ -138,6 +138,13 @@ public class MainActivity extends Activity {
                     }
                 });
             }
+            @android.webkit.JavascriptInterface
+            public void theme(final String t) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() { applyBars("light".equals(t)); }
+                });
+            }
         }, "OPUSApp");
 
         if (state != null) web.restoreState(state);
@@ -146,7 +153,8 @@ public class MainActivity extends Activity {
 
     void open(Intent i) {
         Uri u = i != null ? i.getData() : null;
-        web.loadUrl(u != null && isOurs(u) ? u.toString() : HOME);
+        // Ilova interfeysi /app/ da; saytning boshqa havolalari ham ilova bosh sahifasini ochadi
+        web.loadUrl(u != null && isOurs(u) && u.getPath() != null && u.getPath().startsWith(PATH + "/app") ? u.toString() : HOME);
     }
 
     @Override
@@ -229,6 +237,17 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onResume() { super.onResume(); web.onResume(); }
+
+    // Status va navigatsiya paneli rangi ilova mavzusiga mos (tun / kun)
+    void applyBars(boolean light) {
+        Window w = getWindow();
+        int c = light ? Color.WHITE : Color.parseColor("#0c0708");
+        w.setStatusBarColor(c);
+        w.setNavigationBarColor(c);
+        int f = w.getDecorView().getSystemUiVisibility();
+        int flags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | (android.os.Build.VERSION.SDK_INT >= 26 ? View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR : 0);
+        w.getDecorView().setSystemUiVisibility(light ? (f | flags) : (f & ~flags));
+    }
 
     int dp(int v) { return Math.round(v * getResources().getDisplayMetrics().density); }
 }
