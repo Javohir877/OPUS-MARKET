@@ -1248,6 +1248,7 @@ function addedSheet(p) {
 }
 // Konfetti (muvaffaqiyatli buyurtma)
 function confetti() {
+  sfx("confetti");
   const c = document.createElement("canvas");
   c.className = "confetti"; c.width = innerWidth; c.height = innerHeight;
   document.body.appendChild(c);
