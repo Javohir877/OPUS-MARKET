@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Ochilish ekrani: to'q fon + logotip (sahifa yuklanguncha) -->
+    <style name="Splash" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash</item>
+        <item name="android:statusBarColor">#0c0708</item>
+        <item name="android:navigationBarColor">#0c0708</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
