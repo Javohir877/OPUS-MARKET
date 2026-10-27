@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Internet yo'q</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0c0708; color: #f5eaea; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { display: grid; place-items: center; padding: 24px; box-sizing: border-box; text-align: center;
+    background: radial-gradient(circle at 50% 20%, rgba(225,15,42,.28), transparent 55%), #0c0708; }
+  .ic { width: 96px; height: 96px; margin: 0 auto 22px; border-radius: 28px; display: grid; place-items: center; font-size: 46px;
+    background: linear-gradient(135deg, #ff2a40, #a8081d); box-shadow: 0 16px 40px rgba(225,15,42,.45); animation: p 2.4s ease-in-out infinite; }
+  @keyframes p { 50% { transform: scale(1.06); box-shadow: 0 16px 56px rgba(225,15,42,.7); } }
+  h1 { font-size: 22px; margin: 0 0 10px; letter-spacing: .5px; }
+  p { color: #b9a6a8; margin: 0 0 26px; line-height: 1.5; font-size: 15px; }
+  button { border: 0; border-radius: 14px; padding: 14px 30px; font-size: 16px; font-weight: 700; color: #fff;
+    background: linear-gradient(135deg, #ff2a40, #a8081d); box-shadow: 0 10px 26px rgba(225,15,42,.4); }
+  button:active { transform: scale(.97); }
+</style>
+</head>
+<body>
+  <div>
+    <div class="ic">📡</div>
+    <h1>Internet aloqasi yo'q</h1>
+    <p>OPUS MARKET'ga ulanish uchun internetni yoqing<br>(Wi-Fi yoki mobil internet) va qayta urinib ko'ring.</p>
+    <button onclick="OPUSApp.retry()">↻ Qayta urinish</button>
+  </div>
+</body>
+</html>
