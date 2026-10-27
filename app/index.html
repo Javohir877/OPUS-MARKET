@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0c0708" />
+  <meta name="robots" content="noindex" />
+  <title>OPUS MARKET</title>
+  <link rel="icon" type="image/png" href="../icons/favicon-32.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="app.css?v=2" />
+  <script>
+    // Mavzu: saqlangan tanlov yoki telefon sozlamasi (birinchi chizishdan oldin — miltillamasin)
+    (function () {
+      var t = null; try { t = JSON.parse(localStorage.getItem("opus_app_theme")); } catch (e) {}
+      if (!t || t === "system") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+</head>
+<body>
+  <div id="stage"></div>
+
+  <nav class="tabbar" id="tabbar">
+    <button data-tab="home" class="active"><svg viewBox="0 0 24 24"><path d="M12 3l9 7.5V21h-6.5v-6h-5v6H3V10.5z"/></svg><span>Bosh sahifa</span></button>
+    <button data-tab="catalog"><svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 015.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1110 3zm0 2a5 5 0 100 10 5 5 0 000-10z"/></svg><span>Katalog</span></button>
+    <button data-tab="cart"><svg viewBox="0 0 24 24"><path d="M7 18a2 2 0 110 4 2 2 0 010-4zm10 0a2 2 0 110 4 2 2 0 010-4zM1 2h3.3l1 2H21a1 1 0 011 1.2l-1.6 8A2 2 0 0118.4 15H8.1l-.9 1.6V17H19v2H7a2 2 0 01-1.8-2.9l1.4-2.6L3.1 4H1V2z"/></svg><span>Savat</span><i class="tb-badge" id="cartBadge" hidden></i></button>
+    <button data-tab="fav"><svg viewBox="0 0 24 24"><path d="M12 21l-1.5-1.3C5.4 15.1 2 12 2 8.2 2 5.1 4.4 2.7 7.5 2.7c1.7 0 3.4.8 4.5 2.1a6 6 0 014.5-2.1c3.1 0 5.5 2.4 5.5 5.5 0 3.8-3.4 6.9-8.5 11.5z"/></svg><span>Saralangan</span><i class="tb-badge" id="favBadge" hidden></i></button>
+    <button data-tab="profile"><svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.4 0-9 2.2-9 5.5V22h18v-2.5c0-3.3-4.6-5.5-9-5.5z"/></svg><span>Kabinet</span></button>
+  </nav>
+
+  <div class="sheet-bg" id="sheetBg" hidden></div>
+  <div class="sheet" id="sheet" hidden><div class="sheet-grip"></div><div id="sheetBody"></div></div>
+  <div class="toasts" id="toasts"></div>
+
+  <script src="../assets.js?v=26"></script>
+  <script src="../data.js?v=26"></script>
+  <script src="app.js?v=2"></script>
+</body>
+</html>
