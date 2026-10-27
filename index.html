@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>OPUS MARKET</title>
-  <meta name="description" content="OPUS MARKET — kompyuterlar, noutbuklar, videokartalar, protsessorlar, monitorlar va periferiya onlayn do'koni. Narxlar so'mda, bo'lib to'lash, yetkazib berish." />
-  <meta name="theme-color" content="#ffffff" />
+  <meta name="description" content="OPUS MARKET — noutbuklar, kompyuterlar, monitorlar va aksessuarlar onlayn do'koni." />
+  <meta name="theme-color" content="#e10f2a" />
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
@@ -15,224 +15,430 @@
   <meta name="apple-mobile-web-app-title" content="OPUS MARKET" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=30" />
-  <link rel="stylesheet" href="store.css?v=2" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=33" />
 </head>
-<body class="store">
-  <!-- Ikonkalar to'plami (bitta uslub: 1.8px chiziq) -->
-  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-    <defs>
-      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></symbol>
-      <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" /></symbol>
-      <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.5s-8-4.7-8-11a4.5 4.5 0 018-2.8 4.5 4.5 0 018 2.8c0 6.3-8 11-8 11z" /></symbol>
-      <symbol id="i-compare" viewBox="0 0 24 24"><path d="M7 4v16M17 4v16M3 8h8M13 16h8M3 8l3-3M3 8l3 3M21 16l-3-3M21 16l-3 3" /></symbol>
-      <symbol id="i-cart" viewBox="0 0 24 24"><path d="M3 4h2.5l2.2 11h10.6l2-8H6.3" /><circle cx="9" cy="19.5" r="1.4" /><circle cx="17" cy="19.5" r="1.4" /></symbol>
-      <symbol id="i-box" viewBox="0 0 24 24"><path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z" /><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9" /></symbol>
-      <symbol id="i-truck" viewBox="0 0 24 24"><path d="M2.5 6h11v10h-11zM13.5 9.5h4l3 3.5V16h-7" /><circle cx="6.5" cy="17.5" r="1.8" /><circle cx="17" cy="17.5" r="1.8" /></symbol>
-      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.3-7.5 9.5-4.3-1.2-7.5-4.9-7.5-9.5V6z" /><path d="M8.5 12l2.5 2.5 4.5-5" /></symbol>
-      <symbol id="i-card" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2" /><path d="M2.5 9.5h19M6 15h4" /></symbol>
-      <symbol id="i-headset" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0116 0v2" /><rect x="3" y="13" width="4" height="6" rx="1.5" /><rect x="17" y="13" width="4" height="6" rx="1.5" /><path d="M19 19c0 1.5-2 2.5-5 2.5" /></symbol>
-      <symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 3.5h3.5l1.5 4.5-2.2 1.4a11 11 0 005.8 5.8L15 13l4.5 1.5V18a2 2 0 01-2 2C10 20 4 14 4 6.5a2 2 0 011-3z" /></symbol>
-      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></symbol>
-      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M3.5 6.5h17M3.5 12h17M3.5 17.5h17" /></symbol>
-      <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></symbol>
-      <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6" /></symbol>
-      <symbol id="i-right" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6" /></symbol>
-      <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4" /></symbol>
-      <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1" /></symbol>
-      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z" /></symbol>
-      <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" /><path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11" /></symbol>
-      <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></symbol>
-      <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 12.5V4h8.5l8.5 8.5-8.5 8.5z" /><circle cx="8" cy="8.5" r="1.4" /></symbol>
-      <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0113 0c0 5.4-6.5 11-6.5 11z" /><circle cx="12" cy="10" r="2.3" /></symbol>
-      <symbol id="i-tg" viewBox="0 0 24 24"><path d="M21 4.5L3 11.5l5.5 2 2 6 3.2-3.6 4.8 3.6z" /><path d="M8.5 13.5L19 6.5" /></symbol>
-      <symbol id="i-android" viewBox="0 0 24 24"><rect x="5" y="9" width="14" height="10" rx="2" /><path d="M8 9a4 4 0 018 0M7.5 5.5l1.5 2M16.5 5.5l-1.5 2M9.5 12.5v.1M14.5 12.5v.1" /></symbol>
-      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 6.5h15M9.5 6.5V4.5h5v2M6.5 6.5l1 13h9l1-13M10 10.5v6M14 10.5v6" /></symbol>
-      <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z" /></symbol>
-    </defs>
-  </svg>
+<body>
+  <!-- Loader -->
+  <div id="loader">
+    <div class="loader-ring"></div>
+    <div class="loader-logo">OPUS<span>MARKET</span></div>
+    <div class="loader-bar"><i></i></div>
+  </div>
 
-  <a class="skip" href="#products">Katalogga o'tish</a>
+  <!-- Scroll progress + elektr sxemasi -->
+  <div class="scroll-progress" id="scrollProgress" aria-hidden="true"><i></i></div>
+  <div class="circuit-wrap" id="circuitWrap" aria-hidden="true" hidden></div>
 
-  <!-- Yuqori ma'lumot qatori -->
-  <div class="tb">
-    <div class="wrap tb-in">
-      <span class="tb-item"><svg class="ic"><use href="#i-truck" /></svg><span id="topbarText"></span></span>
-      <span class="tb-right">
-        <a class="tb-item" href="tel:+998712000000"><svg class="ic"><use href="#i-phone" /></svg>+998 71 200 00 00</a>
-        <span class="tb-item tb-hide-s"><svg class="ic"><use href="#i-clock" /></svg>Har kuni 09:00–21:00</span>
-        <button class="tb-btn" id="themeBtn" title="Tun / kun rejimi" aria-label="Tun / kun rejimi"><svg class="ic"><use href="#i-moon" /></svg></button>
-        <span class="tb-snd"><button class="tb-btn sound-btn" id="soundBtn" title="Ovoz effektlari" aria-label="Ovoz effektlari"><svg class="ic"><use href="#i-sound" /></svg></button></span>
-      </span>
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="container topbar-inner">
+      <span id="topbarText">🚚 1 mln so'mdan yuqori xaridlarga <b>bepul yetkazib berish</b></span>
+      <span class="topbar-right">📞 +998 71 200 00 00 · 🕘 09:00 – 21:00</span>
     </div>
   </div>
 
-  <!-- Asosiy sarlavha -->
-  <header class="hd" id="header">
-    <div class="wrap hd-in">
-      <button class="hd-burger" id="burger" aria-label="Menyu" aria-expanded="false"><svg class="ic"><use href="#i-menu" /></svg></button>
-      <a href="./" class="brand" aria-label="OPUS MARKET — bosh sahifa"><span class="brand-mark">O</span><span class="brand-text">OPUS<b>MARKET</b></span></a>
-      <form class="hd-search" id="searchBox" role="search" autocomplete="off">
-        <input type="search" id="searchInput" placeholder="Mahsulot, brend yoki model" aria-label="Qidirish" />
-        <button class="hd-search-btn" aria-label="Qidirish"><svg class="ic"><use href="#i-search" /></svg><span>Qidirish</span></button>
-        <div class="suggest" id="suggest" hidden></div>
-      </form>
-      <nav class="hd-acts" aria-label="Akkaunt va savat">
-        <button class="hd-act acc-btn" id="accBtn" title="Kirish / Ro'yxatdan o'tish">
-          <svg class="ic"><use href="#i-user" /></svg><span class="acc-ini" id="accIni" hidden></span><span class="hd-lbl" id="accLabel">Kirish</span>
-        </button>
-        <button class="hd-act" id="ordersBtn" title="Buyurtmalarim"><svg class="ic"><use href="#i-box" /></svg><span class="hd-lbl">Buyurtmalar</span></button>
-        <button class="hd-act" id="favBtn" title="Saralangan"><svg class="ic"><use href="#i-heart" /></svg><span class="hd-lbl">Saralangan</span><span class="hd-badge" id="favCount" hidden></span></button>
-        <button class="hd-act" id="cmpBtn" title="Taqqoslash"><svg class="ic"><use href="#i-compare" /></svg><span class="hd-lbl">Taqqoslash</span><span class="hd-badge" id="cmpCount" hidden></span></button>
-        <button class="hd-act hd-cart cart-btn" id="cartBtn" title="Savat"><svg class="ic"><use href="#i-cart" /></svg><span class="hd-lbl">Savat</span><span class="hd-badge badge" id="cartCount" hidden>0</span></button>
+  <!-- Header -->
+  <header class="header" id="header">
+    <div class="container header-inner">
+      <a href="#" class="logo">
+        <span class="logo-mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="none" stroke="#fff" stroke-width="3.4"/></svg></span>
+        <span class="logo-text">OPUS<b>MARKET</b></span>
+      </a>
+
+      <nav class="nav" id="nav">
+        <a href="#hero">Bosh sahifa</a>
+        <a href="#showcase">3D Shou</a>
+        <a href="#categories">Kategoriyalar</a>
+        <a href="#products">Mahsulotlar</a>
+        <a href="#news">Yangiliklar</a>
+        <a href="#deals">Aksiya</a>
+        <a href="#contact">Aloqa</a>
       </nav>
+
+      <div class="search" id="searchBox">
+        <svg viewBox="0 0 24 24"><path d="M10 2a8 8 0 105.3 14l5.4 5.4 1.4-1.4-5.4-5.4A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/></svg>
+        <input type="search" id="searchInput" placeholder="Noutbuk, sichqoncha, RTX...  ( / )" autocomplete="off" />
+        <div class="suggest" id="suggest" hidden></div>
+      </div>
+
+      <div class="header-actions">
+        <button class="icon-btn install-btn" id="installBtn" title="Ilovani o'rnatish" hidden>
+          <svg viewBox="0 0 24 24"><path d="M7 1h10a2 2 0 012 2v18a2 2 0 01-2 2H7a2 2 0 01-2-2V3a2 2 0 012-2zm0 3v15h10V4H7zm5 16.2a1 1 0 100 2 1 1 0 000-2zM11 6h2v5.2l1.8-1.8 1.4 1.4L12 15l-4.2-4.2 1.4-1.4 1.8 1.8V6z"/></svg>
+        </button>
+        <button class="icon-btn sound-btn" id="soundBtn" title="Ovoz effektlari" aria-label="Ovoz effektlarini o'chirish yoki yoqish">
+          <svg class="snd-on" viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3V9zm13.5 3a4.5 4.5 0 00-2.5-4v8a4.5 4.5 0 002.5-4zM14 3.2v2.1a7 7 0 010 13.4v2.1a9 9 0 000-17.6z"/></svg>
+          <svg class="snd-off" viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3V9zm13.6 3l2.7-2.7 1.4 1.4-2.7 2.7 2.7 2.7-1.4 1.4-2.7-2.7-2.7 2.7-1.4-1.4 2.7-2.7-2.7-2.7 1.4-1.4 2.7 2.7z"/></svg>
+        </button>
+        <button class="icon-btn" id="themeBtn" title="Mavzu">
+          <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 109 9 7 7 0 01-9-9z"/></svg>
+        </button>
+        <button class="icon-btn" id="ordersBtn" title="Buyurtmalarim">
+          <svg viewBox="0 0 24 24"><path d="M6 2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zm2 5v2h8V7H8zm0 4v2h8v-2H8zm0 4v2h5v-2H8z"/></svg>
+        </button>
+        <button class="acc-btn" id="accBtn" title="Kirish / Ro'yxatdan o'tish">
+          <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 110 10 5 5 0 010-10zm0 2a3 3 0 100 6 3 3 0 000-6zm0 10c4.4 0 8 2.2 8 5v3H4v-3c0-2.8 3.6-5 8-5zm0 2c-3.4 0-6 1.5-6 3v1h12v-1c0-1.5-2.6-3-6-3z"/></svg>
+          <span class="acc-ini" id="accIni" hidden></span>
+          <span class="acc-label" id="accLabel">Kirish</span>
+        </button>
+        <button class="icon-btn cart-btn" id="cartBtn" title="Savat">
+          <svg viewBox="0 0 24 24"><path d="M7 18a2 2 0 100 4 2 2 0 000-4zm10 0a2 2 0 100 4 2 2 0 000-4zM1 2h3.3l.9 2H21a1 1 0 01.9 1.4l-3.6 6.5A2 2 0 0116.6 13H8.1l-1.1 2H19v2H7a2 2 0 01-1.8-3l1.4-2.5L3 4H1V2z"/></svg>
+          <span class="badge" id="cartCount">0</span>
+        </button>
+        <button class="icon-btn burger" id="burger" title="Menyu">
+          <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+        </button>
+      </div>
     </div>
-    <!-- Kategoriyalar menyusi -->
-    <nav class="cn" id="nav" aria-label="Kategoriyalar">
-      <div class="wrap cn-in" id="navList"></div>
-      <div class="mega" id="mega" hidden></div>
-    </nav>
   </header>
 
-  <main id="main">
-    <!-- A. Aksiya qatori (faqat admin sozlagan taklif bo'lsa) -->
-    <div class="promo-strip" id="promoStrip" hidden>
-      <div class="wrap promo-in"><svg class="ic"><use href="#i-tag" /></svg><b id="dealTitle"></b><span id="promoInfo"></span><button class="promo-go" id="promoGo">Ko'rish<svg class="ic"><use href="#i-right" /></svg></button></div>
+  <!-- Hero -->
+  <section class="hero" id="hero" data-node="Start">
+    <div class="hero-bg">
+      <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
+      <div class="grid-lines"></div>
+      <div class="particles" id="particles"></div>
+    </div>
+    <div class="container hero-inner">
+      <div class="hero-text reveal">
+        <span class="pill">🔥 Yangi kolleksiya 2026</span>
+        <h1>Kelajak texnologiyasi<br /><span class="gradient-text" id="typed"></span><span class="caret">|</span></h1>
+        <p>Noutbuklar, o'yin kompyuterlari, monitorlar va eng sara aksessuarlar — rasmiy kafolat, tezkor yetkazib berish va 0% bo'lib to'lash bilan.</p>
+        <div class="hero-cta">
+          <a href="#products" class="btn btn-primary">Xarid qilish <span>→</span></a>
+          <a href="#deals" class="btn btn-ghost">Aksiyalar</a>
+        </div>
+        <div class="hero-stats">
+          <div><b data-count="12000">0</b>+<small>Mijozlar</small></div>
+          <div><b data-count="850">0</b>+<small>Mahsulotlar</small></div>
+          <div><b data-count="24">0</b>/7<small>Qo'llab-quvvatlash</small></div>
+        </div>
+      </div>
+      <div class="hero-visual reveal">
+        <div class="device" id="tiltCard">
+          <div class="device-screen">
+            <img id="heroImg" alt="O'yin kompyuteri" />
+            <div class="screen-shine"></div>
+          </div>
+          <div class="device-base"></div>
+        </div>
+        <div class="float-card fc1">⚡ RTX 5090</div>
+        <div class="float-card fc2">🎧 −30%</div>
+        <div class="float-card fc3">🚚 Bepul yetkazish</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Brands marquee -->
+  <div class="marquee">
+    <div class="marquee-track">
+      <span>ASUS</span><span>APPLE</span><span>LENOVO</span><span>MSI</span><span>HP</span><span>DELL</span><span>LOGITECH</span><span>RAZER</span><span>SAMSUNG</span><span>NVIDIA</span><span>AMD</span><span>SONY</span>
+      <span>ASUS</span><span>APPLE</span><span>LENOVO</span><span>MSI</span><span>HP</span><span>DELL</span><span>LOGITECH</span><span>RAZER</span><span>SAMSUNG</span><span>NVIDIA</span><span>AMD</span><span>SONY</span>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <section class="features container">
+    <div class="feature reveal"><div class="f-ic">🚚</div><h4>Tezkor yetkazish</h4><p>Toshkent bo'ylab 24 soatda</p></div>
+    <div class="feature reveal"><div class="f-ic">🛡️</div><h4>Rasmiy kafolat</h4><p>12 oydan 36 oygacha</p></div>
+    <div class="feature reveal"><div class="f-ic">💳</div><h4>Bo'lib to'lash</h4><p>0% ustama, 24 oygacha</p></div>
+    <div class="feature reveal"><div class="f-ic">↩️</div><h4>Qaytarish</h4><p>14 kun ichida bepul</p></div>
+  </section>
+
+  <!-- 3D Showcase -->
+  <section class="showcase" id="showcase" data-node="3D Shou">
+    <div class="sc-sticky">
+      <canvas id="showcaseCanvas"></canvas>
+      <div class="sc-vignette"></div>
+      <div class="sc-fallback"><img src="img/hero.jpg" alt="OPUS noutbuk" /></div>
+
+      <div class="container sc-ui">
+        <div class="sc-steps">
+          <div class="sc-step active">
+            <span class="sc-kicker">01 — Dizayn</span>
+            <h2>Mukammallik<br /><span class="gradient-text">har bir detalda</span></h2>
+            <p>Aviatsiya alyuminiyi, ultra-yupqa korpus va qizil RGB yoritgich. Har bir mahsulotimiz ikki marta sifat nazoratidan o'tadi.</p>
+          </div>
+          <div class="sc-step">
+            <span class="sc-kicker">02 — Quvvat</span>
+            <h2>Cheksiz<br /><span class="gradient-text">quvvat</span></h2>
+            <p>RTX 5090, Ryzen 9 va DDR5 — eng og'ir o'yinlar va professional dasturlar uchun eng so'nggi avlod komplektlari.</p>
+          </div>
+          <div class="sc-step">
+            <span class="sc-kicker">03 — OPUS MARKET</span>
+            <h2>Kelajak<br /><span class="gradient-text">bugun boshlanadi</span></h2>
+            <p>Rasmiy kafolat, 24 soatda yetkazish va 0% bo'lib to'lash. Orzuyingizdagi texnikani hoziroq tanlang.</p>
+            <a href="#products" class="btn btn-primary">Katalogni ochish <span>→</span></a>
+          </div>
+        </div>
+        <div class="sc-progress"><i id="scBar"></i></div>
+      </div>
+
+      <div class="sc-chips">
+        <span class="sc-chip" style="--x:46%;--y:14%">⚡ RTX 5090 · 32GB</span>
+        <span class="sc-chip" style="--x:84%;--y:22%">🖥 16" QHD+ 240Hz</span>
+        <span class="sc-chip" style="--x:44%;--y:84%">🧠 64GB DDR5</span>
+        <span class="sc-chip" style="--x:84%;--y:78%">❄️ Ultra sovutish</span>
+      </div>
+      <div class="sc-hint"><span class="mouse-ic"><i></i></span>Aylantiring</div>
+    </div>
+  </section>
+
+  <!-- Categories -->
+  <section class="section container" id="categories" data-node="Kategoriya">
+    <div class="section-head reveal">
+      <h2>Kategoriyalar</h2>
+      <p>Kerakli bo'limni tanlang</p>
+    </div>
+    <div class="cat-grid" id="catGrid"></div>
+  </section>
+
+  <!-- Deals -->
+  <section class="deals" id="deals" data-node="Aksiya">
+    <div class="deals-img" id="dealsImg"></div>
+    <div class="container deals-inner reveal">
+      <div>
+        <span class="pill pill-dark">⏰ Cheklangan vaqt</span>
+        <h2 id="dealTitle">MEGA CHEGIRMA — 40% gacha!</h2>
+        <p>Promo-kod: <b class="promo" id="copyPromo" title="Nusxa olish">OPUS10</b> — savatda qo'shimcha 10% chegirma.</p>
+        <div class="countdown" id="countdown">
+          <div><b id="cdD">00</b><small>kun</small></div>
+          <div><b id="cdH">00</b><small>soat</small></div>
+          <div><b id="cdM">00</b><small>daqiqa</small></div>
+          <div><b id="cdS">00</b><small>soniya</small></div>
+        </div>
+      </div>
+      <a href="#products" class="btn btn-light" data-filter-deal>Chegirmalarni ko'rish →</a>
+    </div>
+  </section>
+
+  <!-- Products -->
+  <section class="section container" id="products" data-node="Katalog">
+    <div class="section-head reveal">
+      <h2>Mahsulotlar</h2>
+      <p id="resultInfo">Barcha mahsulotlar</p>
     </div>
 
-    <!-- B. Hero -->
-    <section class="wrap hero" id="hero" aria-label="Tavsiya etilgan takliflar"></section>
+    <div class="toolbar reveal">
+      <div class="chips" id="chips"></div>
+      <div class="toolbar-right">
+        <label class="price-filter">
+          Maks. narx: <b id="priceLabel"></b>
+          <input type="range" id="priceRange" min="500000" max="45000000" step="500000" />
+        </label>
+        <select id="sortSelect">
+          <option value="popular">Ommabop</option>
+          <option value="cheap">Arzonroq</option>
+          <option value="expensive">Qimmatroq</option>
+          <option value="rating">Reyting bo'yicha</option>
+          <option value="discount">Chegirma bo'yicha</option>
+        </select>
+      </div>
+    </div>
 
-    <!-- C. Kategoriyalar -->
-    <section class="wrap sec" id="categories">
-      <div class="sec-hd"><h2>Kategoriyalar</h2><a class="sec-link" href="#products" data-goto-cat="all">Barcha mahsulotlar<svg class="ic"><use href="#i-right" /></svg></a></div>
-      <div class="cgrid" id="catGrid"></div>
-    </section>
+    <div class="product-grid" id="productGrid"></div>
+    <div class="empty" id="emptyState" hidden>
+      <div class="empty-ic">🔍</div>
+      <h3>Hech narsa topilmadi</h3>
+      <p>Boshqa so'z bilan qidirib ko'ring yoki filtrlarni tozalang.</p>
+      <button class="btn btn-primary" id="resetFilters">Filtrlarni tozalash</button>
+    </div>
+  </section>
 
-    <!-- D. Tavsiya etilgan -->
-    <section class="wrap sec" id="featuredSec">
-      <div class="sec-hd"><h2>Tavsiya etilgan</h2><span class="sec-meta" id="featuredMeta"></span><a class="sec-link" href="#products" data-goto-cat="all">Barchasini ko'rish<svg class="ic"><use href="#i-right" /></svg></a></div>
-      <div class="pgrid" id="featuredGrid"></div>
-    </section>
+  <!-- Recently viewed -->
+  <section class="section container" id="recentSection" hidden>
+    <div class="section-head reveal visible">
+      <h2>Yaqinda ko'rilganlar</h2>
+      <p>Siz qiziqqan mahsulotlar</p>
+    </div>
+    <div class="recent" id="recentList"></div>
+  </section>
 
-    <!-- E. Ommabop va yangi kelganlar -->
-    <section class="wrap sec" id="popularSec">
-      <div class="sec-hd"><h2>Ommabop mahsulotlar</h2><a class="sec-link" href="#products" data-goto-sort="popular">Barchasini ko'rish<svg class="ic"><use href="#i-right" /></svg></a></div>
-      <div class="pgrid" id="popularGrid"></div>
-    </section>
-    <section class="wrap sec" id="newSec">
-      <div class="sec-hd"><h2>Yangi kelganlar</h2><a class="sec-link" href="#products" data-goto-sort="new">Barchasini ko'rish<svg class="ic"><use href="#i-right" /></svg></a></div>
-      <div class="pgrid" id="newGrid"></div>
-    </section>
+  <!-- News -->
+  <section class="section container" id="news" data-node="Yangilik">
+    <div class="section-head reveal">
+      <h2>Yangiliklar</h2>
+      <p>Do'kon yangiliklari, yangi kelgan mahsulotlar va foydali maslahatlar</p>
+    </div>
+    <div class="news-tabs" id="newsTabs"></div>
+    <div class="news-grid" id="newsGrid"></div>
+    <div class="news-more"><button class="btn btn-ghost" id="newsMore" hidden>Barcha yangiliklar ↓</button></div>
+  </section>
 
-    <!-- F. O'yin uchun sozlama -->
-    <section class="wrap sec" id="setupSec"></section>
+  <!-- Payments -->
+  <section class="section container" id="payments" data-node="To'lov">
+    <div class="section-head reveal">
+      <h2>Qulay to'lov usullari</h2>
+      <p>O'zingizga qulay usulda to'lang</p>
+    </div>
+    <div class="pay-strip reveal" id="payStrip"></div>
+  </section>
 
-    <!-- Katalog -->
-    <section class="wrap sec catalog" id="products">
-      <div class="cat-hd">
-        <div><h2 id="catTitle">Barcha mahsulotlar</h2><p class="muted" id="resultInfo"></p></div>
-        <div class="cat-tools">
-          <button class="btn btn-ghost btn-sm filt-open" id="filtOpen"><svg class="ic"><use href="#i-filter" /></svg>Filtrlar<span class="filt-n" id="filtN" hidden></span></button>
-          <label class="sort"><span>Saralash:</span>
-            <select id="sortSelect">
-              <option value="popular">Ommabop</option>
-              <option value="cheap">Narx: arzonidan</option>
-              <option value="expensive">Narx: qimmatidan</option>
-              <option value="new">Yangilari</option>
-              <option value="rating">Reyting</option>
-              <option value="discount">Chegirma</option>
-            </select>
-          </label>
+  <!-- Testimonials -->
+  <section class="section container" id="reviews" data-node="Fikrlar" hidden>
+    <div class="section-head reveal">
+      <h2>Mijozlar fikri</h2>
+      <p>Haqiqiy xaridorlarning so'nggi sharhlari</p>
+    </div>
+    <div class="testimonials" id="testis"></div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section container faq-wrap" id="faq" data-node="Savollar">
+    <div class="section-head reveal">
+      <h2>Ko'p beriladigan savollar</h2>
+    </div>
+    <div class="faq reveal">
+      <details><summary>Yetkazib berish qancha vaqt oladi?</summary><p>Toshkent bo'ylab 24 soat ichida, viloyatlarga 2–4 ish kunida yetkazamiz. 1 mln so'mdan yuqori xaridlarda yetkazish bepul.</p></details>
+      <details><summary>Bo'lib to'lash qanday ishlaydi?</summary><p>Uzum Nasiya orqali 3, 6, 12 yoki 24 oyga 0% ustama bilan bo'lib to'lashingiz mumkin. Faqat pasport va karta kerak.</p></details>
+      <details><summary>Mahsulotlarga kafolat bormi?</summary><p>Barcha mahsulotlar rasmiy — 12 oydan 36 oygacha ishlab chiqaruvchi kafolati beriladi.</p></details>
+      <details><summary>Mahsulotni qaytarsam bo'ladimi?</summary><p>Ha, 14 kun ichida qadoqlanishi buzilmagan mahsulotni bepul qaytarishingiz mumkin.</p></details>
+    </div>
+  </section>
+
+  <!-- App (PWA) -->
+  <section class="section container app-promo" id="app" data-node="Ilova">
+    <div class="app-card reveal">
+      <div class="app-text">
+        <span class="pill">📲 Android va iPhone</span>
+        <h2>OPUS MARKET endi <span class="gradient-text">ilova</span></h2>
+        <p>Do'kon telefoningizda bir bosishda ochiladi: brauzer panelisiz, tezkor, internet sekin bo'lsa ham katalog keshdan yuklanadi.</p>
+        <ul class="app-perks">
+          <li><b>5.4 MB</b><span>Android ilova hajmi</span></li>
+          <li><b>1 soniya</b><span>ochilish tezligi</span></li>
+          <li><b>Offline</b><span>katalog keshda saqlanadi</span></li>
+        </ul>
+
+        <div class="store-badges">
+          <a class="store-badge" id="apkLink" href="#" download>
+            <svg viewBox="0 0 24 24"><path d="M17.6 9.5l1.7-3a.4.4 0 00-.7-.4l-1.7 3a10.6 10.6 0 00-9.8 0l-1.7-3a.4.4 0 00-.7.4l1.7 3A9.6 9.6 0 002 17.5h20a9.6 9.6 0 00-4.4-8zM7 14.8a1 1 0 110-2 1 1 0 010 2zm10 0a1 1 0 110-2 1 1 0 010 2z"/></svg>
+            <span><small>Android uchun yuklab olish</small><b>OPUS APK</b><em id="apkMeta">v1.0 · 5.4 MB</em></span>
+          </a>
+          <button class="store-badge" id="iosBadge" type="button">
+            <svg viewBox="0 0 24 24"><path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9a4.8 4.8 0 00-3.8-2c-1.6-.2-3.1.9-3.9.9s-2-.9-3.4-.9a5 5 0 00-4.2 2.6c-1.8 3.1-.5 7.7 1.3 10.2.8 1.2 1.8 2.6 3.1 2.6s1.7-.8 3.3-.8 2 .8 3.3.8 2.2-1.3 3-2.5a10.3 10.3 0 001.4-2.8 4.3 4.3 0 01-2.3-4.2zM13.9 4.9A4.4 4.4 0 0015 1.7a4.5 4.5 0 00-2.9 1.5 4.2 4.2 0 00-1.1 3.1 3.7 3.7 0 002.9-1.4z"/></svg>
+            <span><small>iPhone va iPad uchun</small><b>Bosh ekranga qo'shish</b><em>Safari orqali · bepul</em></span>
+          </button>
+        </div>
+
+        <div class="app-actions">
+          <button class="btn btn-ghost btn-sm" id="appInstall">💻 Brauzerdan o'rnatish</button>
+          <span class="app-installed" id="appInstalled" hidden>✓ Ilova o'rnatilgan</span>
+        </div>
+
+        <div class="app-howto" id="appHowto" hidden>
+          <div class="howto-steps">
+            <div><i>1</i><span>Saytni <b>Safari</b>'da oching</span></div>
+            <div><i>2</i><span>Pastdagi <b>Ulashish</b> <kbd>⬆</kbd> tugmasini bosing</span></div>
+            <div><i>3</i><span><b>Bosh ekranga qo'shish</b> (На экран «Домой») ni tanlang</span></div>
+          </div>
+          <p class="howto-note">Android'da APK o'rnatishda telefon "noma'lum manbalar"ga ruxsat so'rasa, <b>Ruxsat berish</b> ni bosing — bu ilova Play Market'dan emas, to'g'ridan-to'g'ri do'kondan.</p>
+        </div>
+
+        <div class="app-qr" id="appQr" hidden>
+          <div class="qr-box" id="qrBox"></div>
+          <span><b>Telefon kamerasi bilan skanerlang</b><small>APK yuklab olish havolasi ochiladi</small></span>
         </div>
       </div>
-      <div class="active-f" id="activeFilters"></div>
-      <div class="cat-body">
-        <aside class="filters" id="filters" aria-label="Filtrlar">
-          <div class="filters-hd"><b>Filtrlar</b><button class="filters-x" id="filtClose" aria-label="Yopish"><svg class="ic"><use href="#i-close" /></svg></button></div>
-          <div class="filters-body" id="filtersBody"></div>
-          <div class="filters-ft"><button class="btn btn-ghost btn-sm" id="resetFilters">Tozalash</button><button class="btn btn-primary btn-sm" id="filtApply">Ko'rsatish</button></div>
-        </aside>
-        <div class="cat-main">
-          <div class="pgrid pgrid-cat" id="productGrid"></div>
-          <div class="cat-more" id="catMore"></div>
-          <div class="empty-st" id="emptyState" hidden></div>
+
+      <div class="app-visual" aria-hidden="true">
+        <div class="iphone">
+          <span class="ip-btn ip-action"></span><span class="ip-btn ip-vol1"></span><span class="ip-btn ip-vol2"></span><span class="ip-btn ip-power"></span>
+          <div class="ip-screen">
+            <div class="ip-island"><i></i></div>
+            <div class="ip-status">
+              <b>9:41</b>
+              <span class="ip-icons">
+                <svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+                <svg viewBox="0 0 16 12"><path d="M8 2.6a9 9 0 016.1 2.4l1.3-1.4A11 11 0 008 .6 11 11 0 00.6 3.6L1.9 5A9 9 0 018 2.6zm0 3.6a5.4 5.4 0 013.6 1.4l1.3-1.4A7.4 7.4 0 008 4.2a7.4 7.4 0 00-4.9 2L4.4 7.6A5.4 5.4 0 018 6.2zm0 3.4a2 2 0 011.2.4L8 11.4 6.8 10a2 2 0 011.2-.4z"/></svg>
+                <span class="ip-batt"><i></i></span>
+              </span>
+            </div>
+
+            <!-- 1-sahna: bosh ekran -->
+            <div class="ip-home">
+              <div class="ip-widget">
+                <img src="icons/icon-192.png" alt="" />
+                <div><small>OPUS MARKET</small><b>Buyurtma #OP4335</b><span class="ip-track"><i></i></span><em>Yo'lda · 25 daqiqa</em></div>
+              </div>
+              <div class="ip-grid">
+                <span class="ip-app a1"><i></i><small>Kamera</small></span>
+                <span class="ip-app a2"><i></i><small>Xabarlar</small></span>
+                <span class="ip-app a3"><i></i><small>Xarita</small></span>
+                <span class="ip-app a4"><i></i><small>Musiqa</small></span>
+                <span class="ip-app a5"><i></i><small>Ob-havo</small></span>
+                <span class="ip-app a6"><i></i><small>Soat</small></span>
+                <span class="ip-app opus"><img src="icons/icon-192.png" alt="" /><small>OPUS</small><em class="tap"></em></span>
+                <span class="ip-app a7"><i></i><small>Sozlamalar</small></span>
+              </div>
+              <div class="ip-dock"><i class="d1"></i><i class="d2"></i><i class="d3"></i><i class="d4"></i></div>
+            </div>
+
+            <!-- 2-sahna: ochilish -->
+            <div class="ip-splash"><img src="icons/icon-512.png" alt="" /><b>OPUS MARKET</b></div>
+
+            <!-- 3-sahna: ilova ichi -->
+            <div class="ip-appui">
+              <div class="ip-scroll">
+                <div class="ip-head"><b>OPUS<span>MARKET</span></b><i class="ip-cart">3</i></div>
+                <div class="ip-search">Noutbuk, sichqoncha…</div>
+                <div class="ip-banner"><small>⏰ Bugun</small><b>MEGA CHEGIRMA</b><span>40% gacha</span></div>
+                <div class="ip-cards" id="ipCards"></div>
+              </div>
+              <div class="ip-tabs"><i class="on"></i><i></i><i></i><i></i></div>
+            </div>
+
+            <!-- Bildirishnoma -->
+            <div class="ip-notif"><img src="icons/icon-192.png" alt="" /><div><b>OPUS MARKET</b><span>Buyurtmangiz yo'lda 🚚 Kuryer 25 daqiqada yetib keladi</span></div><small>hozir</small></div>
+            <div class="ip-homebar"></div>
+          </div>
         </div>
+        <img class="app-icon-big" src="icons/icon-512.png" alt="" />
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- Yaqinda ko'rilganlar -->
-    <section class="wrap sec" id="recentSection" hidden>
-      <div class="sec-hd"><h2>Yaqinda ko'rilganlar</h2></div>
-      <div class="recent" id="recentList"></div>
-    </section>
+  <!-- Newsletter -->
+  <section class="newsletter container reveal">
+    <div>
+      <h3>Yangiliklar va aksiyalardan birinchi bo'lib xabardor bo'ling</h3>
+      <p>Obuna bo'ling va birinchi xaridga 5% chegirma oling.</p>
+    </div>
+    <form id="newsForm">
+      <input type="email" required placeholder="Email manzilingiz" />
+      <button class="btn btn-primary">Obuna bo'lish</button>
+    </form>
+  </section>
 
-    <!-- G. Brendlar -->
-    <section class="wrap sec" id="brandsSec">
-      <div class="sec-hd"><h2>Brendlar</h2></div>
-      <div class="brands" id="brandStrip"></div>
-    </section>
-
-    <!-- H. Afzalliklar -->
-    <section class="wrap sec" id="benefits">
-      <div class="benefits" id="benefitList"></div>
-    </section>
-
-    <!-- Xaridorlar sharhlari (faqat haqiqiylari) -->
-    <section class="wrap sec" id="reviews" hidden>
-      <div class="sec-hd"><h2>Xaridorlar sharhlari</h2><span class="sec-meta">Saytda qoldirilgan so'nggi sharhlar</span></div>
-      <div class="testimonials" id="testis"></div>
-    </section>
-
-    <!-- Yangiliklar -->
-    <section class="wrap sec" id="news">
-      <div class="sec-hd"><h2>Yangiliklar</h2><div class="news-tabs" id="newsTabs"></div></div>
-      <div class="news-grid" id="newsGrid"></div>
-      <div class="news-more"><button class="btn btn-ghost btn-sm" id="newsMore" hidden>Barcha yangiliklar</button></div>
-    </section>
-
-    <!-- Savollar -->
-    <section class="wrap sec" id="faq">
-      <div class="sec-hd"><h2>Ko'p beriladigan savollar</h2></div>
-      <div class="faq" id="faqList"></div>
-    </section>
-  </main>
-
-  <!-- I. Footer -->
-  <footer class="ft" id="contact">
-    <div class="wrap ft-grid">
-      <div class="ft-about">
-        <a href="./" class="brand"><span class="brand-mark">O</span><span class="brand-text">OPUS<b>MARKET</b></span></a>
-        <p>Kompyuterlar, noutbuklar, komplektlovchilar, monitorlar va periferiya onlayn do'koni.</p>
-        <div class="ft-pay" id="footerPay"></div>
-      </div>
-      <div><h5>Katalog</h5><div class="ft-links" id="ftCats"></div></div>
+  <!-- Footer -->
+  <footer class="footer" id="contact" data-node="Aloqa">
+    <div class="container footer-grid">
       <div>
-        <h5>Xaridorlarga</h5>
-        <div class="ft-links">
-          <a href="#benefits">Yetkazib berish</a>
-          <a href="#benefits">To'lov usullari</a>
-          <a href="#faq">Kafolat va qaytarish</a>
-          <a href="#faq">Ko'p beriladigan savollar</a>
-          <button type="button" data-open-orders>Buyurtmalarim</button>
+        <a href="#" class="logo"><span class="logo-mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="none" stroke="#fff" stroke-width="3.4"/></svg></span><span class="logo-text">OPUS<b>MARKET</b></span></a>
+        <p class="muted">Kompyuterlar va aksessuarlar bo'yicha ishonchli onlayn do'koningiz.</p>
+        <div class="socials">
+          <a href="#" title="Telegram"><svg viewBox="0 0 24 24"><path d="M21.9 4.3l-3.2 15.1c-.2 1.1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.3-5 9.1-8.2c.4-.4-.1-.6-.6-.2L6.2 13 1.4 11.5c-1-.3-1.1-1 .2-1.5l18.9-7.3c.9-.3 1.6.2 1.4 1.6z"/></svg></a>
+          <a href="#" title="Instagram"><svg viewBox="0 0 24 24"><path d="M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zm0 2a3 3 0 00-3 3v10a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3H7zm5 3.5a4.5 4.5 0 110 9 4.5 4.5 0 010-9zm0 2a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM17.5 5.5a1 1 0 110 2 1 1 0 010-2z"/></svg></a>
+          <a href="#" title="YouTube"><svg viewBox="0 0 24 24"><path d="M23 7.2a3 3 0 00-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 001 7.2 31 31 0 00.5 12a31 31 0 00.5 4.8 3 3 0 002.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 002.1-2.1 31 31 0 00.5-4.8 31 31 0 00-.5-4.8zM9.8 15V9l5.7 3-5.7 3z"/></svg></a>
         </div>
+      </div>
+      <div>
+        <h5>Bo'limlar</h5>
+        <a href="#categories">Kategoriyalar</a><a href="#products">Mahsulotlar</a><a href="#deals">Aksiyalar</a>
+      </div>
+      <div>
+        <h5>Yordam</h5>
+        <a href="#">Yetkazib berish</a><a href="#">Kafolat</a><a href="#">To'lov usullari</a><a href="#">Qaytarish</a>
       </div>
       <div>
         <h5>Aloqa</h5>
-        <div class="ft-links">
-          <a href="tel:+998712000000"><svg class="ic"><use href="#i-phone" /></svg>+998 71 200 00 00</a>
-          <span><svg class="ic"><use href="#i-clock" /></svg>Har kuni 09:00–21:00</span>
-          <span><svg class="ic"><use href="#i-pin" /></svg>Toshkent sh., Amir Temur ko'chasi</span>
-          <a href="https://t.me/opussmarketbot" target="_blank" rel="noopener"><svg class="ic"><use href="#i-tg" /></svg>Telegram: @opussmarketbot</a>
-          <a id="apkLink" href="#" hidden><svg class="ic"><use href="#i-android" /></svg>Android ilova <small id="apkMeta"></small></a>
-        </div>
+        <a href="tel:+998712000000">📞 +998 71 200 00 00</a>
+        <a href="#">📍 Toshkent sh., Amir Temur ko'chasi</a>
+        <a href="#">🕘 Har kuni 09:00 – 21:00</a>
       </div>
     </div>
-    <div class="wrap ft-bottom">
-      <span>© <span id="year"></span> OPUS MARKET</span>
-      <span class="ft-note">Mahsulot fotosuratlari: <a href="https://commons.wikimedia.org" target="_blank" rel="noopener">Wikimedia Commons</a> mualliflari (CC litsenziyalari) — muallif mahsulot oynasida ko'rsatilgan.</span>
-      <a href="admin.html" class="admin-link">Admin</a>
+    <div class="container footer-pay" id="footerPay"></div>
+    <div class="container copyright">© <span id="year"></span> OPUS MARKET. Barcha huquqlar himoyalangan. · <a href="admin.html" class="admin-link">Admin</a>
+      <p class="photo-note">Bezak rasmlari: <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a>. Mahsulot fotosuratlari: <a href="https://commons.wikimedia.org" target="_blank" rel="noopener">Wikimedia Commons</a> mualliflari (CC litsenziyalari) — har bir rasm muallifi mahsulot oynasida ko'rsatilgan.</p>
     </div>
   </footer>
 
@@ -242,7 +448,7 @@
   <!-- Cart drawer -->
   <aside class="drawer" id="cartDrawer">
     <div class="drawer-head">
-      <h3>Savat</h3>
+      <h3>🛒 Savat</h3>
       <button class="close" data-close>✕</button>
     </div>
     <div class="ship-progress" id="shipProgress">
@@ -259,26 +465,17 @@
       <div class="sum-row discount-row" id="discountRow" hidden><span>Chegirma</span><span id="discountVal">0</span></div>
       <div class="sum-row"><span>Yetkazib berish</span><span id="shipVal">Bepul</span></div>
       <div class="sum-row total"><span>Jami</span><span id="grandTotal">0</span></div>
-      <button class="btn btn-primary btn-block" id="checkoutBtn">Rasmiylashtirish</button>
+      <button class="btn btn-primary btn-block" id="checkoutBtn">Rasmiylashtirish →</button>
       <div class="mini-pay" id="miniPay"></div>
     </div>
   </aside>
 
 
 
-  <!-- Saralangan -->
-  <aside class="drawer" id="favDrawer">
-    <div class="drawer-head">
-      <h3>Saralangan</h3>
-      <button class="close" data-close aria-label="Yopish">✕</button>
-    </div>
-    <div class="drawer-body" id="favItems"></div>
-  </aside>
-
   <!-- Orders drawer -->
   <aside class="drawer" id="ordersDrawer">
     <div class="drawer-head">
-      <h3>Buyurtmalarim</h3>
+      <h3>📦 Buyurtmalarim</h3>
       <button class="close" data-close>✕</button>
     </div>
     <div class="drawer-body" id="orderItems"></div>
@@ -287,7 +484,7 @@
   <!-- Account drawer -->
   <aside class="drawer" id="accDrawer">
     <div class="drawer-head">
-      <h3>Akkauntim</h3>
+      <h3>👤 Akkauntim</h3>
       <button class="close" data-close>✕</button>
     </div>
     <div class="drawer-body" id="accBody">
@@ -296,8 +493,8 @@
         <div><b id="accName"></b><small id="accPhone"></small></div>
       </div>
       <div class="acc-actions">
-        <button type="button" class="btn btn-ghost btn-sm" id="accOrders">Buyurtmalarim</button>
-        <button type="button" class="btn btn-ghost btn-sm" id="accLogout">Chiqish</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="accOrders">📦 Buyurtmalarim</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="accLogout">↪ Chiqish</button>
       </div>
       <form id="profileForm" class="acc-form" novalidate>
         <h4>Shaxsiy ma'lumotlar</h4>
@@ -377,8 +574,8 @@
         <div class="step-pane" data-pane="2">
           <h3>Yetkazib berish</h3>
           <div class="radio-cards">
-            <label class="rcard"><input type="radio" name="delivery" value="courier" checked /><span><b>Kuryer orqali</b><small id="courierNote">Toshkent bo'ylab</small></span></label>
-            <label class="rcard"><input type="radio" name="delivery" value="pickup" /><span><b>Do'kondan olib ketish</b><small>Bepul</small></span></label>
+            <label class="rcard"><input type="radio" name="delivery" value="courier" checked /><span><b>🚚 Kuryer</b><small>1 mln so'mdan yuqori — bepul, 24 soat</small></span></label>
+            <label class="rcard"><input type="radio" name="delivery" value="pickup" /><span><b>🏬 Do'kondan olib ketish</b><small>Bepul, bugunoq</small></span></label>
           </div>
           <label>Viloyat
             <select name="region">
@@ -445,16 +642,16 @@
   </div>
 
   <div class="toasts" id="toasts"></div>
-  <button class="to-top" id="toTop" aria-label="Yuqoriga"><svg class="ic"><use href="#i-down" /></svg></button>
+  <button class="to-top" id="toTop">↑</button>
   <canvas id="confetti"></canvas>
 
   <script>
     // Telegram Mini App: Telegram kutubxonasini faqat bot ichida ochilganda yuklaymiz
     try { if (/tgWebApp/.test(location.hash) || sessionStorage.getItem("__telegram__initParams")) document.write('<script src="https://telegram.org/js/telegram-web-app.js"><\/script>'); } catch (e) {}
   </script>
-  <script src="sfx.js?v=29"></script>
-  <script src="assets.js?v=29"></script>
-  <script src="data.js?v=29"></script>
+  <script src="sfx.js?v=33"></script>
+  <script src="assets.js?v=33"></script>
+  <script src="data.js?v=33"></script>
   <script>
     // Admin paneldan "Oldindan ko'rish": e'lon qilinmagan qoralamani faqat shu brauzerda ko'rsatamiz
     (function () {
@@ -471,6 +668,9 @@
       } catch (e) {}
     })();
   </script>
-  <script src="app.js?v=32"></script>
+  <script src="app.js?v=33"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="showcase.js?v=33"></script>
+  <script src="scrollfx.js?v=33"></script>
 </body>
 </html>
