@@ -20,7 +20,7 @@ const store = {
 };
 // Rasm manzili: ilova /app/ papkasida, rasmlar esa sayt ildizida
 const pic = (id) => { const u = IMG(id); return !u ? "" : /^(https?:|data:|blob:)/.test(u) ? u : "../" + u; };
-const haptic = (ms = 8) => { try { navigator.vibrate && navigator.vibrate(ms); } catch {} };
+const haptic = (ms = 8) => { try { if (window.SFX && !SFX.haptic) return; if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return; navigator.vibrate && navigator.vibrate(ms); } catch {} };
 const svg = (d) => `<svg viewBox="0 0 24 24"><path d="${d}"/></svg>`;
 const IC = {
   back: "M15.4 4.6L8 12l7.4 7.4-1.4 1.4L5.2 12l8.8-8.8z",
@@ -84,7 +84,7 @@ function applyCatalog(d) {
 applyCatalog(store.get("app_catalog", null));
 async function loadCatalog() {
   const d = await api("GET", "/api/catalog");
-  if (d.PRODUCTS && d.PRODUCTS.length) { applyCatalog(d); store.set("app_catalog", d); }
+  if (d.PRODUCTS && d.PRODUCTS.length) { applyCatalog(d); store.set("app_catalog", d); if (window.checkDrops) checkDrops(); }
 }
 
 // ---------- Ekranlar steki ----------
@@ -108,7 +108,7 @@ function syncTabbar() {
   $$("#tabbar button").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
 }
 function push(def) {
-  haptic(6);
+  haptic(6); window.sfx && sfx("nav");
   const prev = current();
   const el = make(def);
   stacks[tab].push(el);
@@ -122,7 +122,7 @@ function push(def) {
 function pop() {
   const s = stacks[tab];
   if (s.length < 2) return false;
-  haptic(5);
+  haptic(5); window.sfx && sfx("back");
   const el = s.pop(), prev = current();
   prev.removeAttribute("inert");
   prev.classList.add("back-in");
@@ -140,7 +140,7 @@ function switchTab(t, reset) {
     else { const sb = $(".sb", current()); sb && sb.scrollTo({ top: 0, behavior: "smooth" }); }
     return;
   }
-  haptic(6);
+  haptic(6); if (tab && window.sfx) sfx("tab");
   const prev = current();
   if (prev) prev.setAttribute("inert", "");
   tab = t;
@@ -174,11 +174,15 @@ window.__opusBack = () => {
 $("#tabbar").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) switchTab(b.dataset.tab); });
 
 // ---------- Umumiy UI ----------
-function toast(msg) {
+function toast(msg, act) {
+  if (/^(⚠️|⛔)/.test(msg) && window.sfx) sfx("error");
   const el = document.createElement("div");
-  el.className = "toast"; el.textContent = msg;
+  el.className = "toast" + (act ? " act" : "");
+  el.innerHTML = `<span></span>${act ? `<button>${esc(act.t)}</button>` : ""}`;
+  el.firstChild.textContent = msg;
+  if (act) $("button", el).onclick = () => { el.remove(); act.fn(); };
   $("#toasts").appendChild(el);
-  setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 260); }, 2400);
+  setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 260); }, act ? 4000 : 2400);
 }
 function openSheet(html, onMount) {
   haptic(6);
@@ -206,25 +210,26 @@ function badges() {
 
 // ---------- Mahsulot kartochkasi ----------
 const fallbackIcon = (p) => `<span class="fb"><svg viewBox="0 0 24 24">${ICONS[catOf(p.cat).icon] || ICONS.laptop}</svg></span>`;
-function card(p) {
-  const d = disc(p), q = inCart(p.id), out = (p.stock || 0) <= 0;
+function card(p, o) {
+  const d = disc(p), q = inCart(p.id), out = (p.stock || 0) <= 0, drop = S.drops && S.drops[p.id] > p.price;
   return `<article class="pc${out ? " out" : ""}" data-pid="${p.id}">
     <div class="pc-img">${fallbackIcon(p)}<img src="${esc(pic(p.img))}" alt="" loading="lazy" onload="this.classList.add('ld')" onerror="this.remove()" />
       <button class="fav${S.fav.includes(p.id) ? " on" : ""}" data-fav="${p.id}" aria-label="Saralanganga">${heartSvg}</button>
-      <div class="tags">${d ? `<span class="tag">−${d}%</span>` : ""}${p.badge === "Yangi" ? `<span class="tag new">Yangi</span>` : p.badge === "Xit" ? `<span class="tag hit">Xit</span>` : ""}</div>
+      <div class="tags">${d ? `<span class="tag">−${d}%</span>` : ""}${drop ? `<span class="tag drop">📉 Arzonladi</span>` : ""}${p.badge === "Yangi" ? `<span class="tag new">Yangi</span>` : p.badge === "Xit" ? `<span class="tag hit">Xit</span>` : ""}</div>
     </div>
     <div class="pc-b">
       <span class="pc-m">${num(p.price / 12)} so'm/oy</span>
       <p class="pc-n">${esc(p.name)}</p>
       <span class="pc-r"><b>★</b> ${p.rating || "—"} <span>(${p.reviews || 0} sharh)</span></span>
+      ${o && o.deal && !out ? `<span class="dealbar"><i style="--w:${Math.min(100, Math.max(10, (p.stock || 0) * 7))}%"></i><small>${p.stock <= 5 ? `🔥 Faqat ${p.stock} dona qoldi` : `Omborda ${p.stock} dona`}</small></span>` : ""}
       <div class="pc-p"><div>${d ? `<s>${num(p.old)}</s>` : ""}<b class="${d ? "sale" : ""}">${num(p.price)} <small>so'm</small></b></div>
         <button class="add${q ? " in" : ""}" data-add="${p.id}" ${out ? "disabled" : ""} aria-label="Savatga">${svg(q ? IC.check : IC.cart)}</button></div>
     </div>
   </article>`;
 }
-const grid = (list) => `<div class="grid">${list.map(card).join("")}</div>`;
+const grid = (list) => `<div class="grid">${list.map((p) => card(p)).join("")}</div>`;
 function refreshCards() {
-  $$(".pc").forEach((c) => {
+  $$(".pc, .rc").forEach((c) => {
     const id = +c.dataset.pid, q = inCart(id), b = $("[data-add]", c), f = $("[data-fav]", c);
     if (b) { b.classList.toggle("in", !!q); b.innerHTML = svg(q ? IC.check : IC.cart); }
     if (f) f.classList.toggle("on", S.fav.includes(id));
@@ -235,26 +240,28 @@ function refreshCards() {
 function saveCart() { store.set("cart", S.cart); badges(); }
 function addToCart(id, qty = 1, silent) {
   const p = byId(id);
-  if (!p || (p.stock || 0) <= 0) { toast("⛔ Bu mahsulot tugagan"); return; }
+  if (!p || (p.stock || 0) <= 0) { toast("⛔ Bu mahsulot tugagan"); return false; }
   const it = S.cart.find((x) => x.id === p.id);
   const next = Math.min((it ? it.qty : 0) + qty, p.stock);
-  if (it && it.qty >= p.stock) { toast(`Omborda faqat ${p.stock} dona bor`); return; }
+  if (it && it.qty >= p.stock) { toast(`⚠️ Omborda faqat ${p.stock} dona bor`); return false; }
   if (it) it.qty = next; else S.cart.push({ id: p.id, qty: next });
-  saveCart(); haptic(15);
-  if (!silent) toast("🛒 Savatga qo'shildi");
+  saveCart(); haptic(15); window.sfx && sfx("add");
+  if (!silent) toast("🛒 Savatga qo'shildi", { t: "Savatga", fn: () => switchTab("cart") });
+  return true;
 }
 function setQty(id, qty) {
   const p = byId(id), it = S.cart.find((x) => x.id === +id);
   if (!it) return;
   if (qty <= 0) S.cart = S.cart.filter((x) => x.id !== +id);
   else it.qty = Math.min(qty, p ? p.stock : qty);
-  saveCart(); haptic(6);
+  saveCart(); haptic(6); if (window.sfx) sfx(qty <= 0 ? "remove" : "tick");
 }
 function toggleFav(id, btn) {
   id = +id;
   const on = !S.fav.includes(id);
   S.fav = on ? [id, ...S.fav] : S.fav.filter((x) => x !== id);
-  store.set("fav", S.fav); badges(); haptic(on ? 18 : 6);
+  store.set("fav", S.fav); badges(); haptic(on ? 18 : 6); if (window.sfx) sfx(on ? "checkOn" : "checkOff");
+  { const fp = store.get("app_fav_prices", {}), pp = byId(id); if (on && pp) fp[id] = pp.price; else delete fp[id]; store.set("app_fav_prices", fp); }
   if (btn) { btn.classList.toggle("on", on); btn.classList.remove("pop"); void btn.offsetWidth; btn.classList.add("pop"); }
   $$(`[data-fav="${id}"]`).forEach((b) => b.classList.toggle("on", on));
   if (on) toast("❤️ Saralanganlarga qo'shildi");
@@ -267,7 +274,9 @@ document.addEventListener("click", (e) => {
   if (a) {
     e.stopPropagation();
     if (inCart(a.dataset.add)) { switchTab("cart"); return; }
-    addToCart(a.dataset.add); refreshCards(); return;
+    const card0 = a.closest(".pc, .rc");
+    if (addToCart(a.dataset.add)) flyToCart(card0 && $("img", card0));
+    refreshCards(); return;
   }
   const c = e.target.closest("[data-pid]");
   if (c) { openProduct(+c.dataset.pid); return; }
@@ -286,6 +295,8 @@ function homeScreen() {
   const fresh = P.filter((p) => p.badge === "Yangi").slice(0, 12);
   const recent = S.recent.map(byId).filter(Boolean).slice(0, 12);
   const popular = S.products.slice().sort((a, b) => (b.popular || 0) - (a.popular || 0));
+  const top10 = P.slice().sort((a, b) => (b.popular || 0) * (b.rating || 4) - (a.popular || 0) * (a.rating || 4)).slice(0, 10);
+  const forYou = recommend(12);
   const top = deals[0] || P[0];
   const pinned = S.news.find((n) => n.pinned) || S.news[0];
   const banners = [
@@ -295,38 +306,55 @@ function homeScreen() {
     pinned && { cls: "dark", small: pinned.tag || "Yangilik", b: pinned.title, span: pinned.excerpt || "", img: pinned.img, act: "news:" + pinned.id },
   ].filter(Boolean);
   const name = auth.user ? auth.user.name.split(" ")[0] : "";
+  const upd = updateInfo();
+  const unread = notifs().filter((n) => !n.read).length;
   return {
-    html: `<div class="home-hdr">
-        <div class="home-top"><span class="brand"><i></i>OPUS<b>MARKET</b></span><span class="home-loc">📍 ${esc((auth.user && auth.user.region) || "Toshkent")}</span></div>
-        <button class="searchbar" data-search>${svg(IC.search)}<span>Mahsulot va brendlarni qidirish</span></button>
+    html: `<div class="home-hdr" id="hh">
+        <div class="home-top"><span class="brand"><i></i>OPUS<b>MARKET</b></span>
+          <div class="hh-r"><span class="home-loc">📍 ${esc((auth.user && auth.user.region) || "Toshkent")}</span><button class="ib bell" data-notifs aria-label="Bildirishnomalar">${svg(IC.bell)}${unread ? `<i class="bell-n">${unread > 9 ? "9+" : unread}</i>` : ""}</button></div></div>
+        <button class="searchbar" data-search>${svg(IC.search)}<span id="phTxt">Mahsulot va brendlarni qidirish</span></button>
       </div>
       <div class="sb pad-bar" id="homeSb">
         <div class="ptr" id="ptr">${svg(IC.refresh)}</div>
-        ${name ? `<div class="sec" style="padding-bottom:0"><h2 style="font-size:20px">Salom, ${esc(name)} 👋</h2></div>` : ""}
-        <div class="banners" id="banners">${banners.map((b, i) => `<button class="bn ${b.cls}" data-bn="${b.act}"><img src="${esc(pic(b.img))}" alt="" onerror="this.remove()" /><small>${esc(b.small)}</small><b>${esc(b.b)}</b><span>${esc(b.span)}</span></button>`).join("")}</div>
+        ${upd ? `<button class="upd" data-upd>🚀 <span><b>Yangi versiya ${esc(upd.version)}</b><small>Ilovani yangilash uchun bosing</small></span><i>›</i></button>` : ""}
+        <div class="stories" id="stories">${storiesData().map((st, i) => `<button class="story-b${seenStory(st.id) ? " seen" : ""}" data-story="${i}"><span class="ring"><img src="${esc(pic(st.cover))}" alt="" onerror="this.remove()" />${st.emoji ? `<em>${st.emoji}</em>` : ""}</span><small>${esc(st.name)}</small></button>`).join("")}</div>
+        ${name ? `<div class="sec hello"><h2>Salom, ${esc(name)} 👋</h2><small class="muted">${hello()}</small></div>` : ""}
+        <div class="banners" id="banners">${banners.map((b) => `<button class="bn ${b.cls}" data-bn="${b.act}"><img src="${esc(pic(b.img))}" alt="" onerror="this.remove()" /><small>${esc(b.small)}</small><b>${esc(b.b)}</b><span>${esc(b.span)}</span></button>`).join("")}</div>
         <div class="dots" id="bnDots">${banners.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>
-        <div class="sec"><div class="cats">${S.cats.map((c) => `<button class="cat" data-cat="${esc(c.id)}"><span class="ci"><img src="${esc(pic(c.img))}" alt="" loading="lazy" onerror="this.outerHTML='<svg viewBox=&quot;0 0 24 24&quot; width=&quot;30&quot; fill=&quot;currentColor&quot;>${(ICONS[c.icon] || "").replace(/"/g, "&quot;")}</svg>'" /></span>${esc(c.name)}</button>`).join("")}</div></div>
-        ${deals.length ? `<div class="sec"><div class="sec-h"><h2>⚡ Kun takliflari <span class="timer" id="dealTimer"></span></h2><button data-open="deals">Barchasi</button></div><div class="hscroll">${deals.map(card).join("")}</div></div>` : ""}
-        ${fresh.length ? `<div class="sec"><div class="sec-h"><h2>🆕 Yangi kelganlar</h2></div><div class="hscroll">${fresh.map(card).join("")}</div></div>` : ""}
-        ${recent.length ? `<div class="sec"><div class="sec-h"><h2>👀 Siz ko'rganlar</h2></div><div class="hscroll">${recent.map(card).join("")}</div></div>` : ""}
+        <div class="sec"><div class="cats">${S.cats.map((c) => `<button class="cat" data-cat="${esc(c.id)}"><span class="ci"><img src="${esc(pic(c.img))}" alt="" loading="lazy" onerror="this.remove()" /></span>${esc(c.name)}</button>`).join("")}</div></div>
+        ${deals.length ? `<div class="sec"><div class="sec-h"><h2>⚡ Kun takliflari <span class="timer" id="dealTimer"></span></h2><button data-open="deals">Barchasi</button></div><div class="hscroll">${deals.map((p) => card(p, { deal: true })).join("")}</div></div>` : ""}
+        ${top10.length ? `<div class="sec"><div class="sec-h"><h2>🏆 TOP-10</h2><small class="muted">eng ko'p tanlanganlar</small></div><div class="hscroll t10s">${top10.map((p, i) => `<button class="t10" data-pid="${p.id}"><b class="t10-n">${i + 1}</b><span class="t10-i"><img src="${esc(pic(p.img))}" alt="" loading="lazy" onerror="this.remove()" /></span><span class="t10-t">${esc(p.name)}</span><small>${fmt(p.price)}</small></button>`).join("")}</div></div>` : ""}
+        ${forYou.length ? `<div class="sec"><div class="sec-h"><h2>✨ Sizga yoqishi mumkin</h2></div><div class="hscroll">${forYou.map((p) => card(p)).join("")}</div></div>` : ""}
+        ${fresh.length ? `<div class="sec"><div class="sec-h"><h2>🆕 Yangi kelganlar</h2></div><div class="hscroll">${fresh.map((p) => card(p)).join("")}</div></div>` : ""}
+        ${recent.length ? `<div class="sec"><div class="sec-h"><h2>👀 Siz ko'rganlar</h2><button data-recent>Barchasi</button></div><div class="hscroll">${recent.map((p) => card(p)).join("")}</div></div>` : ""}
         ${S.news.length ? `<div class="sec"><div class="sec-h"><h2>📰 Yangiliklar</h2></div><div class="hscroll">${S.news.slice(0, 8).map((n) => `<button class="news-c" data-news="${n.id}"><img src="${esc(pic(n.img))}" alt="" loading="lazy" onerror="this.remove()" /><div><small>${esc(n.tag || "Yangilik")}</small><b>${esc(n.title)}</b></div></button>`).join("")}</div></div>` : ""}
         <div class="sec"><div class="sec-h"><h2>🔥 Siz uchun</h2></div><div id="feed">${grid(popular.slice(0, 20))}</div><div class="more" id="feedMore">${popular.length > 20 ? "Yuklanmoqda…" : "Hammasi ko'rsatildi ✨"}</div></div>
       </div>`,
     mount(el) {
-      const sb = $("#homeSb", el);
+      const sb = $("#homeSb", el), hh = $("#hh", el);
       $("[data-search]", el).onclick = () => openSearch();
+      $("[data-notifs]", el).onclick = () => openNotifs();
+      const r = $("[data-recent]", el); if (r) r.onclick = () => openList({ title: "👀 Siz ko'rganlar", ids: S.recent.slice(), keepOrder: true });
+      const u = $("[data-upd]", el); if (u) u.onclick = () => { location.href = upd.url; };
       $$("[data-open]", el).forEach((b) => (b.onclick = () => openList({ title: "⚡ Kun takliflari", deals: true })));
+      $("#stories", el).addEventListener("click", (e) => { const b = e.target.closest("[data-story]"); if (b) openStories(+b.dataset.story); });
+      // Sarlavha aylantirganda ixchamlashadi (faqat qidiruv qoladi)
+      sb.addEventListener("scroll", () => hh.classList.toggle("mini", sb.scrollTop > 40), { passive: true });
+      // Qidiruv qatoridagi matn almashib turadi
+      const ph = ["Mahsulot va brendlarni qidirish", "Masalan: RTX 4070", "Masalan: MacBook", "Masalan: o'yin sichqonchasi", "Masalan: 27\" monitor"];
+      let pi = 0;
+      el._ph = setInterval(() => { const t = $("#phTxt", el); if (!t) return; pi = (pi + 1) % ph.length; t.classList.remove("swap"); void t.offsetWidth; t.classList.add("swap"); t.textContent = ph[pi]; }, 3500);
       // Bannerlar: avtomatik aylanish va nuqtalar
       const bn = $("#banners", el), dots = $$("#bnDots i", el);
       let idx = 0;
       bn.addEventListener("scroll", () => { idx = Math.round(bn.scrollLeft / bn.clientWidth); dots.forEach((d, i) => d.classList.toggle("on", i === idx)); }, { passive: true });
-      el._bnTimer = setInterval(() => { if (!document.hidden && !el.hasAttribute("inert")) bn.scrollTo({ left: ((idx + 1) % dots.length) * (bn.firstElementChild.offsetWidth + 10), behavior: "smooth" }); }, 4500);
+      el._bnTimer = setInterval(() => { if (!document.hidden && !el.hasAttribute("inert") && bn.firstElementChild) bn.scrollTo({ left: ((idx + 1) % dots.length) * (bn.firstElementChild.offsetWidth + 10), behavior: "smooth" }); }, 4500);
       bn.addEventListener("click", (e) => {
         const b = e.target.closest("[data-bn]"); if (!b) return;
         const a = b.dataset.bn;
         if (a === "deals") openList({ title: "⚡ Kun takliflari", deals: true });
-        else if (a === "nasiya") openSheet(`<h3>💜 Uzum Nasiya — 0%</h3><p class="muted" style="margin-bottom:14px">Istalgan mahsulotni 3, 6, 12 yoki 24 oyga ortiqcha foizsiz bo'lib to'lab oling. Rasmiylashtirishda "Uzum Nasiya" to'lov usulini tanlang.</p><button class="btn block" id="nsOk">Tushunarli</button>`, (b) => ($("#nsOk", b).onclick = closeSheet));
-        else if (a === "ship") openSheet(`<h3>🚚 Yetkazib berish</h3><p class="muted" style="margin-bottom:14px">Toshkent bo'ylab 24 soat ichida, viloyatlarga 2–4 ish kunida. ${num(S.settings.freeShipFrom || 1000000)} so'mdan yuqori xaridlarda — bepul, aks holda ${fmt(S.settings.shipPrice || 50000)}. Do'kondan o'zingiz olib ketishingiz ham mumkin.</p><button class="btn block" id="nsOk">Tushunarli</button>`, (b) => ($("#nsOk", b).onclick = closeSheet));
+        else if (a === "nasiya") infoSheet("💜 Uzum Nasiya — 0%", "Istalgan mahsulotni 3, 6, 12 yoki 24 oyga ortiqcha foizsiz bo'lib to'lab oling. Rasmiylashtirishda \"Uzum Nasiya\" to'lov usulini tanlang.");
+        else if (a === "ship") infoSheet("🚚 Yetkazib berish", `Toshkent bo'ylab 24 soat ichida, viloyatlarga 2–4 ish kunida. ${num(S.settings.freeShipFrom || 1000000)} so'mdan yuqori xaridlarda — bepul, aks holda ${fmt(S.settings.shipPrice || 50000)}. Do'kondan o'zingiz olib ketishingiz ham mumkin.`);
         else if (a.startsWith("news:")) openNews(+a.slice(5));
       });
       // Kun takliflari taymeri (yarim tungacha)
@@ -338,13 +366,13 @@ function homeScreen() {
       const io = new IntersectionObserver((en) => {
         if (!en[0].isIntersecting || shown >= popular.length) return;
         const next = popular.slice(shown, shown + 20); shown += next.length;
-        $("#feed .grid", el).insertAdjacentHTML("beforeend", next.map(card).join(""));
+        $("#feed .grid", el).insertAdjacentHTML("beforeend", next.map((p) => card(p)).join(""));
         if (shown >= popular.length) more.textContent = "Hammasi ko'rsatildi ✨";
       }, { root: sb, rootMargin: "400px" });
       io.observe(more); el._io = io;
-      pullToRefresh(sb, $("#ptr", el), async () => { await loadCatalog(); refreshRoot("home"); toast("↻ Yangilandi"); });
+      pullToRefresh(sb, $("#ptr", el), async () => { await loadCatalog(); await syncOrders().catch(() => {}); refreshRoot("home"); toast("↻ Yangilandi"); });
     },
-    unmount(el) { clearInterval(el._timer); clearInterval(el._bnTimer); el._io && el._io.disconnect(); },
+    unmount(el) { clearInterval(el._timer); clearInterval(el._bnTimer); clearInterval(el._ph); el._io && el._io.disconnect(); },
   };
 }
 // Yuqoridan tortib yangilash
@@ -408,30 +436,90 @@ function sortList(list, s) {
   return L.sort((a, b) => ((a.stock || 0) <= 0) - ((b.stock || 0) <= 0)); // tugaganlar oxirida
 }
 function openList(o) {
-  const st = { sort: o.sort || (o.deals ? "disc" : "popular"), stock: false, sale: !!o.deals, orig: false, brand: o.brand || "" };
   const base = S.products.filter((p) => (!o.cat || p.cat === o.cat) && (!o.filter || o.filter(p)) && (!o.ids || o.ids.includes(p.id)));
-  const brands = o.brand ? [] : [...new Set(base.map((p) => p.brand))];
+  if (o.keepOrder && o.ids) base.sort((a, b) => o.ids.indexOf(a.id) - o.ids.indexOf(b.id));
+  const allBrands = o.brand ? [] : [...new Set(base.map((p) => p.brand))].sort();
+  const st = { sort: o.sort || (o.deals ? "disc" : o.keepOrder ? "keep" : "popular"), sale: !!o.deals, stock: false, orig: false, rating: 0, min: null, max: null, brands: new Set(), view: store.get("app_view", "grid") };
+  const PR = [["1 mln gacha", 0, 1e6], ["1–5 mln", 1e6, 5e6], ["5–15 mln", 5e6, 15e6], ["15 mln+", 15e6, null]];
+  const apply = (s) => base.filter((p) => (!s.sale || disc(p)) && (!s.stock || (p.stock || 0) > 0) && (!s.orig || p.original !== false) &&
+    (!s.rating || (p.rating || 0) >= s.rating) && (s.min == null || p.price >= s.min) && (s.max == null || p.price <= s.max) && (!s.brands.size || s.brands.has(p.brand)));
+  const nFilters = (s) => (s.min != null || s.max != null ? 1 : 0) + s.brands.size + (s.rating ? 1 : 0) + (s.stock ? 1 : 0) + (s.orig ? 1 : 0) + (s.sale ? 1 : 0);
   push({
-    html: hdr(o.title, `<button class="ib" data-sortbtn aria-label="Saralash">${svg(IC.sort)}</button>`) +
-      `<div class="chips"><button class="chip" data-f="sale">🏷 Chegirma</button><button class="chip" data-f="stock">✓ Omborda bor</button><button class="chip" data-f="orig">🛡 Original</button>${brands.length > 1 ? brands.map((b) => `<button class="chip" data-b="${esc(b)}">${esc(b)}</button>`).join("") : ""}</div>
+    html: hdr(o.title, `<button class="ib" data-view aria-label="Ko'rinish">${svg(IC.view)}</button>`) +
+      `<div class="chips"><button class="chip filt" data-filter>${svg(IC.filter)}Filtr<i id="fn"></i></button><button class="chip" data-sortbtn><span id="sortName"></span> ▾</button><button class="chip" data-f="sale">🏷 Chegirma</button><button class="chip" data-f="stock">✓ Omborda bor</button><button class="chip" data-r="4.5">⭐ 4.5+</button><button class="chip" data-f="orig">🛡 Original</button></div>
       <div class="sb"><p class="list-meta" id="meta"></p><div class="sec" style="padding-top:0" id="lst"></div></div>`,
     mount(el) {
       const draw = () => {
-        const L = sortList(base.filter((p) => (!st.sale || disc(p)) && (!st.stock || (p.stock || 0) > 0) && (!st.orig || p.original !== false) && (!st.brand || p.brand === st.brand)), st.sort);
+        const L = st.sort === "keep" ? apply(st) : sortList(apply(st), st.sort);
         $$("[data-f]", el).forEach((c) => c.classList.toggle("on", st[c.dataset.f]));
-        $$("[data-b]", el).forEach((c) => c.classList.toggle("on", st.brand === c.dataset.b));
-        $("#meta", el).textContent = `${L.length} ta mahsulot · ${SORTS[st.sort]}`;
-        $("#lst", el).innerHTML = L.length ? grid(L) : emptyBox("🔍", "Hech narsa topilmadi", "Filtrlarni o'zgartirib ko'ring");
+        $("[data-r]", el).classList.toggle("on", st.rating >= 4.5);
+        const n = nFilters(st); $("#fn", el).textContent = n || ""; $("[data-filter]", el).classList.toggle("on", n > 0);
+        $("#sortName", el).textContent = st.sort === "keep" ? "Ko'rilgan tartibda" : SORTS[st.sort];
+        $("#meta", el).textContent = `${L.length} ta mahsulot`;
+        $("[data-view]", el).innerHTML = svg(st.view === "grid" ? IC.view : IC.grid2);
+        $("#lst", el).innerHTML = L.length ? (st.view === "list" ? `<div class="rows">${L.map(rowCard).join("")}</div>` : grid(L))
+          : emptyBox("🔍", "Hech narsa topilmadi", "Filtrlarni o'zgartirib ko'ring", nFilters(st) ? `<button class="btn ghost" data-reset>Filtrlarni tozalash</button>` : "");
+      };
+      const filterSheet = () => {
+        const t = { ...st, brands: new Set(st.brands) };
+        openSheet(`<h3>Filtr</h3>
+          <span class="lbl">Narx, so'm</span>
+          <div class="range2"><input class="inp" id="fmin" inputmode="numeric" placeholder="dan" /><i>—</i><input class="inp" id="fmax" inputmode="numeric" placeholder="gacha" /></div>
+          <div class="recent" style="margin-top:8px">${PR.map(([n2, a, b], i) => `<button data-pr="${i}">${n2}</button>`).join("")}</div>
+          ${allBrands.length > 1 ? `<span class="lbl" style="display:block;margin-top:16px">Brend</span><div class="recent" style="margin-top:8px">${allBrands.map((b) => `<button data-fb="${esc(b)}">${esc(b)}</button>`).join("")}</div>` : ""}
+          <span class="lbl" style="display:block;margin-top:16px">Reyting</span>
+          <div class="seg" style="margin-top:8px"><button data-fr="0">Har qanday</button><button data-fr="4">4.0+</button><button data-fr="4.5">4.5+</button></div>
+          <div class="tg-list" style="margin-top:14px">
+            <button class="mi noarrow" data-ft="sale"><span class="ri">🏷</span><span>Faqat chegirmadagilar</span><span class="sw"></span></button>
+            <button class="mi noarrow" data-ft="stock"><span class="ri">📦</span><span>Faqat omborda borlar</span><span class="sw"></span></button>
+            <button class="mi noarrow" data-ft="orig"><span class="ri">🛡</span><span>Faqat original</span><span class="sw"></span></button>
+          </div>
+          <div class="sheet-foot"><button class="btn ghost" data-fx>Tozalash</button><button class="btn flex" data-fok>Ko'rsatish</button></div>`, (box) => {
+          const numIn = (v) => { const n = +String(v).replace(/\D/g, ""); return n > 0 ? n : null; };
+          const paint = () => {
+            $("#fmin", box).value = t.min != null ? num(t.min) : ""; $("#fmax", box).value = t.max != null ? num(t.max) : "";
+            $$("[data-pr]", box).forEach((b) => { const [, a, z] = PR[+b.dataset.pr]; b.classList.toggle("on", (t.min || 0) === a && t.max === z); });
+            $$("[data-fb]", box).forEach((b) => b.classList.toggle("on", t.brands.has(b.dataset.fb)));
+            $$("[data-fr]", box).forEach((b) => b.classList.toggle("on", +b.dataset.fr === t.rating));
+            $$("[data-ft]", box).forEach((b) => $(".sw", b).classList.toggle("on", !!t[b.dataset.ft]));
+            $("[data-fok]", box).textContent = `Ko'rsatish (${apply(t).length})`;
+          };
+          ["#fmin", "#fmax"].forEach((s2) => $(s2, box).addEventListener("change", () => { t.min = numIn($("#fmin", box).value); t.max = numIn($("#fmax", box).value); paint(); }));
+          box.addEventListener("click", (e) => {
+            const pr = e.target.closest("[data-pr]"); if (pr) { const [, a, z] = PR[+pr.dataset.pr]; t.min = a || null; t.max = z; }
+            const fb = e.target.closest("[data-fb]"); if (fb) t.brands.has(fb.dataset.fb) ? t.brands.delete(fb.dataset.fb) : t.brands.add(fb.dataset.fb);
+            const fr = e.target.closest("[data-fr]"); if (fr) t.rating = +fr.dataset.fr;
+            const ft = e.target.closest("[data-ft]"); if (ft) t[ft.dataset.ft] = !t[ft.dataset.ft];
+            if (e.target.closest("[data-fx]")) { Object.assign(t, { min: null, max: null, rating: 0, sale: false, stock: false, orig: false }); t.brands.clear(); }
+            if (e.target.closest("[data-fok]")) { Object.assign(st, t); closeSheet(); draw(); $(".sb", el).scrollTop = 0; return; }
+            paint();
+          });
+          paint();
+        });
       };
       el.addEventListener("click", (e) => {
-        const f = e.target.closest("[data-f]"); if (f) { st[f.dataset.f] = !st[f.dataset.f]; haptic(5); draw(); }
-        const b = e.target.closest("[data-b]"); if (b) { st.brand = st.brand === b.dataset.b ? "" : b.dataset.b; haptic(5); draw(); }
+        const f = e.target.closest("[data-f]"); if (f) { st[f.dataset.f] = !st[f.dataset.f]; draw(); }
+        if (e.target.closest("[data-r]")) { st.rating = st.rating >= 4.5 ? 0 : 4.5; draw(); }
+        if (e.target.closest("[data-filter]")) filterSheet();
+        if (e.target.closest("[data-reset]")) { Object.assign(st, { min: null, max: null, rating: 0, sale: false, stock: false, orig: false }); st.brands.clear(); draw(); }
+        if (e.target.closest("[data-view]")) { st.view = st.view === "grid" ? "list" : "grid"; store.set("app_view", st.view); draw(); }
         if (e.target.closest("[data-sortbtn]")) openSheet(`<h3>Saralash</h3>${Object.entries(SORTS).map(([k, v]) => `<button class="opt${st.sort === k ? " on" : ""}" data-s="${k}">${v}</button>`).join("")}`, (box) =>
-          box.addEventListener("click", (ev) => { const s = ev.target.closest("[data-s]"); if (s) { st.sort = s.dataset.s; closeSheet(); draw(); } }));
+          box.addEventListener("click", (ev) => { const s2 = ev.target.closest("[data-s]"); if (s2) { st.sort = s2.dataset.s; closeSheet(); draw(); } }));
       });
       draw();
     },
   });
+}
+// Ro'yxat ko'rinishidagi keng kartochka
+function rowCard(p) {
+  const d = disc(p), q = inCart(p.id), out = (p.stock || 0) <= 0;
+  return `<article class="rc${out ? " out" : ""}" data-pid="${p.id}">
+    <div class="rc-img"><img src="${esc(pic(p.img))}" alt="" loading="lazy" onerror="this.remove()" />${d ? `<span class="tag">−${d}%</span>` : ""}</div>
+    <div class="rc-b"><p class="pc-n">${esc(p.name)}</p><span class="pc-r"><b>★</b> ${p.rating || "—"} · ${p.reviews || 0} sharh</span>
+      <span class="pc-m">${num(p.price / 12)} so'm/oy</span>
+      <div class="pc-p"><div>${d ? `<s>${num(p.old)}</s>` : ""}<b class="${d ? "sale" : ""}">${num(p.price)} <small>so'm</small></b></div>
+        <span style="display:flex;gap:6px"><button class="fav-s${S.fav.includes(p.id) ? " on" : ""}" data-fav="${p.id}" aria-label="Saralanganga">${heartSvg}</button><button class="add${q ? " in" : ""}" data-add="${p.id}" ${out ? "disabled" : ""} aria-label="Savatga">${svg(q ? IC.check : IC.cart)}</button></span></div></div>
+  </article>`;
 }
 
 // ---------- Qidiruv ----------
@@ -451,7 +539,7 @@ function openSearch(q0 = "") {
         }
         const W = words(q);
         const L = sortList(S.products.filter((p) => { const t = `${p.name} ${p.brand} ${catOf(p.cat).name || ""}`.toLowerCase(); return W.every((w) => t.includes(w)); }), "popular");
-        res.innerHTML = `<p class="list-meta" style="padding-top:12px">${L.length} ta natija</p><div class="sec" style="padding-top:0">${L.length ? grid(L) : emptyBox("🔍", "Topilmadi", `"${esc(q)}" bo'yicha mahsulot yo'q. Boshqacha yozib ko'ring.`)}</div>`;
+        res.innerHTML = catHits(q) + `<p class="list-meta" style="padding-top:12px">${L.length} ta natija</p><div class="sec" style="padding-top:0">${L.length ? grid(L) : emptyBox("🔍", "Topilmadi", `"${esc(q)}" bo'yicha mahsulot yo'q. Boshqacha yozib ko'ring.`)}</div>`;
       };
       let t;
       inp.addEventListener("input", () => { clearTimeout(t); t = setTimeout(draw, 160); });
@@ -474,58 +562,82 @@ function openSearch(q0 = "") {
 function openProduct(id) {
   const p = byId(id);
   if (!p) return;
-  S.recent = [p.id, ...S.recent.filter((x) => x !== p.id)].slice(0, 20); store.set("recent", S.recent);
+  if (!$("#sheet").hidden) closeSheet();
+  S.recent = [p.id, ...S.recent.filter((x) => x !== p.id)].slice(0, 30); store.set("recent", S.recent);
+  if (S.drops[p.id]) { delete S.drops[p.id]; store.set("app_drops", S.drops); }
   const imgs = [p.img, ...(p.gallery || [])].filter(Boolean);
   const d = disc(p), stock = p.stock || 0;
   const similar = sortList(S.products.filter((x) => x.cat === p.cat && x.id !== p.id && (x.stock || 0) > 0), "popular").slice(0, 10);
+  const together = complementary(p, 10);
   const freeFrom = S.settings.freeShipFrom || 1000000;
   push({
     noTab: true,
-    html: `<header class="hdr clear"><button class="ib" data-back aria-label="Orqaga">${svg(IC.back)}</button><span style="flex:1"></span><button class="ib" data-share aria-label="Ulashish">${svg(IC.share)}</button><button class="ib${S.fav.includes(p.id) ? " on" : ""}" data-pfav aria-label="Saralangan">${svg(IC.heart)}</button></header>
-      <div class="sb pad-bar">
-        <div class="gal-wrap"><div class="gal" id="gal">${imgs.map((s) => `<img src="${esc(pic(s))}" alt="" onerror="this.remove()" />`).join("")}</div>${imgs.length > 1 ? `<div class="dots" id="gd">${imgs.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}</div>
+    html: `<header class="hdr clear phdr" id="ph"><button class="ib" data-back aria-label="Orqaga">${svg(IC.back)}</button><div class="ph-t"><b>${esc(p.name)}</b><small>${fmt(p.price)}</small></div><button class="ib" data-share aria-label="Ulashish">${svg(IC.share)}</button><button class="ib${S.fav.includes(p.id) ? " on" : ""}" data-pfav aria-label="Saralangan">${svg(IC.heart)}</button></header>
+      <div class="sb pad-bar" id="psb">
+        <div class="gal-wrap"><div class="gal" id="gal">${imgs.map((s, i) => `<img src="${esc(pic(s))}" alt="" data-gi="${i}" onerror="this.remove()" />`).join("")}</div>
+          ${imgs.length > 1 ? `<div class="dots" id="gd">${imgs.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}<span class="gal-hint">🔍 Kattalashtirish uchun bosing</span></div>
         <div class="pd">
           <div class="pd-price"><b class="${d ? "sale" : ""}">${fmt(p.price)}</b>${d ? `<s>${fmt(p.old)}</s><span class="tag">−${d}%</span>` : ""}</div>
+          ${d ? `<div class="save">💰 Tejaysiz: <b>${fmt(p.old - p.price)}</b></div>` : ""}
           <h2 class="pd-name">${esc(p.name)}</h2>
-          <div class="pd-meta"><span><b>★ ${p.rating || "—"}</b> · <span id="rvCount">${p.reviews || 0}</span> sharh</span><span>${esc(p.brand)}</span>${p.original !== false ? `<span>🛡 Original</span>` : ""}</div>
+          <div class="pd-meta"><button data-torv><b>★ ${p.rating || "—"}</b> · <span>${p.reviews || 0}</span> sharh</button><button data-brand-go>${esc(p.brand)} ›</button>${p.original !== false ? `<span>🛡 Original</span>` : ""}</div>
           <button class="nasiya" id="nas"><span>💜</span><div><b id="nasB">${fmt(p.price / S.months)} × ${S.months} oy</b><small>Uzum Nasiya orqali 0% bo'lib to'lash</small></div><span>›</span></button>
           <div class="box">
             <div class="row"><span class="ri">📦</span><div><b class="${stock <= 0 ? "stock-out" : stock <= 5 ? "stock-low" : "stock-ok"}">${stock <= 0 ? "Tugagan" : stock <= 5 ? `Tez tugaydi — ${stock} dona qoldi` : `Omborda ${stock} dona bor`}</b><small>OPUS MARKET omboridan</small></div></div>
-            <div class="row"><span class="ri">🚚</span><div><b>Yetkazish: ertaga</b><small>${p.price >= freeFrom ? "Bepul yetkazib beramiz" : `${fmt(S.settings.shipPrice || 50000)}, ${num(freeFrom)} so'mdan bepul`}</small></div></div>
-            <div class="row"><span class="ri">🏬</span><div><b>Do'kondan olib ketish</b><small>Bepul · bugunoq</small></div></div>
+            ${stock > 0 && stock <= 5 ? `<i class="stock-bar" style="--w:${Math.max(8, stock * 18)}%"></i>` : ""}
+            <div class="row"><span class="ri">🚚</span><div><b>Yetkazish: ${deliveryDay()}</b><small>${p.price >= freeFrom ? "Bepul yetkazib beramiz" : `${fmt(S.settings.shipPrice || 50000)}, ${num(freeFrom)} so'mdan bepul`}</small></div></div>
+            <div class="row"><span class="ri">🏬</span><div><b>Do'kondan olib ketish</b><small>Bepul · bugunoq, 09:00–21:00</small></div></div>
+            <div class="row"><span class="ri">↩️</span><div><b>14 kun ichida qaytarish</b><small>Qadog'i buzilmagan bo'lsa</small></div></div>
           </div>
-          ${p.desc ? `<div class="box"><h3>Tavsif</h3><p class="desc">${esc(p.desc)}</p></div>` : ""}
+          ${p.desc ? `<div class="box"><h3>Tavsif</h3><p class="desc clamp" id="desc">${esc(p.desc)}</p>${p.desc.length > 160 ? `<button class="more-btn" data-more>Batafsil ▾</button>` : ""}</div>` : ""}
           ${p.specs && Object.keys(p.specs).length ? `<div class="box"><h3>Xususiyatlar</h3><dl class="specs">${Object.entries(p.specs).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl></div>` : ""}
           <div class="box" id="rvBox"><h3>Sharhlar</h3><div class="skel" style="height:60px"></div></div>
-          ${similar.length ? `<div><div class="sec-h" style="margin-top:6px"><h2>O'xshash mahsulotlar</h2></div><div class="hscroll">${similar.map(card).join("")}</div></div>` : ""}
+          ${together.length ? `<div><div class="sec-h" style="margin-top:6px"><h2>🧩 Bu bilan birga olishadi</h2></div><div class="hscroll">${together.map((x) => card(x)).join("")}</div></div>` : ""}
+          ${similar.length ? `<div><div class="sec-h" style="margin-top:6px"><h2>O'xshash mahsulotlar</h2></div><div class="hscroll">${similar.map((x) => card(x)).join("")}</div></div>` : ""}
         </div>
       </div>
       <div class="buybar" id="buy"></div>`,
     mount(el) {
-      const gal = $("#gal", el), gd = $$("#gd i", el);
+      const gal = $("#gal", el), gd = $$("#gd i", el), sb = $("#psb", el), ph = $("#ph", el);
       gal.addEventListener("scroll", () => { const i = Math.round(gal.scrollLeft / gal.clientWidth); gd.forEach((x, k) => x.classList.toggle("on", k === i)); }, { passive: true });
+      // Aylantirganda sarlavha qattiq fonga o'tadi va mahsulot nomi chiqadi
+      sb.addEventListener("scroll", () => ph.classList.toggle("solid", sb.scrollTop > gal.offsetHeight - 80), { passive: true });
+      // Rasm: bir bosish — kattalashtirish, ikki bosish — ❤️
+      let tapT = null;
+      gal.addEventListener("click", (e) => {
+        const im = e.target.closest("[data-gi]"); if (!im) return;
+        if (tapT) { clearTimeout(tapT); tapT = null; if (!S.fav.includes(p.id)) toggleFav(p.id, $("[data-pfav]", el)); heartBurst(e.clientX, e.clientY); return; }
+        tapT = setTimeout(() => { tapT = null; openViewer(imgs, +im.dataset.gi); }, 260);
+      });
       const drawBuy = () => {
         const q = inCart(p.id);
-        $("#buy", el).innerHTML = stock <= 0 ? `<button class="btn block" disabled>Tugagan</button>`
+        $("#buy", el).innerHTML = stock <= 0 ? `<button class="btn ghost flex" data-notify-me>🔔 Kelganda xabar berish</button>`
           : q ? `<div class="stepper"><button data-q="-1">−</button><span>${q}</span><button data-q="1">+</button></div><button class="btn green flex" data-gocart>Savatga o'tish</button>`
-          : `<div><small>${d ? `<s>${num(p.old)}</s>` : "Narxi"}</small><b>${fmt(p.price)}</b></div><button class="btn flex" data-buy>${svg(IC.cart)} Savatga qo'shish</button>`;
+          : `<div><small>${d ? `<s>${num(p.old)}</s>` : `${num(p.price / 12)} so'm/oy`}</small><b>${fmt(p.price)}</b></div><button class="btn flex" data-buy>${svg(IC.cart)} Savatga</button>`;
       };
       drawBuy();
       $("#buy", el).addEventListener("click", (e) => {
-        if (e.target.closest("[data-buy]")) { addToCart(p.id); drawBuy(); refreshCards(); }
+        if (e.target.closest("[data-buy]")) {
+          if (addToCart(p.id, 1, true)) { flyToCart($("#gal img", el) || e.target); drawBuy(); refreshCards(); setTimeout(() => addedSheet(p), 420); }
+        }
         const s = e.target.closest("[data-q]"); if (s) { setQty(p.id, inCart(p.id) + +s.dataset.q); drawBuy(); refreshCards(); }
         if (e.target.closest("[data-gocart]")) switchTab("cart");
+        if (e.target.closest("[data-notify-me]")) { const w = store.get("app_wait", []); if (!w.includes(p.id)) store.set("app_wait", [...w, p.id]); toast("🔔 Mahsulot kelganda xabar beramiz"); }
       });
       $("[data-pfav]", el).onclick = (e) => toggleFav(p.id, e.currentTarget);
+      $("[data-torv]", el).onclick = () => sb.scrollTo({ top: $("#rvBox", el).offsetTop - 70, behavior: "smooth" });
+      $("[data-brand-go]", el).onclick = () => openList({ title: p.brand, brand: p.brand });
+      const mb = $("[data-more]", el);
+      if (mb) mb.onclick = () => { const dd = $("#desc", el); dd.classList.toggle("clamp"); mb.textContent = dd.classList.contains("clamp") ? "Batafsil ▾" : "Yig'ish ▴"; };
       $("[data-share]", el).onclick = () => {
         const url = `https://javohir877.github.io/OPUS-MARKET/#product-${p.id}`;
         if (navigator.share) navigator.share({ title: p.name, text: `${p.name} — ${fmt(p.price)}`, url }).catch(() => {});
         else navigator.clipboard?.writeText(url).then(() => toast("🔗 Havola nusxalandi"));
       };
-      $("#nas", el).onclick = () => openSheet(`<h3>💜 Bo'lib to'lash</h3><p class="muted" style="margin-bottom:12px">Uzum Nasiya — 0% ustamasiz</p><div class="months">${MONTHS.map((m) => `<button data-m="${m}" class="${m === S.months ? "on" : ""}">${m} oy</button>`).join("")}</div><div class="box" style="margin-top:12px"><div class="sum"><div><span>Oylik to'lov</span><b id="mPay">${fmt(p.price / S.months)}</b></div><div><span>Jami</span><b>${fmt(p.price)}</b></div></div></div><button class="btn block" style="margin-top:14px" id="mOk">Tanlash</button>`, (box) => {
+      $("#nas", el).onclick = () => openSheet(`<h3>💜 Bo'lib to'lash</h3><p class="muted" style="margin-bottom:12px">Uzum Nasiya — 0% ustamasiz</p><div class="months">${MONTHS.map((m) => `<button data-m="${m}" class="${m === S.months ? "on" : ""}">${m} oy</button>`).join("")}</div><div class="box" style="margin-top:12px"><div class="sum"><div><span>Oylik to'lov</span><b id="mPay">${fmt(p.price / S.months)}</b></div><div><span>Jami</span><b>${fmt(p.price)}</b></div><div><span>Ustama</span><b style="color:var(--ok)">0 so'm</b></div></div></div><button class="btn block" style="margin-top:14px" id="mOk">Tanlash</button>`, (box) => {
         box.addEventListener("click", (e) => {
           const m = e.target.closest("[data-m]");
-          if (m) { S.months = +m.dataset.m; $$("[data-m]", box).forEach((b) => b.classList.toggle("on", b === m)); $("#mPay", box).textContent = fmt(p.price / S.months); haptic(5); }
+          if (m) { S.months = +m.dataset.m; $$("[data-m]", box).forEach((b) => b.classList.toggle("on", b === m)); $("#mPay", box).textContent = fmt(p.price / S.months); }
           if (e.target.closest("#mOk")) { closeSheet(); $("#nasB", el).textContent = `${fmt(p.price / S.months)} × ${S.months} oy`; }
         });
       });
@@ -760,7 +872,7 @@ function openDone(order, confirmed) {
       <div class="box" style="width:100%;text-align:left"><div class="sum"><div><span>Summa</span><b>${fmt(order.total)}</b></div><div><span>To'lov</span><span>${esc((PAYMENTS.find((p) => p.id === order.payment) || {}).name || order.payment)}</span></div><div><span>Yetkazish</span><span>${order.delivery === "pickup" ? "Do'kondan" : esc(order.region || "Kuryer")}</span></div></div></div>
       <button class="btn block" id="dOrders">Buyurtmalarim</button><button class="btn ghost block" id="dHome">Xaridni davom ettirish</button></div></div>`,
     mount(el) {
-      haptic([20, 60, 30]);
+      haptic([20, 60, 30]); window.sfx && sfx("success"); setTimeout(confetti, 350);
       $("#dOrders", el).onclick = () => { switchTab("profile", true); setTimeout(openOrders, 50); while (stacks.cart.length > 1) { const x = stacks.cart.pop(); x.remove(); } refreshRoot("cart"); };
       $("#dHome", el).onclick = () => { while (stacks[tab].length > 1) { const x = stacks[tab].pop(); x.remove(); } current().removeAttribute("inert"); refreshRoot(tab); switchTab("home"); };
     },
@@ -1019,6 +1131,356 @@ function openOrder(o) {
 // =====================================================================
 // ---------- Ishga tushirish ----------
 // =====================================================================
+// =====================================================================
+// ---------- Qo'shimcha imkoniyatlar (v2.2) ----------
+// =====================================================================
+Object.assign(IC, {
+  bell: "M12 22a2.5 2.5 0 002.5-2.5h-5A2.5 2.5 0 0012 22zm7-6V11a7 7 0 00-5.5-6.8V3a1.5 1.5 0 00-3 0v1.2A7 7 0 005 11v5l-2 2v1h18v-1l-2-2z",
+  filter: "M3 5h18v2l-7 7v6l-4-2v-4L3 7z",
+  view: "M3 4h18v4H3zm0 6h18v4H3zm0 6h18v4H3z",
+  grid2: "M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z",
+  close: "M18.3 5.7L12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7l-1.4-1.4L9.2 12 2.9 5.7l1.4-1.4 6.3 6.3 6.3-6.3z",
+});
+S.drops = store.get("app_drops", {});        // narxi tushgan saralanganlar: id → eski narx
+const sfx = (n) => { try { window.SFX && SFX.play(n, { noHaptic: true }); } catch {} };
+window.sfx = sfx;
+if (window.SFX) SFX.skip("[data-add], [data-fav], [data-back], [data-buy], .tabbar button, [data-pid], [data-story], .story, .viewer, .onb");
+const hello = () => { const h = new Date().getHours(); return h < 5 ? "Xayrli tun 🌙" : h < 11 ? "Xayrli tong ☀️" : h < 17 ? "Xayrli kun 🌤" : h < 22 ? "Xayrli kech 🌆" : "Xayrli tun 🌙"; };
+const UZ_DAYS = ["yakshanba", "dushanba", "seshanba", "chorshanba", "payshanba", "juma", "shanba"];
+const UZ_MONTHS = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"];
+function deliveryDay() { const d = new Date(Date.now() + 864e5); return `ertaga, ${d.getDate()}-${UZ_MONTHS[d.getMonth()]} (${UZ_DAYS[d.getDay()]})`; }
+function infoSheet(title, text) { openSheet(`<h3>${title}</h3><p class="muted" style="margin-bottom:14px;line-height:1.5">${esc(text)}</p><button class="btn block" id="isOk">Tushunarli</button>`, (b) => ($("#isOk", b).onclick = closeSheet)); }
+
+// Tavsiyalar: ko'rilgan, saralangan va savatdagi kategoriyalar asosida
+function recommend(n) {
+  const w = {};
+  S.recent.slice(0, 15).forEach((id, i) => { const p = byId(id); if (p) w[p.cat] = (w[p.cat] || 0) + 3 - i * 0.15; });
+  S.fav.forEach((id) => { const p = byId(id); if (p) w[p.cat] = (w[p.cat] || 0) + 3; });
+  S.cart.forEach((x) => { const p = byId(x.id); if (p) (COMPLEMENT[p.cat] || []).forEach((c) => (w[c] = (w[c] || 0) + 2)); });
+  if (!Object.keys(w).length) return [];
+  const seen = new Set([...S.recent.slice(0, 4), ...S.cart.map((x) => x.id)]);
+  return S.products.filter((p) => (p.stock || 0) > 0 && !seen.has(p.id) && w[p.cat])
+    .sort((a, b) => w[b.cat] * 100 + (b.popular || 0) - (w[a.cat] * 100 + (a.popular || 0))).slice(0, n);
+}
+const COMPLEMENT = { laptop: ["mouse", "audio", "storage", "keyboard"], pc: ["monitor", "keyboard", "mouse", "audio"], monitor: ["pc", "keyboard", "mouse"], keyboard: ["mouse", "audio", "monitor"], mouse: ["keyboard", "audio"], audio: ["gaming", "mouse"], parts: ["storage", "pc"], storage: ["parts", "laptop"], gaming: ["audio", "monitor"] };
+function complementary(p, n) {
+  const cats = COMPLEMENT[p.cat] || [];
+  return S.products.filter((x) => cats.includes(x.cat) && (x.stock || 0) > 0)
+    .sort((a, b) => cats.indexOf(a.cat) - cats.indexOf(b.cat) || (b.popular || 0) - (a.popular || 0))
+    .filter((x, i, arr) => arr.findIndex((y) => y.cat === x.cat) === i || i < n * 2).slice(0, n);
+}
+// Yangi APK versiyasi chiqqanmi (admin paneldagi "Android ilova" sozlamasi)
+function updateInfo() {
+  const a = S.settings.apk || {};
+  if (VERSION === "web" || !a.url || !a.version) return null;
+  const v = (s) => String(s).split(".").map((x) => +x || 0);
+  const [x, y] = [v(a.version), v(VERSION)];
+  for (let i = 0; i < 3; i++) { if ((x[i] || 0) > (y[i] || 0)) return a; if ((x[i] || 0) < (y[i] || 0)) return null; }
+  return null;
+}
+
+// ---------- Stories ----------
+const seenStory = (id) => store.get("app_seen_stories", []).includes(id);
+function storiesData() {
+  const P = S.products.filter((p) => (p.stock || 0) > 0);
+  const slideOf = (p, kicker) => ({ img: p.img, kicker, title: p.name, text: disc(p) ? `${fmt(p.price)} · avval ${fmt(p.old)}` : `${fmt(p.price)} · oyiga ${fmt(p.price / 12)}`, cta: { t: "Mahsulotni ko'rish", pid: p.id } });
+  const out = [];
+  const deals = P.filter((p) => disc(p)).sort((a, b) => disc(b) - disc(a));
+  if (deals.length) out.push({ id: "deals", name: "Aksiyalar", emoji: "🔥", cover: deals[0].img, slides: deals.slice(0, 5).map((p) => slideOf(p, `🔥 −${disc(p)}% chegirma`)) });
+  const fresh = P.filter((p) => p.badge === "Yangi");
+  if (fresh.length) out.push({ id: "new", name: "Yangi", emoji: "🆕", cover: fresh[0].img, slides: fresh.slice(0, 5).map((p) => slideOf(p, "🆕 Yangi kelgan")) });
+  out.push({ id: "nasiya", name: "Nasiya 0%", emoji: "💜", cover: (P[3] || P[0] || {}).img, slides: [
+    { bg: "violet", kicker: "💜 Uzum Nasiya", title: "0% bo'lib to'lash", text: "Istalgan mahsulotni 3, 6, 12 yoki 24 oyga ortiqcha foizsiz oling.", cta: { t: "Xarid qilish", list: "all" } },
+    { bg: "violet", kicker: "Qanday ishlaydi?", title: "1. Savatga qo'shing\n2. \"Uzum Nasiya\" ni tanlang\n3. Muddatni belgilang", text: "Operatorimiz qolganini o'zi rasmiylashtiradi." }] });
+  S.cats.slice(0, 6).forEach((c) => {
+    const L = P.filter((p) => p.cat === c.id).sort((a, b) => (b.popular || 0) - (a.popular || 0)).slice(0, 3);
+    if (L.length) out.push({ id: "c-" + c.id, name: c.name, cover: c.img, slides: L.map((p) => slideOf(p, `⭐ ${c.name}: eng ommabop`)) });
+  });
+  if (S.news.length) out.push({ id: "news", name: "Yangiliklar", emoji: "📰", cover: S.news[0].img, slides: S.news.slice(0, 4).map((n) => ({ img: n.img, kicker: n.tag || "Yangilik", title: n.title, text: n.excerpt || "", cta: { t: "O'qish", news: n.id } })) });
+  out.push({ id: "ship", name: "Yetkazish", emoji: "🚚", cover: (P[5] || P[0] || {}).img, slides: [
+    { bg: "green", kicker: "🚚 Yetkazib berish", title: "Toshkent bo'ylab 24 soatda", text: `${num(S.settings.freeShipFrom || 1000000)} so'mdan yuqori xaridlarda — bepul. Viloyatlarga 2–4 kunda.` }] });
+  return out;
+}
+let storyState = null;
+function openStories(gi) {
+  const groups = storiesData();
+  const box = document.createElement("div");
+  box.className = "story";
+  document.body.appendChild(box);
+  sfx("open");
+  const st = storyState = { gi, si: 0, t0: 0, elapsed: 0, paused: false, raf: 0, box, groups };
+  const DUR = 5200;
+  const markSeen = (id) => { const s = store.get("app_seen_stories", []); if (!s.includes(id)) store.set("app_seen_stories", [...s, id].slice(-40)); };
+  const draw = () => {
+    const g = groups[st.gi], s = g.slides[st.si];
+    markSeen(g.id);
+    box.innerHTML = `<div class="st-bars">${g.slides.map((_, i) => `<i><b style="width:${i < st.si ? 100 : 0}%"></b></i>`).join("")}</div>
+      <div class="st-top"><span class="st-av"><img src="${esc(pic(g.cover))}" alt="" onerror="this.remove()" /></span><b>${esc(g.name)}</b><small>OPUS MARKET</small><button class="ib" data-stx aria-label="Yopish">${svg(IC.close)}</button></div>
+      <div class="st-media ${s.bg || ""}">${s.img ? `<img src="${esc(pic(s.img))}" alt="" onerror="this.remove()" />` : `<div class="st-art">${g.emoji || "✨"}</div>`}</div>
+      <div class="st-text"><small>${esc(s.kicker || "")}</small><h2>${esc(s.title).replace(/\n/g, "<br>")}</h2>${s.text ? `<p>${esc(s.text)}</p>` : ""}${s.cta ? `<button class="btn block" data-stcta>${esc(s.cta.t)}</button>` : ""}</div>`;
+    st.elapsed = 0; st.t0 = performance.now();
+    $(".st-media", box).classList.add("kb");
+  };
+  const step = (dir) => {
+    const g = groups[st.gi];
+    if (dir > 0) { if (st.si < g.slides.length - 1) st.si++; else if (st.gi < groups.length - 1) { st.gi++; st.si = 0; box.classList.remove("cube"); void box.offsetWidth; box.classList.add("cube"); } else return close(); }
+    else { if (st.si > 0) st.si--; else if (st.gi > 0) { st.gi--; st.si = 0; } }
+    sfx("tick"); draw();
+  };
+  const loop = (now) => {
+    if (!st.paused) {
+      const p = Math.min(1, (st.elapsed + now - st.t0) / DUR);
+      const bar = $$(".st-bars b", box)[st.si]; if (bar) bar.style.width = p * 100 + "%";
+      if (p >= 1) step(1);
+    }
+    st.raf = requestAnimationFrame(loop);
+  };
+  const pause = () => { if (!st.paused) { st.paused = true; st.elapsed += performance.now() - st.t0; } };
+  const resume = () => { if (st.paused) { st.paused = false; st.t0 = performance.now(); } };
+  const close = () => { cancelAnimationFrame(st.raf); box.classList.add("out"); setTimeout(() => box.remove(), 220); storyState = null; sfx("close"); refreshRoot("home"); };
+  st.close = close;
+  let x0 = 0, y0 = 0, tDown = 0;
+  box.addEventListener("pointerdown", (e) => { if (e.target.closest("button")) return; x0 = e.clientX; y0 = e.clientY; tDown = Date.now(); pause(); });
+  box.addEventListener("pointerup", (e) => {
+    if (e.target.closest("button")) return;
+    const dy = e.clientY - y0, dx = e.clientX - x0;
+    if (dy > 90) return close();
+    if (Math.abs(dx) > 60) { step(dx < 0 ? 1 : -1); return resume(); }
+    if (Date.now() - tDown < 250) step(e.clientX < innerWidth / 3 ? -1 : 1);
+    resume();
+  });
+  box.addEventListener("click", (e) => {
+    if (e.target.closest("[data-stx]")) return close();
+    if (e.target.closest("[data-stcta]")) {
+      const c = groups[st.gi].slides[st.si].cta;
+      close();
+      setTimeout(() => { if (c.pid) openProduct(c.pid); else if (c.news) openNews(c.news); else if (c.list) openList({ title: "🛍 Barcha mahsulotlar" }); }, 120);
+    }
+  });
+  draw(); st.raf = requestAnimationFrame(loop);
+}
+
+// ---------- Rasmni to'liq ekranda ko'rish (ikki bosish — kattalashtirish) ----------
+let viewerEl = null;
+function openViewer(imgs, start) {
+  const v = viewerEl = document.createElement("div");
+  v.className = "viewer";
+  v.innerHTML = `<div class="vw-top"><span id="vwN">${start + 1} / ${imgs.length}</span><button class="ib" data-vx aria-label="Yopish">${svg(IC.close)}</button></div>
+    <div class="vw-track">${imgs.map((s) => `<div class="vw-slide"><img src="${esc(pic(s))}" alt="" /></div>`).join("")}</div><p class="vw-hint">Ikki marta bosing — kattalashtirish</p>`;
+  document.body.appendChild(v);
+  sfx("open");
+  const tr = $(".vw-track", v);
+  requestAnimationFrame(() => tr.scrollTo({ left: start * tr.clientWidth }));
+  tr.addEventListener("scroll", () => { $("#vwN", v).textContent = `${Math.round(tr.scrollLeft / tr.clientWidth) + 1} / ${imgs.length}`; }, { passive: true });
+  let last = 0;
+  tr.addEventListener("click", (e) => {
+    const sl = e.target.closest(".vw-slide"); if (!sl) return;
+    const now = Date.now();
+    if (now - last < 300) {
+      const z = !sl.classList.contains("z");
+      const r = sl.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height;
+      sl.classList.toggle("z", z); tr.classList.toggle("locked", z); sfx(z ? "plus" : "minus");
+      if (z) requestAnimationFrame(() => { sl.scrollLeft = sl.scrollWidth * fx - r.width / 2; sl.scrollTop = sl.scrollHeight * fy - r.height / 2; });
+      last = 0;
+    } else last = now;
+  });
+  $("[data-vx]", v).onclick = closeViewer;
+}
+function closeViewer() { if (!viewerEl) return; const v = viewerEl; viewerEl = null; v.classList.add("out"); sfx("close"); setTimeout(() => v.remove(), 200); }
+
+// ---------- Animatsiyalar ----------
+function heartBurst(x, y) {
+  const h = document.createElement("div");
+  h.className = "burst"; h.style.left = x + "px"; h.style.top = y + "px";
+  h.innerHTML = `${heartSvg}${Array.from({ length: 8 }, (_, i) => `<i style="--a:${i * 45}deg"></i>`).join("")}`;
+  document.body.appendChild(h); setTimeout(() => h.remove(), 900);
+}
+// Mahsulot rasmi savat ikonkasiga "uchib" boradi
+function flyToCart(src) {
+  const target = $('#tabbar [data-tab="cart"] svg');
+  if (!src || !target || !src.getBoundingClientRect) return;
+  const a = src.getBoundingClientRect(), b = target.getBoundingClientRect();
+  if (!a.width) return;
+  const f = document.createElement(src.tagName === "IMG" ? "img" : "div");
+  if (src.tagName === "IMG") f.src = src.currentSrc || src.src;
+  f.className = "fly";
+  const size = Math.min(a.width, a.height, 160);
+  Object.assign(f.style, { left: a.left + a.width / 2 - size / 2 + "px", top: a.top + a.height / 2 - size / 2 + "px", width: size + "px", height: size + "px" });
+  document.body.appendChild(f);
+  const dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2);
+  f.animate([
+    { transform: "translate(0,0) scale(1)", opacity: 1 },
+    { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 120}px) scale(.55) rotate(-12deg)`, opacity: 1, offset: 0.5 },
+    { transform: `translate(${dx}px, ${dy}px) scale(.08) rotate(10deg)`, opacity: 0.6 },
+  ], { duration: 650, easing: "cubic-bezier(.5,0,.6,1)" }).onfinish = () => {
+    f.remove();
+    const btn = $('#tabbar [data-tab="cart"]'); btn.classList.remove("got"); void btn.offsetWidth; btn.classList.add("got");
+  };
+}
+// "Savatga qo'shildi" oynasi + birga olinadigan mahsulotlar
+function addedSheet(p) {
+  const T = totals(), tog = complementary(p, 8), left = Math.max(0, T.free - T.subtotal);
+  openSheet(`<div class="added"><img src="${esc(pic(p.img))}" alt="" onerror="this.remove()" /><div><b>✅ Savatga qo'shildi</b><small>${esc(p.name)}</small></div></div>
+    <div class="ship-prog" style="--w:${Math.min(100, (T.subtotal / T.free) * 100)}%;margin-top:12px">${left ? `<span>🚚 Bepul yetkazish uchun yana <b>${fmt(left)}</b></span>` : `<span>🎉 Yetkazib berish <b>bepul!</b></span>`}<i></i></div>
+    ${tog.length ? `<div class="sec-h" style="margin:16px 0 8px"><h2 style="font-size:16px">🧩 Bu bilan birga olishadi</h2></div><div class="hscroll" style="margin:0 -16px;padding:2px 16px 6px">${tog.map((x) => card(x)).join("")}</div>` : ""}
+    <div class="sheet-foot"><button class="btn ghost flex" id="adMore">Davom etish</button><button class="btn flex" id="adCart">Savatga o'tish</button></div>`, (b) => {
+    $("#adMore", b).onclick = closeSheet;
+    $("#adCart", b).onclick = () => { closeSheet(); switchTab("cart"); };
+  });
+}
+// Konfetti (muvaffaqiyatli buyurtma)
+function confetti() {
+  const c = document.createElement("canvas");
+  c.className = "confetti"; c.width = innerWidth; c.height = innerHeight;
+  document.body.appendChild(c);
+  const x = c.getContext("2d"), cols = ["#ff2a40", "#ffd43b", "#22c55e", "#2aabee", "#a46bff", "#fff"];
+  const P = Array.from({ length: 140 }, () => ({ x: innerWidth / 2, y: innerHeight * 0.35, vx: (Math.random() - 0.5) * 14, vy: -Math.random() * 14 - 4, s: 4 + Math.random() * 6, r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4, c: cols[(Math.random() * cols.length) | 0] }));
+  const t0 = performance.now();
+  const f = (now) => {
+    x.clearRect(0, 0, c.width, c.height);
+    P.forEach((p) => { p.vy += 0.38; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.r += p.vr; x.save(); x.translate(p.x, p.y); x.rotate(p.r); x.fillStyle = p.c; x.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); x.restore(); });
+    if (now - t0 < 3200) requestAnimationFrame(f); else c.remove();
+  };
+  requestAnimationFrame(f);
+}
+
+// ---------- Bildirishnomalar ----------
+const notifs = () => store.get("app_notifs", []);
+function addNotif(n, quiet) {
+  const L = notifs();
+  if (n.key && L.some((x) => x.key === n.key)) return;
+  L.unshift({ ...n, id: Date.now() + Math.random(), at: Date.now(), read: false });
+  store.set("app_notifs", L.slice(0, 50));
+  if (!quiet) { sfx("notify"); toast(`${n.icon} ${n.title}`, n.act ? { t: "Ko'rish", fn: () => runNotif(n.act) } : null); }
+  bellBadge();
+}
+function bellBadge() {
+  const n = notifs().filter((x) => !x.read).length;
+  $$(".bell").forEach((b) => { let i = $(".bell-n", b); if (!n) { i && i.remove(); return; } if (!i) { i = document.createElement("i"); i.className = "bell-n"; b.appendChild(i); } i.textContent = n > 9 ? "9+" : n; });
+}
+async function runNotif(a) {
+  if (!a) return;
+  if (a.pid) openProduct(a.pid);
+  else if (a.order) { if (!S.orders) await loadOrders().catch(() => {}); const o = (S.orders || []).find((x) => x.id === a.order); if (o) { switchTab("profile"); setTimeout(() => openOrder(o), 60); } }
+  else if (a.tab) switchTab(a.tab);
+}
+function openNotifs() {
+  push({
+    html: hdr("Bildirishnomalar", `<button class="ib" data-readall aria-label="Hammasini o'qildi">${svg(IC.check)}</button>`) + `<div class="sb"><div class="sec" id="nl" style="display:flex;flex-direction:column;gap:8px"></div></div>`,
+    mount(el) {
+      const draw = () => {
+        const L = notifs();
+        $("#nl", el).innerHTML = L.length ? L.map((n, i) => `<button class="ntf${n.read ? "" : " unread"}" data-ni="${i}"><span class="ri">${n.icon}</span><div><b>${esc(n.title)}</b><small>${esc(n.text || "")}</small><em>${ago(n.at)}</em></div></button>`).join("")
+          : emptyBox("🔔", "Bildirishnoma yo'q", "Buyurtma holati o'zgarganda, saralangan mahsulot arzonlashganda shu yerda xabar paydo bo'ladi");
+      };
+      el.addEventListener("click", (e) => {
+        const b = e.target.closest("[data-ni]");
+        if (b) { const L = notifs(), n = L[+b.dataset.ni]; n.read = true; store.set("app_notifs", L); bellBadge(); draw(); runNotif(n.act); }
+        if (e.target.closest("[data-readall]")) { store.set("app_notifs", notifs().map((n) => ({ ...n, read: true }))); bellBadge(); draw(); toast("✓ Hammasi o'qildi"); }
+      });
+      draw();
+    },
+    unmount() { refreshRoot("home"); },
+  });
+}
+function ago(t) {
+  const s = (Date.now() - t) / 1000;
+  return s < 60 ? "hozirgina" : s < 3600 ? `${Math.floor(s / 60)} daqiqa oldin` : s < 86400 ? `${Math.floor(s / 3600)} soat oldin` : new Date(t).toLocaleDateString("ru-RU");
+}
+// Buyurtma holati o'zgarganini kuzatish (ilova ochiq turganda har daqiqada)
+const ST_ICON = { "Tasdiqlandi": "✅", "Yig'ilmoqda": "📦", "Yo'lda": "🚚", "Yetkazildi": "🎉", "Bekor qilindi": "✕", "Yangi": "🆕" };
+async function syncOrders() {
+  if (!auth.token) return;
+  const prev = store.get("app_order_st", {}), first = !Object.keys(prev).length;
+  const L = await loadOrders(), next = {};
+  L.forEach((o) => {
+    const k = o.status + (o.confirmed ? "" : "*");
+    next[o.id] = k;
+    if (!first && prev[o.id] && prev[o.id] !== k) addNotif({ key: o.id + k, icon: ST_ICON[o.status] || "📦", title: `Buyurtma #${o.id}: ${o.status}`, text: o.status === "Yo'lda" ? "Kuryer yo'lga chiqdi — telefoningiz yoqiq tursin" : o.status === "Yetkazildi" ? "Xaridingiz uchun rahmat! Mahsulotga sharh qoldiring ⭐" : `Jami: ${fmt(o.total)}`, act: { order: o.id } });
+  });
+  store.set("app_order_st", next);
+}
+// Saralangan mahsulot arzonlashdi / kutilgan mahsulot omborga keldi
+function checkDrops() {
+  const fp = store.get("app_fav_prices", {});
+  S.fav.forEach((id) => {
+    const p = byId(id); if (!p) return;
+    if (fp[id] && p.price < fp[id]) {
+      S.drops[id] = fp[id];
+      addNotif({ key: `drop${id}:${p.price}`, icon: "📉", title: "Narx tushdi!", text: `${p.name}: ${fmt(fp[id])} → ${fmt(p.price)}`, act: { pid: id } });
+    }
+    fp[id] = p.price;
+  });
+  store.set("app_fav_prices", fp); store.set("app_drops", S.drops);
+  const wait = store.get("app_wait", []);
+  const back = wait.filter((id) => (byId(id) || {}).stock > 0);
+  back.forEach((id) => addNotif({ key: `back${id}`, icon: "📦", title: "Mahsulot omborga keldi!", text: byId(id).name, act: { pid: id } }));
+  if (back.length) store.set("app_wait", wait.filter((id) => !back.includes(id)));
+}
+
+// ---------- Qidiruvda kategoriya va brend takliflari ----------
+function catHits(q) {
+  const s = q.toLowerCase();
+  const cats = S.cats.filter((c) => c.name.toLowerCase().includes(s)).slice(0, 4);
+  const brands = [...new Set(S.products.map((p) => p.brand))].filter((b) => b.toLowerCase().startsWith(s)).slice(0, 4);
+  if (!cats.length && !brands.length) return "";
+  return `<div class="chips" style="padding-bottom:0">${cats.map((c) => `<button class="chip" data-cat="${esc(c.id)}">🗂 ${esc(c.name)}</button>`).join("")}${brands.map((b) => `<button class="chip" data-brand-q="${esc(b)}">🏷 ${esc(b)}</button>`).join("")}</div>`;
+}
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-brand-q]"); if (b) openList({ title: b.dataset.brandQ, brand: b.dataset.brandQ }); });
+
+// ---------- Birinchi ochilish: tanishuv ----------
+function onboarding() {
+  if (store.get("app_onboarded", false)) return;
+  const promo = S.settings.promos && S.settings.promos.YANGI5 ? "YANGI5" : null;
+  const slides = [
+    { e: "🛒", t: "OPUS MARKET'ga xush kelibsiz!", p: "Noutbuk, kompyuter, monitor va aksessuarlar — original va kafolat bilan." },
+    { e: "💜", t: "0% bo'lib to'lash", p: "Uzum Nasiya orqali 24 oygacha ortiqcha foizsiz. Click, Payme, karta yoki naqd — qanday qulay bo'lsa." },
+    { e: "✈️", t: "Telegram orqali tasdiqlash", p: `Buyurtmani 6 xonali kod bilan tasdiqlaysiz, chek Telegram'ga keladi.${promo ? ` Birinchi xarid uchun ${promo} promo-kodi!` : ""}` },
+  ];
+  const o = document.createElement("div");
+  o.className = "onb";
+  o.innerHTML = `<button class="onb-skip">O'tkazib yuborish</button><div class="onb-track">${slides.map((s) => `<div class="onb-s"><div class="onb-art">${s.e}</div><h2>${s.t}</h2><p>${s.p}</p></div>`).join("")}</div>
+    <div class="dots">${slides.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div><button class="btn block onb-next">Keyingi</button>`;
+  document.body.appendChild(o);
+  const tr = $(".onb-track", o), dots = $$(".dots i", o), nb = $(".onb-next", o);
+  let i = 0;
+  const done = () => { store.set("app_onboarded", true); o.classList.add("out"); setTimeout(() => o.remove(), 300); if (promo) addNotif({ key: "welcome", icon: "🎁", title: "Sovg'a: 5% chegirma", text: `Birinchi xaridingizda ${promo} promo-kodini savatda kiriting`, act: { tab: "cart" } }, true); };
+  tr.addEventListener("scroll", () => { i = Math.round(tr.scrollLeft / tr.clientWidth); dots.forEach((d, k) => d.classList.toggle("on", k === i)); nb.textContent = i === slides.length - 1 ? "Boshlash 🚀" : "Keyingi"; }, { passive: true });
+  nb.onclick = () => { if (i >= slides.length - 1) return done(); tr.scrollTo({ left: (i + 1) * tr.clientWidth, behavior: "smooth" }); };
+  $(".onb-skip", o).onclick = done;
+}
+
+// ---------- Savatda surib o'chirish (qaytarish imkoni bilan) ----------
+function enableSwipe(el) {
+  let row = null, x0 = 0, y0 = 0, dx = 0, lock = null;
+  el.addEventListener("touchstart", (e) => { row = e.target.closest(".ci-row"); if (!row) return; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; lock = null; row.style.transition = "none"; }, { passive: true });
+  el.addEventListener("touchmove", (e) => {
+    if (!row) return;
+    const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+    if (lock == null && (Math.abs(mx) > 8 || Math.abs(my) > 8)) lock = Math.abs(mx) > Math.abs(my) ? "x" : "y";
+    if (lock !== "x") return;
+    dx = Math.min(0, mx); row.style.transform = `translateX(${dx}px)`;
+    row.parentElement.classList.toggle("arm", dx < -110);
+  }, { passive: true });
+  el.addEventListener("touchend", () => {
+    if (!row) return;
+    const r = row; row = null; r.style.transition = "";
+    if (dx < -110) {
+      const id = +r.dataset.row, qty = inCart(id);
+      r.style.transform = "translateX(-110%)"; sfx("remove");
+      setTimeout(() => { setQty(id, 0); refreshRoot("cart"); toast("🗑 Savatdan olib tashlandi", { t: "Qaytarish", fn: () => { S.cart.push({ id, qty }); saveCart(); refreshRoot("cart"); } }); }, 220);
+    } else { r.style.transform = ""; r.parentElement.classList.remove("arm"); }
+  });
+}
+// Ochiq qatlamlarni (stories, rasm ko'rish) "Orqaga" tugmasi yopadi
+const __back0 = window.__opusBack;
+window.__opusBack = () => {
+  if (storyState) { storyState.close(); return true; }
+  if (viewerEl) { closeViewer(); return true; }
+  if ($(".onb")) return true;
+  return __back0();
+};
+
 const ROOTS = { home: homeScreen, catalog: catalogScreen, cart: cartScreen, fav: favScreen, profile: profileScreen };
 matchMedia("(prefers-color-scheme: light)").addEventListener("change", applyTheme);
 applyTheme();
@@ -1036,3 +1498,55 @@ if (VERSION === "web") {
   history.pushState({ app: 1 }, "");
   addEventListener("popstate", () => { if (window.__opusBack()) history.pushState({ app: 1 }, ""); });
 }
+
+// ---------- v2.2: ekranlarga qo'shimchalar ----------
+// Savat: qatorlarni surib o'chirish
+{
+  const base = ROOTS.cart;
+  ROOTS.cart = () => {
+    const d = base(), m = d.mount;
+    d.mount = (el) => {
+      m && m(el);
+      $$(".ci-row", el).forEach((r) => { const w = document.createElement("div"); w.className = "ci-wrap"; w.innerHTML = `<span class="ci-bg">🗑 O'chirish</span>`; r.replaceWith(w); w.appendChild(r); });
+      enableSwipe(el);
+      const hint = $(".ci-wrap", el);
+      if (hint && !store.get("app_swipe_hint", false)) { store.set("app_swipe_hint", true); const r = $(".ci-row", hint); r.classList.add("hint"); }
+    };
+    return d;
+  };
+}
+// Kabinet: bildirishnomalar, ko'rilganlar, ovoz va tebranish
+{
+  const base = ROOTS.profile;
+  ROOTS.profile = () => {
+    const d = base(), m = d.mount;
+    d.mount = (el) => {
+      m && m(el);
+      const th = $('[data-m="theme"]', el);
+      if (!th) return;
+      const un = notifs().filter((n) => !n.read).length;
+      const snd = window.SFX ? SFX.on : false, vib = window.SFX ? SFX.haptic : true;
+      th.closest(".menu").insertAdjacentHTML("beforebegin", `<div class="menu">
+        <button class="mi" data-x="notifs"><span class="ri">🔔</span><span>Bildirishnomalar</span>${un ? `<i class="cnt">${un}</i>` : ""}</button>
+        <button class="mi" data-x="recent"><span class="ri">👀</span><span>Ko'rilgan mahsulotlar</span><small>${S.recent.length || ""}</small></button>
+        ${window.SFX ? `<button class="mi noarrow" data-x="sound"><span class="ri">🔊</span><span>Ovoz effektlari</span><span class="sw${snd ? " on" : ""}"></span></button>
+        <button class="mi noarrow" data-x="vib"><span class="ri">📳</span><span>Tebranish</span><span class="sw${vib ? " on" : ""}"></span></button>` : ""}
+      </div>`);
+      el.addEventListener("click", (e) => {
+        const b = e.target.closest("[data-x]"); if (!b) return;
+        const k = b.dataset.x;
+        if (k === "notifs") openNotifs();
+        if (k === "recent") openList({ title: "👀 Ko'rilganlar", ids: S.recent.slice(), keepOrder: true });
+        if (k === "sound") { SFX.toggle(); $(".sw", b).classList.toggle("on", SFX.on); }
+        if (k === "vib") { SFX.setHaptic(!SFX.haptic); $(".sw", b).classList.toggle("on", SFX.haptic); }
+      });
+    };
+    return d;
+  };
+}
+// Ishga tushirish: tanishuv, narxlar, buyurtmalar holati
+checkDrops();
+onboarding();
+syncOrders().catch(() => {});
+setInterval(() => { if (!document.hidden) syncOrders().catch(() => {}); }, 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) syncOrders().catch(() => {}); });
