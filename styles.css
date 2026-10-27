@@ -1269,3 +1269,9 @@ select:focus { border-color: var(--primary); }
 
 /* OPUS Android ilovasi ichida: o'rnatish/yuklab olish takliflari ko'rinmaydi */
 html.in-app #app, html.in-app #installBtn { display: none !important; }
+
+/* "Mijozlar fikri" — haqiqiy sharhlar */
+.testi-reply { font-size: 13px; color: var(--muted); padding: 8px 10px; border-radius: 10px; background: rgba(var(--prgb), .07); margin: -6px 0 14px !important; }
+.testi-prod { display: block; font-size: 12.5px; font-weight: 600; color: var(--primary); text-align: left; margin: 2px 0; }
+.testi-prod:hover { text-decoration: underline; }
+.testi .rv-ver { font-size: 11px; font-weight: 700; color: var(--ok); }
