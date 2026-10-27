@@ -78,9 +78,19 @@ async function api(method, path, body) {
 
 // Katalog: avval keshdan (bir zumda), keyin serverdan yangisi
 function applyCatalog(d) {
-  if (!d || !d.PRODUCTS || !d.PRODUCTS.length) return;
-  S.settings = d.SETTINGS || S.settings; S.cats = d.CATEGORIES || S.cats; S.products = d.PRODUCTS; S.news = d.NEWS || S.news;
+  if (d && d.PRODUCTS && d.PRODUCTS.length) { S.settings = d.SETTINGS || S.settings; S.cats = d.CATEGORIES || S.cats; S.products = d.PRODUCTS; S.news = d.NEWS || S.news; }
+  applyRv();
 }
+// Reyting va sharhlar soni — serverdagi haqiqiy sharhlardan (katalogdagi qo'lda yozilgan sonlar ishlatilmaydi)
+function applyRv() {
+  const rv = store.get("app_rv", {});
+  S.products.forEach((p) => { const s = rv[p.id]; p.reviews = s ? s[0] : 0; p.rating = s ? s[1] : 0; });
+}
+async function loadRv() {
+  const r = await api("GET", "/api/reviews/summary");
+  store.set("app_rv", r.s || {}); applyRv();
+}
+const rateTxt = (p) => p.reviews ? `<b>★</b> ${p.rating} <span>(${p.reviews} sharh)</span>` : `<span>☆ Hali baho yo'q</span>`;
 applyCatalog(store.get("app_catalog", null));
 async function loadCatalog() {
   const d = await api("GET", "/api/catalog");
@@ -221,7 +231,7 @@ function card(p, o) {
     <div class="pc-b">
       <span class="pc-m">${num(p.price / 12)} so'm/oy</span>
       <p class="pc-n">${esc(p.name)}</p>
-      <span class="pc-r"><b>★</b> ${p.rating || "—"} <span>(${p.reviews || 0} sharh)</span></span>
+      <span class="pc-r">${rateTxt(p)}</span>
       ${o && o.deal && !out ? `<span class="dealbar"><i style="--w:${Math.min(100, Math.max(10, (p.stock || 0) * 7))}%"></i><small>${p.stock <= 5 ? `🔥 Faqat ${p.stock} dona qoldi` : `Omborda ${p.stock} dona`}</small></span>` : ""}
       <div class="pc-p"><div>${d ? `<s>${num(p.old)}</s>` : ""}<b class="${d ? "sale" : ""}">${num(p.price)} <small>so'm</small></b></div>
         <button class="add${q ? " in" : ""}" data-add="${p.id}" ${out ? "disabled" : ""} aria-label="Savatga">${svg(q ? IC.check : IC.cart)}</button></div>
@@ -517,7 +527,7 @@ function rowCard(p) {
   const d = disc(p), q = inCart(p.id), out = (p.stock || 0) <= 0;
   return `<article class="rc${out ? " out" : ""}" data-pid="${p.id}">
     <div class="rc-img"><img src="${esc(hi(p.img, 330))}" alt="" loading="lazy" onerror="imgErr(this)" />${d ? `<span class="tag">−${d}%</span>` : ""}</div>
-    <div class="rc-b"><p class="pc-n">${esc(p.name)}</p><span class="pc-r"><b>★</b> ${p.rating || "—"} · ${p.reviews || 0} sharh</span>
+    <div class="rc-b"><p class="pc-n">${esc(p.name)}</p><span class="pc-r">${rateTxt(p)}</span>
       <span class="pc-m">${num(p.price / 12)} so'm/oy</span>
       <div class="pc-p"><div>${d ? `<s>${num(p.old)}</s>` : ""}<b class="${d ? "sale" : ""}">${num(p.price)} <small>so'm</small></b></div>
         <span style="display:flex;gap:6px"><button class="fav-s${S.fav.includes(p.id) ? " on" : ""}" data-fav="${p.id}" aria-label="Saralanganga">${heartSvg}</button><button class="add${q ? " in" : ""}" data-add="${p.id}" ${out ? "disabled" : ""} aria-label="Savatga">${svg(q ? IC.check : IC.cart)}</button></span></div></div>
@@ -582,7 +592,7 @@ function openProduct(id) {
           <div class="pd-price"><b class="${d ? "sale" : ""}">${fmt(p.price)}</b>${d ? `<s>${fmt(p.old)}</s><span class="tag">−${d}%</span>` : ""}</div>
           ${d ? `<div class="save">💰 Tejaysiz: <b>${fmt(p.old - p.price)}</b></div>` : ""}
           <h2 class="pd-name">${esc(p.name)}</h2>
-          <div class="pd-meta"><button data-torv><b>★ ${p.rating || "—"}</b> · <span>${p.reviews || 0}</span> sharh</button><button data-brand-go>${esc(p.brand)} ›</button>${p.original !== false ? `<span>🛡 Original</span>` : ""}<button class="cmp-btn${S.compare.includes(p.id) ? " on" : ""}" data-cmp="${p.id}">⚖️ Taqqoslash</button></div>
+          <div class="pd-meta"><button data-torv>${p.reviews ? `<b>★ ${p.rating}</b> · ${p.reviews} sharh` : "☆ Hali baho yo'q — birinchi bo'ling"}</button><button data-brand-go>${esc(p.brand)} ›</button>${p.original !== false ? `<span>🛡 Original</span>` : ""}<button class="cmp-btn${S.compare.includes(p.id) ? " on" : ""}" data-cmp="${p.id}">⚖️ Taqqoslash</button></div>
           <button class="nasiya" id="nas"><span>💜</span><div><b id="nasB">${fmt(p.price / S.months)} × ${S.months} oy</b><small>Uzum Nasiya orqali 0% bo'lib to'lash</small></div><span>›</span></button>
           <div class="box">
             <div class="row"><span class="ri">📦</span><div><b class="${stock <= 0 ? "stock-out" : stock <= 5 ? "stock-low" : "stock-ok"}">${stock <= 0 ? "Tugagan" : stock <= 5 ? `Tez tugaydi — ${stock} dona qoldi` : `Omborda ${stock} dona bor`}</b><small>OPUS MARKET omboridan</small></div></div>
@@ -675,7 +685,7 @@ function writeReview(p, el) {
         const b = $("#rvSend", box); b.disabled = true;
         try {
           await api("POST", `/api/products/${p.id}/reviews`, { rating, text: $("#rvText", box).value });
-          closeSheet(); toast("🙏 Rahmat! Sharhingiz qo'shildi"); loadReviews(p, el);
+          closeSheet(); toast("🙏 Rahmat! Sharhingiz qo'shildi"); loadReviews(p, el); loadRv().then(() => refreshRoot("home")).catch(() => {});
         } catch (ex) { $("#rvErr", box).textContent = ex.message; $("#rvErr", box).hidden = false; b.disabled = false; }
       }
     });
@@ -1506,7 +1516,7 @@ function openCompare() {
         $("#cmpSb", el).innerHTML = `<div class="cmp" style="--n:${L.length}">
           <div class="cmp-row head">${L.map((p) => `<div class="cmp-c"><button class="cmp-x" data-cx="${p.id}" aria-label="Olib tashlash">✕</button><button data-pid="${p.id}" class="cmp-img"><img src="${esc(hi(p.img, 330))}" alt="" onerror="imgErr(this)" /></button><b>${esc(p.name)}</b></div>`).join("")}</div>
           <p class="cmp-k">Narx</p><div class="cmp-row">${L.map((p) => `<div class="cmp-c${p.price === minP ? " best" : ""}"><b>${fmt(p.price)}</b>${p.price === minP ? "<small>🏆 eng arzon</small>" : `<small>+${fmt(p.price - minP)}</small>`}</div>`).join("")}</div>
-          <p class="cmp-k">Reyting</p><div class="cmp-row">${L.map((p) => `<div class="cmp-c${(p.rating || 0) === maxR ? " best" : ""}"><b>★ ${p.rating || "—"}</b><small>${p.reviews || 0} sharh</small></div>`).join("")}</div>
+          <p class="cmp-k">Reyting</p><div class="cmp-row">${L.map((p) => `<div class="cmp-c${p.reviews && p.rating === maxR ? " best" : ""}"><b>${p.reviews ? "★ " + p.rating : "—"}</b><small>${p.reviews || 0} sharh</small></div>`).join("")}</div>
           <p class="cmp-k">Omborda</p><div class="cmp-row">${L.map((p) => `<div class="cmp-c"><b class="${(p.stock || 0) <= 0 ? "stock-out" : (p.stock || 0) <= 5 ? "stock-low" : "stock-ok"}">${(p.stock || 0) <= 0 ? "Tugagan" : p.stock + " dona"}</b></div>`).join("")}</div>
           ${keys.map((k) => `<p class="cmp-k">${esc(k)}</p><div class="cmp-row">${L.map((p) => `<div class="cmp-c">${esc((p.specs || {})[k] || "—")}</div>`).join("")}</div>`).join("")}
           <div class="cmp-row" style="margin-top:12px">${L.map((p) => `<div class="cmp-c"><button class="btn sm block" data-cadd="${p.id}" ${(p.stock || 0) <= 0 ? "disabled" : ""}>${inCart(p.id) ? "✓ Savatda" : "Savatga"}</button></div>`).join("")}</div>
@@ -1760,6 +1770,7 @@ switchTab("home");
 addEventListener("storage", (e) => { if (e.key === "opus_cart") { S.cart = store.get("cart", []); badges(); refreshRoot("cart"); } });
 // Yangi katalog: narx/ombor o'zgargan bo'lishi mumkin
 loadCatalog().then(() => { refreshRoot("home"); refreshRoot("catalog"); badges(); }).catch(() => {});
+loadRv().then(() => { refreshRoot("home"); refreshRoot("fav"); }).catch(() => {});
 if (auth.token) api("GET", "/api/me").then((r) => setAuth(auth.token, r.user)).catch(() => {});
 document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - (window.__lastSync || 0) > 120e3) { window.__lastSync = Date.now(); loadCatalog().then(() => tab === "home" && stacks.home.length === 1 && refreshRoot("home")).catch(() => {}); } });
 // Telefon brauzerida ham: tizimning "orqaga" ishorasi stekni yopsin
