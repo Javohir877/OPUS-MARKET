@@ -58,6 +58,8 @@ function setAuth(token, user) {
   auth.token = token || null; auth.user = token ? user : null;
   store.set("token", auth.token); store.set("user", auth.user);
   if (!token) S.orders = null;
+  // Android vidjeti uchun: sessiya tokenini ilovaga uzatamiz
+  try { window.OPUSApp && OPUSApp.session && OPUSApp.session(auth.token || ""); } catch (e) {}
 }
 async function api(method, path, body) {
   let res;
@@ -941,7 +943,11 @@ function profileScreen() {
     },
   };
 }
-async function loadOrders() { const r = await api("GET", "/api/orders"); S.orders = r.orders; return S.orders; }
+async function loadOrders() {
+  const r = await api("GET", "/api/orders"); S.orders = r.orders;
+  try { window.OPUSApp && OPUSApp.orders && OPUSApp.orders(JSON.stringify(S.orders || [])); } catch (e) {}
+  return S.orders;
+}
 function bindMenu(el) {
   el.addEventListener("click", (e) => {
     const m = e.target.closest("[data-m]"); if (!m) return;
@@ -1833,5 +1839,20 @@ if (VERSION === "web") {
 checkDrops();
 onboarding();
 syncOrders().catch(() => {});
+// Vidjetdan ochilgan bo'lsa — to'g'ridan-to'g'ri "Buyurtmalarim"
+function openFromHash() {
+  if (location.hash !== "#orders") return;
+  history.replaceState(history.state, "", location.pathname + location.search);
+  if (!auth.token) return switchTab("profile");
+  switchTab("profile"); openOrders("active");
+}
+openFromHash();
+addEventListener("hashchange", openFromHash);
+// Kirish animatsiyasini yopamiz (kamida ~900ms ko'rinsin)
+(function () {
+  const el = document.getElementById("intro"); if (!el) return;
+  const wait = Math.max(0, 950 - (performance.now() - (window.__introT || 0)));
+  setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 600); }, wait);
+})();
 setInterval(() => { if (!document.hidden) syncOrders().catch(() => {}); }, 60000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) syncOrders().catch(() => {}); });
