@@ -19,8 +19,43 @@
       document.documentElement.dataset.theme = t;
     })();
   </script>
+  <style>
+    /* Kirish animatsiyasi — native splash'ning davomi (fon #0c0708, markazda logo) */
+    #intro { position: fixed; inset: 0; z-index: 9999; background: radial-gradient(120% 80% at 50% 45%, #2a0a10 0%, #0c0708 60%); display: grid; place-items: center; transition: opacity .5s ease, transform .5s ease; }
+    #intro.out { opacity: 0; transform: scale(1.06); pointer-events: none; }
+    #intro .in-box { position: relative; display: flex; flex-direction: column; align-items: center; }
+    #intro .in-logo { position: relative; width: 132px; height: 132px; display: grid; place-items: center; }
+    #intro .in-logo img { width: 104px; height: 104px; border-radius: 26px; animation: inPop .7s cubic-bezier(.2,1.4,.4,1) both; box-shadow: 0 0 0 0 rgba(225,15,42,.6); }
+    #intro .in-logo svg { position: absolute; inset: -10px; width: 152px; height: 152px; transform: rotate(-90deg); }
+    #intro .in-logo circle { fill: none; stroke: #e10f2a; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 440; stroke-dashoffset: 440; animation: inRing .9s .15s ease-out forwards; filter: drop-shadow(0 0 6px #e10f2a); }
+    #intro .in-glow { position: absolute; top: -44px; left: 50%; margin-left: -110px; width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, rgba(225,15,42,.35), transparent 65%); animation: inPulse 1.6s ease-in-out infinite; }
+    #intro .in-word { margin-top: 26px; font: 800 22px/1 Orbitron, Inter, sans-serif; letter-spacing: .18em; color: #fff; display: flex; }
+    #intro .in-word span { opacity: 0; transform: translateY(10px); animation: inChar .45s ease-out forwards; }
+    #intro .in-word .r { color: #ff2d4a; }
+    #intro .in-bar { margin-top: 22px; width: 120px; height: 3px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
+    #intro .in-bar i { display: block; height: 100%; width: 40%; border-radius: 3px; background: linear-gradient(90deg, #e10f2a, #ff6b81); animation: inLoad 1s ease-in-out infinite; }
+    @keyframes inPop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @keyframes inRing { to { stroke-dashoffset: 0; } }
+    @keyframes inPulse { 0%,100% { transform: scale(.9); opacity: .6; } 50% { transform: scale(1.1); opacity: 1; } }
+    @keyframes inChar { to { opacity: 1; transform: none; } }
+    @keyframes inLoad { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+    @media (prefers-reduced-motion: reduce) { #intro *, #intro { animation: none !important; transition: none !important; } #intro .in-word span { opacity: 1; transform: none; } #intro .in-logo circle { stroke-dashoffset: 0; } }
+  </style>
 </head>
 <body>
+  <div id="intro" aria-hidden="true">
+    <div class="in-box">
+      <div class="in-glow"></div>
+      <div class="in-logo"><svg viewBox="0 0 152 152"><circle cx="76" cy="76" r="70"/></svg><img src="../icons/icon-192.png" alt="" /></div>
+      <div class="in-word"><span class="r" style="animation-delay:0.35s">O</span><span class="r" style="animation-delay:0.39s">P</span><span class="r" style="animation-delay:0.43s">U</span><span class="r" style="animation-delay:0.47s">S</span><span style="animation-delay:0.51s">&nbsp;</span><span style="animation-delay:0.55s">M</span><span style="animation-delay:0.59s">A</span><span style="animation-delay:0.63s">R</span><span style="animation-delay:0.67s">K</span><span style="animation-delay:0.71s">E</span><span style="animation-delay:0.75s">T</span></div>
+      <div class="in-bar"><i></i></div>
+    </div>
+  </div>
+  <script>
+    // Har ishga tushishda bir marta; sahifa qayta yuklansa ko'rsatilmaydi
+    window.__introT = performance.now();
+    try { if (sessionStorage.getItem("opus_intro")) document.getElementById("intro").remove(); sessionStorage.setItem("opus_intro", "1"); } catch (e) {}
+  </script>
   <div id="stage"></div>
 
   <nav class="tabbar" id="tabbar">
@@ -38,6 +73,6 @@
   <script src="../assets.js?v=26"></script>
   <script src="../data.js?v=26"></script>
   <script src="../sfx.js?v=29"></script>
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>
