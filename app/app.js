@@ -199,7 +199,9 @@ function toast(msg, act) {
 }
 function openSheet(html, onMount) {
   haptic(6);
-  $("#sheetBody").innerHTML = html;
+  // Har safar toza element: oldingi oynalarning tinglovchilari qolib ketmasin
+  const ob = $("#sheetBody"), nb = ob.cloneNode(false); ob.replaceWith(nb);
+  nb.innerHTML = html;
   $("#sheet").hidden = false; $("#sheetBg").hidden = false;
   requestAnimationFrame(() => requestAnimationFrame(() => $("#sheet").classList.add("open")));
   onMount && onMount($("#sheetBody"));
@@ -335,6 +337,7 @@ function homeScreen() {
         <div class="banners" id="banners">${banners.map((b) => `<button class="bn ${b.cls}" data-bn="${b.act}"><img src="${esc(hi(b.img, 500))}" alt="" onerror="imgErr(this)" /><small>${esc(b.small)}</small><b>${esc(b.b)}</b><span>${esc(b.span)}</span></button>`).join("")}</div>
         <div class="dots" id="bnDots">${banners.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>
         <div class="sec"><div class="cats">${S.cats.map((c) => `<button class="cat" data-cat="${esc(c.id)}"><span class="ci"><img src="${esc(hi(c.img, 330))}" alt="" loading="lazy" onerror="imgErr(this)" /></span>${esc(c.name)}</button>`).join("")}</div></div>
+        ${toolsRow()}
         ${deals.length ? `<div class="sec"><div class="sec-h"><h2>⚡ Kun takliflari <span class="timer" id="dealTimer"></span></h2><button data-open="deals">Barchasi</button></div><div class="hscroll">${deals.map((p) => card(p, { deal: true })).join("")}</div></div>` : ""}
         ${brandsRow()}${top10.length ? `<div class="sec"><div class="sec-h"><h2>🏆 TOP-10</h2><small class="muted">eng ko'p tanlanganlar</small></div><div class="hscroll t10s">${top10.map((p, i) => `<button class="t10" data-pid="${p.id}"><b class="t10-n">${i + 1}</b><span class="t10-i"><img src="${esc(hi(p.img, 330))}" alt="" loading="lazy" onerror="imgErr(this)" /></span><span class="t10-t">${esc(p.name)}</span><small>${fmt(p.price)}</small></button>`).join("")}</div></div>` : ""}
         ${lowRow()}${forYou.length ? `<div class="sec"><div class="sec-h"><h2>✨ Sizga yoqishi mumkin</h2></div><div class="hscroll">${forYou.map((p) => card(p)).join("")}</div></div>` : ""}
@@ -1856,3 +1859,204 @@ addEventListener("hashchange", openFromHash);
 })();
 setInterval(() => { if (!document.hidden) syncOrders().catch(() => {}); }, 60000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) syncOrders().catch(() => {}); });
+
+// =====================================================================
+// ---------- v2.4: silliqlik, kompyuter yig'ish, tezkor ko'rish ----------
+// =====================================================================
+// Tab almashganda yo'nalishga qarab suriladi; qayta chizilgan ekranlar kartochkalarni qayta "o'ynatmaydi"
+{
+  const _switch = switchTab, _refresh = refreshRoot;
+  switchTab = function (t, reset) {
+    const from = TABS.indexOf(tab), had = tab;
+    _switch(t, reset);
+    moveInd();
+    if (had && had !== t) { const top = current(); top.classList.remove("fade", "tab-l", "tab-r"); void top.offsetWidth; top.classList.add(TABS.indexOf(t) > from ? "tab-r" : "tab-l"); setTimeout(() => top.classList.remove("tab-l", "tab-r"), 300); }
+  };
+  refreshRoot = function (t) { _refresh(t); const el = stacks[t][0]; if (el) el.classList.add("quiet"); };
+}
+// Tab panelidagi suzuvchi indikator
+const tbInd = document.createElement("i"); tbInd.className = "tb-ind"; $("#tabbar").appendChild(tbInd);
+function moveInd() { const i = TABS.indexOf(tab); if (i >= 0) tbInd.style.transform = `translateX(${i * 100}%)`; }
+moveInd();
+
+// Chap chetdan surib orqaga qaytish (barmoq ortidan yuradi)
+(function edgeSwipe() {
+  let el = null, prev = null, x0 = 0, y0 = 0, dx = 0, t0 = 0, lock = null;
+  const W = () => stage.clientWidth;
+  const set = (x) => { el.style.transform = `translateX(${x}px)`; prev.style.transform = `translateX(${-0.22 * W() + 0.22 * x}px)`; prev.style.opacity = 0.6 + 0.4 * (x / W()); };
+  stage.addEventListener("touchstart", (e) => {
+    const s = stacks[tab]; if (!s || s.length < 2 || !$("#sheet").hidden) return;
+    const t = e.touches[0]; if (t.clientX > 24) return;
+    el = s[s.length - 1]; prev = s[s.length - 2]; x0 = t.clientX; y0 = t.clientY; dx = 0; t0 = Date.now(); lock = null;
+  }, { passive: true });
+  stage.addEventListener("touchmove", (e) => {
+    if (!el) return;
+    const t = e.touches[0], mx = t.clientX - x0, my = t.clientY - y0;
+    if (lock == null && (Math.abs(mx) > 8 || Math.abs(my) > 8)) {
+      lock = mx > Math.abs(my) ? "x" : "y";
+      if (lock === "y") { el = prev = null; return; }
+      prev.classList.add("peek"); el.classList.add("dragging"); prev.classList.add("dragging");
+    }
+    if (lock !== "x") return;
+    dx = Math.max(0, mx); set(dx);
+  }, { passive: true });
+  const end = () => {
+    if (!el || lock !== "x") { el = prev = null; return; }
+    const a = el, b = prev, v = dx / Math.max(1, Date.now() - t0), go = dx > W() * 0.35 || v > 0.6;
+    el = prev = null;
+    [a, b].forEach((x) => { x.classList.remove("dragging"); x.style.transition = "transform .24s cubic-bezier(.2,.8,.2,1), opacity .24s"; });
+    if (go) { a.style.transform = `translateX(${W()}px)`; b.style.transform = "translateX(0)"; b.style.opacity = 1; }
+    else { a.style.transform = ""; b.style.transform = `translateX(${-0.22 * W()}px)`; b.style.opacity = 0.6; }
+    setTimeout(() => {
+      [a, b].forEach((x) => { x.style.transition = x.style.transform = x.style.opacity = ""; });
+      b.classList.remove("peek");
+      if (!go) return;
+      const s = stacks[tab]; if (s[s.length - 1] !== a) return;
+      haptic(5); window.sfx && sfx("back");
+      s.pop(); b.removeAttribute("inert");
+      a._def.unmount && a._def.unmount(a); a.remove();
+      b._def.onShow && b._def.onShow(b); syncTabbar();
+    }, 250);
+  };
+  stage.addEventListener("touchend", end); stage.addEventListener("touchcancel", end);
+})();
+
+// Pastki oynani pastga tortib yopish
+(function sheetDrag() {
+  const sh = $("#sheet"); let y0 = null, dy = 0;
+  sh.addEventListener("touchstart", (e) => { if (sh.scrollTop > 0) return; y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
+  sh.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = e.touches[0].clientY - y0; if (dy < 0 || sh.scrollTop > 0) { dy = 0; return; } sh.style.transition = "none"; sh.style.transform = `translateY(${dy}px)`; }, { passive: true });
+  sh.addEventListener("touchend", () => { if (y0 == null) return; y0 = null; sh.style.transition = sh.style.transform = ""; if (dy > 110) closeSheet(); });
+})();
+
+// Kartochkani bosib turish — tezkor ko'rish
+(function quickPeek() {
+  let tm = null, sx = 0, sy = 0, fired = false;
+  document.addEventListener("touchstart", (e) => {
+    const c = e.target.closest(".pc[data-pid], .rc[data-pid], .t10[data-pid]"); fired = false;
+    if (!c || e.target.closest("[data-add], [data-fav], [data-cmp]")) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    c.classList.add("holding");
+    tm = setTimeout(() => { tm = null; fired = true; c.classList.remove("holding"); haptic(18); quickView(+c.dataset.pid); }, 460);
+    const clear = () => { clearTimeout(tm); tm = null; c.classList.remove("holding"); };
+    c.addEventListener("touchend", clear, { once: true }); c.addEventListener("touchcancel", clear, { once: true });
+  }, { passive: true });
+  document.addEventListener("touchmove", (e) => { if (tm && Math.hypot(e.touches[0].clientX - sx, e.touches[0].clientY - sy) > 10) { clearTimeout(tm); tm = null; $$(".holding").forEach((x) => x.classList.remove("holding")); } }, { passive: true });
+  document.addEventListener("click", (e) => { if (fired) { fired = false; e.stopPropagation(); e.preventDefault(); } }, true);
+  document.addEventListener("contextmenu", (e) => { if (e.target.closest("[data-pid]")) e.preventDefault(); });
+})();
+function quickView(id) {
+  const p = byId(id); if (!p) return;
+  const d = disc(p), out = (p.stock || 0) <= 0;
+  openSheet(`<div class="qv">
+      <div class="qv-img"><img src="${esc(hi(p.img, 500))}" alt="" onerror="imgErr(this)" />${d ? `<span class="tag">−${d}%</span>` : ""}</div>
+      <small class="muted">${esc(p.brand)} · ${esc(catOf(p.cat).name)}</small>
+      <h3>${esc(p.name)}</h3>
+      <div class="qv-row"><b>${fmt(p.price)}</b>${d ? `<s>${num(p.old)}</s>` : ""}<span class="pc-r">${rateTxt(p)}</span></div>
+      <p class="muted qv-st">${out ? "⛔ Hozircha tugagan" : `✓ Omborda bor · ${num(p.price / 12)} so'm/oydan`}</p>
+      <div class="qv-btns"><button class="btn ghost" data-qv="fav">${S.fav.includes(p.id) ? "💔 Olib tashlash" : "❤️ Saralash"}</button><button class="btn ghost" data-qv="open">Batafsil</button><button class="btn" data-qv="add" ${out ? "disabled" : ""}>${inCart(p.id) ? "✓ Savatda" : "🛒 Savatga"}</button></div>
+    </div>`, (b) => b.addEventListener("click", (e) => {
+    const k = e.target.closest("[data-qv]"); if (!k) return;
+    const a = k.dataset.qv;
+    if (a === "open") { closeSheet(); openProduct(p.id); }
+    if (a === "fav") { toggleFav(p.id); closeSheet(); refreshCards(); }
+    if (a === "add") { if (inCart(p.id)) { closeSheet(); switchTab("cart"); return; } if (addToCart(p.id)) { k.textContent = "✓ Savatda"; refreshCards(); setTimeout(closeSheet, 350); } }
+  }));
+}
+
+// ---------- Kompyuter yig'ish (konfigurator) ----------
+const PC_SLOTS = [
+  { k: "cpu", t: "Protsessor", e: "🧠", m: (p) => p.cat === "parts" && /\b(Core i\d|Ryzen|Xeon)\b/i.test(p.name) },
+  { k: "mb", t: "Ona plata", e: "🔲", m: (p) => p.cat === "parts" && /\b[ZBXH]\d{3}\b|motherboard|ona plata/i.test(p.name) },
+  { k: "gpu", t: "Videokarta", e: "🎮", m: (p) => p.cat === "parts" && /RTX|GTX|Radeon|GeForce|Arc A\d/i.test(p.name) },
+  { k: "ram", t: "Operativ xotira", e: "⚡", m: (p) => p.cat === "parts" && /\bDDR\d/i.test(p.name) },
+  { k: "ssd", t: "Disk (SSD/HDD)", e: "💾", m: (p) => p.cat === "storage" && /NVMe|SSD|BarraCuda|A400|HDD/i.test(p.name) && !/Portable|Passport|Expansion|microSD|fleshka/i.test(p.name) },
+  { k: "psu", t: "Blok pitaniya", e: "🔌", m: (p) => p.cat === "parts" && /\b\d{3,4}\s?W\b/i.test(p.name) },
+  { k: "cool", t: "Sovutish", e: "❄️", m: (p) => p.cat === "parts" && /Noctua|NH-|cooler|kuler|AIO|Kraken/i.test(p.name) },
+];
+// Moslik: faqat aniq ma'lum bo'lgan holatlar tekshiriladi
+const cpuSock = (n) => /i\d-1[2-4]\d{3}/i.test(n) ? "LGA1700" : /i\d-[89]\d{3}/i.test(n) ? "LGA1151" : /Ryzen \d \d{4}/i.test(n) ? (+n.match(/Ryzen \d (\d)\d{3}/i)[1] >= 7 ? "AM5" : "AM4") : null;
+const mbSock = (n) => /\b[ZBH](3[67]0|390|360)\b/.test(n) ? "LGA1151" : /\b[ZBH](6[69]0|7[69]0)\b/.test(n) ? "LGA1700" : /\b[BX](4[57]0|5[57]0)\b/.test(n) ? "AM4" : /\b[BX](6[57]0|8[57]0)\b/.test(n) ? "AM5" : null;
+const memOf = (n) => (n.match(/DDR(\d)/i) || [])[1];
+const GPU_PSU = [[/5090/, 1000], [/4090/, 850], [/4080/, 750], [/7900 XTX/i, 800], [/7900 XT\b/i, 750], [/6800 XT/i, 750], [/4070 Ti/i, 700], [/4070/, 650], [/4060/, 550], [/3060/, 550]];
+function pcCheck(b) {
+  const P = (k) => b[k] && byId(b[k]), W = [];
+  const cpu = P("cpu"), mb = P("mb"), ram = P("ram"), gpu = P("gpu"), psu = P("psu");
+  if (cpu && mb) { const a = cpuSock(cpu.name), c = mbSock(mb.name); if (a && c && a !== c) W.push(`Protsessor (${a}) va ona plata (${c}) razyomi mos emas`); }
+  if (mb && ram) { const s = mbSock(mb.name), r = memOf(ram.name), need = s === "LGA1151" || s === "AM4" ? "4" : s === "AM5" ? "5" : null; if (need && r && r !== need) W.push(`Ona plata DDR${need} xotirani qo'llaydi, tanlangani DDR${r}`); }
+  if (gpu && psu) { const g = GPU_PSU.find(([re]) => re.test(gpu.name)), w = +(psu.name.match(/(\d{3,4})\s?W/i) || [])[1]; if (g && w && w < g[1]) W.push(`Bu videokarta uchun kamida ${g[1]}W blok tavsiya etiladi (tanlangan: ${w}W)`); }
+  return W;
+}
+function openBuilder() {
+  const b = store.get("app_build", {});
+  Object.keys(b).forEach((k) => { if (!byId(b[k])) delete b[k]; });
+  const save = () => store.set("app_build", b);
+  push({
+    noTab: true,
+    html: hdr("🛠 Kompyuter yig'ish", `<button class="ib" data-bclear aria-label="Tozalash">${svg(IC.trash)}</button>`) + `<div class="sb" id="bSb"></div><div class="bbar" id="bBar"></div>`,
+    mount(el) {
+      const draw = () => {
+        const items = PC_SLOTS.map((s) => ({ s, p: b[s.k] && byId(b[s.k]) }));
+        const sum = items.reduce((a, x) => a + (x.p ? x.p.price : 0), 0), n = items.filter((x) => x.p).length, warn = pcCheck(b);
+        $("#bSb", el).innerHTML = `<div class="b-hero"><div class="b-ring" style="--p:${(n / PC_SLOTS.length) * 100}%"><b>${n}/${PC_SLOTS.length}</b></div><div><h2>O'z kompyuteringizni yig'ing</h2><p class="muted">Har bir bo'limdan ehtiyot qism tanlang — narx va moslik shu yerda ko'rinadi.</p></div></div>
+          ${warn.length ? `<div class="b-warn">${warn.map((w) => `<p>⚠️ ${esc(w)}</p>`).join("")}</div>` : n >= 2 ? `<div class="b-ok">✓ Tanlangan qismlarda ma'lum nomuvofiqlik topilmadi</div>` : ""}
+          <div class="slots">${items.map(({ s, p }, i) => `<button class="slot${p ? " on" : ""}" data-slot="${s.k}" style="animation-delay:${i * 40}ms"><span class="sl-i">${p ? `<img src="${esc(hi(p.img, 330))}" alt="" onerror="imgErr(this)" />` : s.e}</span><span class="sl-t"><small>${s.t}</small><b>${p ? esc(p.name) : "Tanlash"}</b>${p ? `<em>${fmt(p.price)}</em>` : ""}</span>${p ? `<i class="sl-x" data-unset="${s.k}">✕</i>` : `<i class="sl-plus">+</i>`}</button>`).join("")}</div>
+          <p class="muted b-note">Moslik faqat razyom, xotira turi va blok quvvati bo'yicha tekshiriladi. Savollar bo'lsa, operatorimiz yordam beradi.</p>`;
+        $("#bBar", el).innerHTML = `<div><small class="muted">Jami · ${n} ta qism</small><b>${fmt(sum)}</b>${sum ? `<small class="muted">${num(sum / 12)} so'm/oydan</small>` : ""}</div><button class="btn" data-ball ${n ? "" : "disabled"}>🛒 Savatga</button>`;
+      };
+      const pick = (s) => {
+        const L = S.products.filter(s.m).sort((x, y) => ((y.stock || 0) > 0) - ((x.stock || 0) > 0) || x.price - y.price);
+        openSheet(`<h3>${s.e} ${s.t}</h3>${L.length ? `<div class="pick">${L.map((p) => { const out = (p.stock || 0) <= 0; return `<button class="pk${b[s.k] === p.id ? " on" : ""}" data-pk="${p.id}" ${out ? "disabled" : ""}><img src="${esc(hi(p.img, 330))}" alt="" onerror="imgErr(this)" /><span><b>${esc(p.name)}</b><small>${out ? "Tugagan" : fmt(p.price)}</small></span></button>`; }).join("")}</div>` : `<p class="muted">Hozircha bu bo'limda mahsulot yo'q.</p>`}`, (sb) =>
+          sb.addEventListener("click", (e) => { const k = e.target.closest("[data-pk]"); if (!k) return; b[s.k] = +k.dataset.pk; save(); haptic(8); closeSheet(); draw(); }));
+      };
+      el.addEventListener("click", (e) => {
+        const u = e.target.closest("[data-unset]"); if (u) { e.stopPropagation(); delete b[u.dataset.unset]; save(); draw(); return; }
+        const s = e.target.closest("[data-slot]"); if (s) { pick(PC_SLOTS.find((x) => x.k === s.dataset.slot)); return; }
+        if (e.target.closest("[data-bclear]")) { Object.keys(b).forEach((k) => delete b[k]); save(); draw(); return; }
+        if (e.target.closest("[data-ball]")) {
+          let ok = 0; Object.values(b).forEach((id) => { if (!inCart(id) && addToCart(id, 1, true)) ok++; });
+          refreshCards(); badges(); toast(ok ? `🛒 ${ok} ta qism savatga qo'shildi` : "✓ Hammasi allaqachon savatda", { t: "Savat", fn: () => switchTab("cart") });
+        }
+      });
+      draw();
+    },
+  });
+}
+
+// ---------- Byudjetga mos ----------
+function openBudget() {
+  const P = S.products.filter((p) => (p.stock || 0) > 0);
+  const max = Math.max(...P.map((p) => p.price));
+  let cat = "", val = Math.min(max, store.get("app_budget", 5e6));
+  const steps = [500e3, 1e6, 3e6, 5e6, 10e6, 20e6];
+  const count = () => P.filter((p) => p.price <= val && (!cat || p.cat === cat)).length;
+  openSheet(`<h3>💰 Byudjetga mos</h3><p class="muted" style="margin:-6px 0 14px">Qancha sarflamoqchisiz?</p>
+    <div class="bud-v" id="bv"></div><input type="range" class="bud-r" id="br" min="100000" max="${max}" step="50000" value="${val}" />
+    <div class="chips bud-q">${steps.filter((x) => x < max).map((x) => `<button class="chip" data-bq="${x}">${x >= 1e6 ? x / 1e6 + " mln" : x / 1e3 + " ming"}</button>`).join("")}</div>
+    <div class="chips bud-c"><button class="chip on" data-bc="">Hammasi</button>${S.cats.map((c) => `<button class="chip" data-bc="${esc(c.id)}">${esc(c.name)}</button>`).join("")}</div>
+    <button class="btn block" id="bgo"></button>`, (b) => {
+    const upd = () => { $("#bv", b).textContent = fmt(val); $("#br", b).value = val; $("#br", b).style.setProperty("--f", ((val - 100000) / (max - 100000)) * 100 + "%"); $("#bgo", b).textContent = `${count()} ta mahsulotni ko'rish`; };
+    $("#br", b).addEventListener("input", (e) => { val = +e.target.value; upd(); });
+    b.addEventListener("click", (e) => {
+      const q = e.target.closest("[data-bq]"); if (q) { val = +q.dataset.bq; haptic(5); upd(); }
+      const c = e.target.closest("[data-bc]"); if (c) { cat = c.dataset.bc; $$("[data-bc]", b).forEach((x) => x.classList.toggle("on", x === c)); upd(); }
+    });
+    $("#bgo", b).onclick = () => { store.set("app_budget", val); closeSheet(); const v = val, c = cat; openList({ title: `💰 ${fmt(v)} gacha`, filter: (p) => p.price <= v && (p.stock || 0) > 0 && (!c || p.cat === c), sort: "popular" }); };
+    upd();
+  });
+}
+
+// Bosh sahifadagi "Asboblar" qatori
+function toolsRow() {
+  const T = [["build", "🛠", "Kompyuter yig'ish", "o'zingiz tanlang"], ["budget", "💰", "Byudjetga mos", "narx bo'yicha"], ["cmp", "⚖️", "Taqqoslash", S.compare.length ? `${S.compare.length} ta tanlangan` : "2–4 mahsulot"], ["orders", "📦", "Buyurtmalarim", "holatini kuzating"]];
+  return `<div class="sec"><div class="tools">${T.map(([k, e, t, s], i) => `<button class="tool t-${k}" data-tool="${k}" style="animation-delay:${i * 50}ms"><em>${e}</em><b>${t}</b><small>${esc(s)}</small></button>`).join("")}</div></div>`;
+}
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-tool]"); if (!t) return;
+  const k = t.dataset.tool;
+  if (k === "build") openBuilder();
+  if (k === "budget") openBudget();
+  if (k === "cmp") S.compare.length ? openCompare() : toast("⚖️ Mahsulot sahifasida \"Taqqoslash\" tugmasini bosing");
+  if (k === "orders") requireAuth(() => { switchTab("profile"); openOrders(); });
+});
+refreshRoot("home");
