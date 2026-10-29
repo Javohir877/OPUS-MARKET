@@ -2060,3 +2060,160 @@ document.addEventListener("click", (e) => {
   if (k === "orders") requireAuth(() => { switchTab("profile"); openOrders(); });
 });
 refreshRoot("home");
+
+// =====================================================================
+// ---------- v2.5: React Bits'dan ilhomlangan effektlar (vanilla JS) ----------
+// =====================================================================
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// Lanyard: Kabinetdagi a'zolik kartasi ipga osilgan, barmoq bilan tortib tashlash mumkin
+function initLanyard(root) {
+  const box = $(".lan", root); if (!box) return;
+  const card = $(".lan-card", box), path = $(".lan-strap path", box), svgEl = $(".lan-strap", box);
+  const L = 74, G = 1500, K = 420, DAMP = 4;
+  let W = box.clientWidth, px = W / 2;
+  let x = 0, y = L, vx = 0, vy = 0, rot = 0, vr = 0, drag = null, raf = 0, last = 0;
+  const draw = () => {
+    if (!W || W !== box.clientWidth) { W = box.clientWidth; px = W / 2; }
+    const a = Math.atan2(x, y);
+    card.style.transform = `translate(${px + x}px, ${y}px) translate(-50%, 0) rotate(${(-a * 180) / Math.PI + rot}deg)`;
+    card.style.setProperty("--hx", (50 + x * 0.6).toFixed(1) + "%");
+    card.style.setProperty("--hy", (50 + (y - L) * 0.8 + rot * 2).toFixed(1) + "%");
+    const mx = px + x * 0.5, my = y * 0.5 + 8;
+    path.setAttribute("d", `M${px} -4 Q${mx + x * 0.1} ${my} ${px + x} ${y + 6}`);
+  };
+  const step = (t) => {
+    const dt = Math.min(0.032, (t - (last || t)) / 1000 || 0.016); last = t;
+    if (!drag) {
+      const d = Math.hypot(x, y) || 1, f = -K * (d - L);
+      let ax = f * (x / d) - DAMP * vx, ay = f * (y / d) + G - DAMP * vy;
+      vx += ax * dt; vy += ay * dt; x += vx * dt; y += vy * dt;
+      if (y < 10) { y = 10; vy = Math.abs(vy) * 0.3; }
+      // Karta o'z o'qi atrofida biroz chayqaladi
+      vr += (-rot * 40 - vr * 4 - vx * 0.4) * dt; rot += vr * dt;
+    }
+    draw();
+    const still = !drag && Math.abs(vx) + Math.abs(vy) < 2 && Math.abs(x) < 0.5 && Math.abs(y - L - G / K) < 0.5 && Math.abs(rot) + Math.abs(vr) < 0.05;
+    if (still || !box.isConnected) { raf = 0; last = 0; return; }
+    raf = requestAnimationFrame(step);
+  };
+  const kick = () => { if (!raf && !reduceMotion) raf = requestAnimationFrame(step); };
+  let ox = 0, oy = 0, hist = [];
+  card.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("a, button")) return;
+    W = box.clientWidth; px = W / 2;
+    const r = box.getBoundingClientRect();
+    drag = true; ox = e.clientX - r.left - px - x; oy = e.clientY - r.top - y; hist = [];
+    try { card.setPointerCapture(e.pointerId); } catch (er) {} card.classList.add("grab"); haptic(6); kick();
+  });
+  card.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const r = box.getBoundingClientRect();
+    x = Math.max(-W / 2 + 40, Math.min(W / 2 - 40, e.clientX - r.left - px - ox));
+    y = Math.max(20, Math.min(L * 2.6, e.clientY - r.top - oy));
+    hist.push({ x, y, t: performance.now() }); if (hist.length > 5) hist.shift();
+  });
+  const up = () => {
+    if (!drag) return; drag = null; card.classList.remove("grab");
+    if (hist.length > 1) { const a = hist[0], b = hist[hist.length - 1], dt = Math.max(16, b.t - a.t) / 1000; vx = (b.x - a.x) / dt * 0.6; vy = (b.y - a.y) / dt * 0.6; }
+    if (Math.hypot(x, y - L) > 30) haptic(10);
+    kick();
+  };
+  card.addEventListener("pointerup", up); card.addEventListener("pointercancel", up);
+  // Ochilganda tepadan tushib keladi
+  draw(); if (!reduceMotion) { y = 8; x = 26; vy = 0; draw(); setTimeout(kick, 120); } else { y = L + G / K; x = 0; draw(); }
+  if (window.ResizeObserver) new ResizeObserver(() => draw()).observe(box);
+}
+{
+  const _prof = ROOTS.profile;
+  ROOTS.profile = () => {
+    const d = _prof();
+    const u = auth.user;
+    d.html = d.html.replace(/<div class="prof">([\s\S]*?<\/small><\/div>)<\/div>/, (_, inner) =>
+      `<div class="lan"><svg class="lan-strap" aria-hidden="true"><path /></svg><div class="lan-card"><i class="lan-hole"></i><div class="lan-top"><span class="brand"><i></i>OPUS<b>MARKET</b></span><em>${u ? "MEMBER" : "GUEST"}</em></div><div class="prof">${inner}</div><div class="lan-bot"><span>${u ? "№ " + String(u.id || 0).padStart(6, "0") : "Kartani tortib ko'ring 👆"}</span><i class="lan-chip"></i></div><i class="lan-glare"></i></div></div>`);
+    const m = d.mount;
+    d.mount = (el) => { m && m(el); initLanyard(el); countUpIn(el); };
+    return d;
+  };
+}
+
+// Counter: sonlar 0 dan sanab chiqadi
+function countUp(el, to, ms = 700) {
+  if (reduceMotion || !isFinite(to) || to <= 0) return;
+  const t0 = performance.now(), fmtN = (v) => num(Math.round(v));
+  const tick = (t) => { const k = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - k, 3); el.textContent = fmtN(to * e); if (k < 1) requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+}
+function countUpIn(el) { $$(".stats b", el).forEach((b) => { const n = +b.textContent.replace(/\s/g, ""); if (n) countUp(b, n, 600); }); }
+
+// Spotlight + chegara nuri: barmoq qayerda bo'lsa, o'sha yer yorishadi
+document.addEventListener("pointerdown", (e) => {
+  const c = e.target.closest(".tool, .bn, .slot, .t10, .brand-c, .pc, .dk"); if (!c) return;
+  const r = c.getBoundingClientRect();
+  c.style.setProperty("--mx", e.clientX - r.left + "px"); c.style.setProperty("--my", e.clientY - r.top + "px");
+  c.classList.remove("lit"); void c.offsetWidth; c.classList.add("lit");
+  setTimeout(() => c.classList.remove("lit"), 650);
+}, { passive: true });
+
+// Click Spark: savatga qo'shilganda uchqunlar sachraydi
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("[data-add], [data-ball], [data-qv='add']"); if (!a || a.disabled || reduceMotion) return;
+  const host = document.createElement("i"); host.className = "spark";
+  host.style.left = e.clientX + "px"; host.style.top = e.clientY + "px";
+  for (let i = 0; i < 8; i++) { const s = document.createElement("b"); s.style.setProperty("--a", i * 45 + "deg"); host.appendChild(s); }
+  document.body.appendChild(host); setTimeout(() => host.remove(), 520);
+}, true);
+
+// Stack (Card Swap): bosh sahifada kun takliflari kartalar to'plami — surib almashtiriladi
+function dealStack() {
+  const L = S.products.filter((p) => (p.stock || 0) > 0 && disc(p)).sort((a, b) => disc(b) - disc(a)).slice(0, 6);
+  if (L.length < 2) return "";
+  return `<div class="sec"><div class="sec-h"><h2>🃏 Kun kartalari</h2><small class="muted">suring yoki bosing</small></div>
+    <div class="dstack" id="dstack">${L.map((p, i) => `<div class="dk" data-dk="${p.id}" style="--i:${i}">
+      <div class="dk-img"><img src="${esc(hi(p.img, 500))}" alt="" onerror="imgErr(this)" draggable="false" /></div>
+      <div class="dk-b"><span class="tag">−${disc(p)}%</span><b>${esc(p.name)}</b><div><s>${num(p.old)}</s><strong>${fmt(p.price)}</strong></div></div></div>`).join("")}</div></div>`;
+}
+function initStack(root) {
+  const st = $("#dstack", root); if (!st) return;
+  const order = () => $$(".dk", st).forEach((c, i) => { c.style.setProperty("--i", i); c.style.zIndex = 20 - i; });
+  order();
+  let c = null, x0 = 0, y0 = 0, dx = 0, lock = null;
+  st.addEventListener("pointerdown", (e) => { c = st.firstElementChild; if (!c) return; x0 = e.clientX; y0 = e.clientY; dx = 0; lock = null; c.style.transition = "none"; });
+  st.addEventListener("pointermove", (e) => {
+    if (!c) return;
+    const mx = e.clientX - x0, my = e.clientY - y0;
+    if (lock == null && (Math.abs(mx) > 6 || Math.abs(my) > 6)) { lock = Math.abs(mx) > Math.abs(my) ? "x" : "y"; if (lock === "x") try { st.setPointerCapture(e.pointerId); } catch (er) {} }
+    if (lock !== "x") return;
+    dx = mx; c.style.transform = `translateX(${dx}px) rotate(${dx / 14}deg)`;
+  });
+  const end = () => {
+    if (!c) return;
+    const card = c; c = null; card.style.transition = "";
+    if (lock !== "x" || Math.abs(dx) < 4) { card.style.transform = ""; if (lock == null) openProduct(+card.dataset.dk); return; }
+    if (Math.abs(dx) > 80) {
+      haptic(8); window.sfx && sfx("tab");
+      card.style.transform = `translateX(${Math.sign(dx) * 420}px) rotate(${Math.sign(dx) * 24}deg)`; card.style.opacity = "0";
+      setTimeout(() => { card.style.transition = "none"; card.style.transform = ""; card.style.opacity = ""; st.appendChild(card); order(); void card.offsetWidth; card.style.transition = ""; }, 260);
+    } else card.style.transform = "";
+  };
+  st.addEventListener("pointerup", end); st.addEventListener("pointercancel", end);
+  // Kartalar o'zi ham vaqti-vaqti bilan almashadi
+  root._dsT = setInterval(() => {
+    if (document.hidden || root.hasAttribute("inert") || c) return;
+    const r = st.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) return;
+    const f = st.firstElementChild; f.classList.add("dk-out");
+    setTimeout(() => { f.classList.remove("dk-out"); st.appendChild(f); order(); }, 420);
+  }, 5000);
+}
+{
+  const _home = ROOTS.home;
+  ROOTS.home = () => {
+    const d = _home();
+    d.html = d.html.replace(`<div class="sec"><div class="tools">`, () => `${dealStack()}<div class="sec"><div class="tools">`);
+    const m = d.mount, um = d.unmount;
+    d.mount = (el) => { m && m(el); initStack(el); };
+    d.unmount = (el) => { um && um(el); clearInterval(el._dsT); };
+    return d;
+  };
+}
+refreshRoot("home"); refreshRoot("profile");
