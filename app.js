@@ -1420,9 +1420,26 @@ window.__opusBack = () => {
     document.head.appendChild(s);
   }
 
-  // iPhone ekranidagi do'kon: eng ommabop 4 ta mahsulot
-  $("#ipCards").innerHTML = PRODUCTS.slice().sort((a, b) => b.popular - a.popular).slice(0, 4).map((p) =>
-    `<div class="ip-card"><img src="${pImg(p)}" alt="" loading="lazy" /><div><b>${escapeHtml(p.name)}</b><span>${fmt(p.price).replace(" so'm", "")}</span></div></div>`).join("");
+  if (apk && apk.sizeMB) $("#apkSize").textContent = apk.sizeMB + " MB";
+  // iPhone ekranidagi do'kon: eng ommabop mahsulotlar (haqiqiy ilova dizaynida)
+  const top = PRODUCTS.slice().sort((a, b) => b.popular - a.popular);
+  $("#ipCards").innerHTML = top.slice(0, 6).map((p) =>
+    `<div class="ip-card"><img src="${pImg(p, 300)}" alt="" loading="lazy" /><div><i>${fmt(Math.round(p.price / 12)).replace(" so'm", "")} so'm/oy</i><b>${escapeHtml(p.name)}</b><span>${fmt(p.price)}</span></div></div>`).join("");
+  $("#ipStories").innerHTML = top.slice(6, 12).map((p) => `<span><img src="${pImg(p, 120)}" alt="" loading="lazy" /></span>`).join("");
+  // Kalendar ikonkasida bugungi sana
+  const now = new Date();
+  $("#ipDow").textContent = ["Yak", "Dush", "Sesh", "Chor", "Pay", "Jum", "Shan"][now.getDay()];
+  $("#ipDay").textContent = now.getDate();
+  // Ilova aynan OPUS ikonkasidan ochilib, unga qaytib yopiladi
+  const scr = $("#ipScreen"), ic = $(".ip-app.opus");
+  const origin = () => { if (!scr.clientWidth) return; const im = ic.firstElementChild; scr.style.setProperty("--ox", ((ic.offsetLeft + ic.offsetWidth / 2) / scr.clientWidth) * 100 + "%"); scr.style.setProperty("--oy", ((ic.offsetTop + im.offsetHeight / 2) / scr.clientHeight) * 100 + "%"); };
+  origin(); addEventListener("load", origin);
+  // Sichqoncha bilan telefon biroz buriladi (3D)
+  const ph = $("#iphone"), vis = $(".app-visual");
+  if (matchMedia("(pointer: fine)").matches && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    vis.addEventListener("pointermove", (e) => { const r = vis.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5; ph.style.setProperty("--ry", (x * 22).toFixed(2) + "deg"); ph.style.setProperty("--rx", (-y * 14).toFixed(2) + "deg"); });
+    vis.addEventListener("pointerleave", () => { ph.style.setProperty("--ry", "0deg"); ph.style.setProperty("--rx", "0deg"); });
+  }
 })();
 
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; updateInstallUI(); });
