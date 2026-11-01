@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=33" />
+  <link rel="stylesheet" href="styles.css?v=35" />
 </head>
 <body>
   <!-- Loader -->
@@ -304,7 +304,7 @@
         <h2>OPUS MARKET endi <span class="gradient-text">ilova</span></h2>
         <p>Do'kon telefoningizda bir bosishda ochiladi: brauzer panelisiz, tezkor, internet sekin bo'lsa ham katalog keshdan yuklanadi.</p>
         <ul class="app-perks">
-          <li><b>5.4 MB</b><span>Android ilova hajmi</span></li>
+          <li><b id="apkSize">0.13 MB</b><span>Android ilova hajmi</span></li>
           <li><b>1 soniya</b><span>ochilish tezligi</span></li>
           <li><b>Offline</b><span>katalog keshda saqlanadi</span></li>
         </ul>
@@ -341,10 +341,14 @@
       </div>
 
       <div class="app-visual" aria-hidden="true">
-        <div class="iphone">
-          <span class="ip-btn ip-action"></span><span class="ip-btn ip-vol1"></span><span class="ip-btn ip-vol2"></span><span class="ip-btn ip-power"></span>
-          <div class="ip-screen">
-            <div class="ip-island"><i></i></div>
+        <div class="ip-floor"></div>
+        <div class="ip-float">
+        <div class="iphone" id="iphone">
+          <span class="ip-btn ip-action"></span><span class="ip-btn ip-vol1"></span><span class="ip-btn ip-vol2"></span><span class="ip-btn ip-power"></span><span class="ip-btn ip-camctl"></span>
+          <span class="ip-band b1"></span><span class="ip-band b2"></span><span class="ip-band b3"></span><span class="ip-band b4"></span>
+          <div class="ip-bezel">
+          <div class="ip-screen" id="ipScreen">
+            <div class="ip-island"><img src="icons/icon-192.png" alt="" /><span class="ip-live">🚚 <b>25</b> daq</span><i></i></div>
             <div class="ip-status">
               <b>9:41</b>
               <span class="ip-icons">
@@ -357,40 +361,69 @@
             <!-- 1-sahna: bosh ekran -->
             <div class="ip-home">
               <div class="ip-widget">
-                <img src="icons/icon-192.png" alt="" />
-                <div><small>OPUS MARKET</small><b>Buyurtma #OP4335</b><span class="ip-track"><i></i></span><em>Yo'lda · 25 daqiqa</em></div>
+                <div class="iw-top"><img src="icons/icon-192.png" alt="" /><small>OPUS MARKET</small><em>hozir</em></div>
+                <b>Buyurtma #OP4335</b>
+                <span class="iw-st">🚚 Yo'lda · ≈ 25 daqiqa</span>
+                <div class="iw-steps"><i class="on"></i><i class="on"></i><i class="on"></i><i class="cur"></i><i></i><span class="iw-car">🚚</span></div>
+                <div class="iw-lbl"><span>Qabul</span><span>Tasdiq</span><span>Yig'ish</span><span>Yo'lda</span><span>Yetkazildi</span></div>
               </div>
               <div class="ip-grid">
-                <span class="ip-app a1"><i></i><small>Kamera</small></span>
-                <span class="ip-app a2"><i></i><small>Xabarlar</small></span>
-                <span class="ip-app a3"><i></i><small>Xarita</small></span>
-                <span class="ip-app a4"><i></i><small>Musiqa</small></span>
-                <span class="ip-app a5"><i></i><small>Ob-havo</small></span>
-                <span class="ip-app a6"><i></i><small>Soat</small></span>
+                <span class="ip-app"><i class="ic-cal"><small id="ipDow">Yak</small><b id="ipDay">1</b></i><small>Kalendar</small></span>
+                <span class="ip-app"><i class="ic-photos"></i><small>Rasmlar</small></span>
+                <span class="ip-app"><i class="ic-cam"><svg viewBox="0 0 24 24"><path fill="#2a2a2c" d="M9 4.5L7.6 6.5H5a2 2 0 00-2 2v8.5a2 2 0 002 2h14a2 2 0 002-2V8.5a2 2 0 00-2-2h-2.6L15 4.5zM12 9a3.8 3.8 0 110 7.6A3.8 3.8 0 0112 9z"/></svg></i><small>Kamera</small></span>
+                <span class="ip-app"><i class="ic-maps"><svg viewBox="0 0 24 24"><path d="M0 19L24 11" stroke="#ffcc00" stroke-width="2.6"/><path d="M6 0L13 24" stroke="#fff" stroke-width="2"/><path d="M12 3.5a4.6 4.6 0 014.6 4.6c0 3.3-4.6 8.2-4.6 8.2S7.4 11.4 7.4 8.1A4.6 4.6 0 0112 3.5z" fill="#ff3b30"/><circle cx="12" cy="8.1" r="1.7" fill="#fff"/></svg></i><small>Xarita</small></span>
+                <span class="ip-app"><i class="ic-weather"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="4.2" fill="#ffd60a"/><path d="M8.2 19h9a3.6 3.6 0 00.5-7.2 5 5 0 00-9.6 1.5A2.9 2.9 0 008.2 19z" fill="#fff"/></svg></i><small>Ob-havo</small></span>
+                <span class="ip-app"><i class="ic-clock"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.6" fill="#fff"/><path d="M12 5.8V12l4 2.4" stroke="#111" stroke-width="1.7" fill="none" stroke-linecap="round"/><path d="M12 12L8.2 8.6" stroke="#ff9500" stroke-width="1.1" stroke-linecap="round"/><circle cx="12" cy="12" r="1" fill="#111"/></svg></i><small>Soat</small></span>
+                <span class="ip-app"><i class="ic-notes"></i><small>Eslatmalar</small></span>
                 <span class="ip-app opus"><img src="icons/icon-192.png" alt="" /><small>OPUS</small><em class="tap"></em></span>
-                <span class="ip-app a7"><i></i><small>Sozlamalar</small></span>
+                <span class="ip-app"><i class="ic-calc"><svg viewBox="0 0 24 24"><circle cx="7.5" cy="7.5" r="3" fill="#a5a5a5"/><circle cx="16.5" cy="7.5" r="3" fill="#ff9f0a"/><circle cx="7.5" cy="16.5" r="3" fill="#505050"/><circle cx="16.5" cy="16.5" r="3" fill="#ff9f0a"/></svg></i><small>Kalkulyator</small></span>
+                <span class="ip-app"><i class="ic-wallet"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="6" rx="1.6" fill="#ff9f0a"/><rect x="4" y="8" width="16" height="6" rx="1.6" fill="#30d158"/><rect x="4" y="11" width="16" height="6" rx="1.6" fill="#0a84ff"/><rect x="3" y="13" width="18" height="7" rx="2" fill="#2c2c2e"/></svg></i><small>Hamyon</small></span>
+                <span class="ip-app"><i class="ic-fit"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><circle cx="12" cy="12" r="8" stroke="#ff2d55" stroke-width="2.4" stroke-dasharray="40 50.3" transform="rotate(-90 12 12)"/><circle cx="12" cy="12" r="5.3" stroke="#a8ff00" stroke-width="2.4" stroke-dasharray="25 33.3" transform="rotate(-90 12 12)"/><circle cx="12" cy="12" r="2.6" stroke="#00e5ff" stroke-width="2.2" stroke-dasharray="12 16.3" transform="rotate(-90 12 12)"/></svg></i><small>Fitnes</small></span>
+                <span class="ip-app"><i class="ic-set"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7.2" stroke="#3a3a3c" stroke-width="3.4" stroke-dasharray="2.4 2.1"/><circle cx="12" cy="12" r="5.6" stroke="#3a3a3c" stroke-width="1.4"/><circle cx="12" cy="12" r="2.2" fill="#3a3a3c"/></svg></i><small>Sozlamalar</small></span>
               </div>
-              <div class="ip-dock"><i class="d1"></i><i class="d2"></i><i class="d3"></i><i class="d4"></i></div>
+              <span class="ip-search"><svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 015.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1110 3zm0 2a5 5 0 100 10 5 5 0 000-10z"/></svg>Qidiruv</span>
+              <div class="ip-dock">
+                <i class="ic-phone"><svg viewBox="0 0 24 24"><path fill="#fff" d="M6.6 3.5l2.6 3-1.4 2.3a11 11 0 007.4 7.4l2.3-1.4 3 2.6-1.3 2.8c-.4.6-1 .9-1.7.8C9.6 20.2 3.8 14.4 3 6.6c-.1-.7.2-1.3.8-1.7z"/></svg></i>
+                <i class="ic-safari"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.3" fill="#1a8cff"/><circle cx="12" cy="12" r="9.3" fill="none" stroke="#fff" stroke-width=".6" stroke-dasharray=".4 1.5"/><path d="M12 12l5.2-5.2-3.1 7.3z" fill="#ff3b30"/><path d="M12 12l-5.2 5.2 3.1-7.3z" fill="#fff"/></svg></i>
+                <i class="ic-msg"><svg viewBox="0 0 24 24"><path fill="#fff" d="M12 4.2c-5 0-9 3.1-9 7 0 2.2 1.3 4.2 3.4 5.5-.2 1.3-.9 2.4-1.9 3.2 2-.1 3.6-.8 4.7-1.9.9.2 1.8.3 2.8.3 5 0 9-3.1 9-7s-4-7.1-9-7.1z"/></svg></i>
+                <i class="ic-music"><svg viewBox="0 0 24 24"><path fill="#fff" d="M18 3.5v11.2a2.8 2.8 0 11-1.6-2.5V7.3l-7 1.5v7.9a2.8 2.8 0 11-1.6-2.5V5.6z"/></svg></i>
+              </div>
             </div>
 
-            <!-- 2-sahna: ochilish -->
-            <div class="ip-splash"><img src="icons/icon-512.png" alt="" /><b>OPUS MARKET</b></div>
+            <!-- 2-sahna: ochilish (ilovadagi kirish animatsiyasi bilan bir xil) -->
+            <div class="ip-splash">
+              <div class="ips-logo"><svg viewBox="0 0 110 110"><circle cx="55" cy="55" r="51"/></svg><img src="icons/icon-192.png" alt="" /></div>
+              <b><span>OPUS</span> MARKET</b>
+              <i class="ips-bar"><i></i></i>
+            </div>
 
             <!-- 3-sahna: ilova ichi -->
             <div class="ip-appui">
               <div class="ip-scroll">
-                <div class="ip-head"><b>OPUS<span>MARKET</span></b><i class="ip-cart">3</i></div>
-                <div class="ip-search">Noutbuk, sichqoncha…</div>
-                <div class="ip-banner"><small>⏰ Bugun</small><b>MEGA CHEGIRMA</b><span>40% gacha</span></div>
+                <div class="ia-hdr"><span class="ia-brand"><i></i>OPUS<b>MARKET</b></span><span class="ia-bell"><svg viewBox="0 0 24 24"><path d="M12 22a2.5 2.5 0 002.5-2.5h-5A2.5 2.5 0 0012 22zm7-6V11a7 7 0 00-5.5-6.8V3.5a1.5 1.5 0 00-3 0v.7A7 7 0 005 11v5l-2 2v1h18v-1z"/></svg><em>2</em></span></div>
+                <div class="ia-search"><svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 015.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1110 3zm0 2a5 5 0 100 10 5 5 0 000-10z"/></svg>Masalan: RTX 4070</div>
+                <div class="ia-stories" id="ipStories"></div>
+                <div class="ip-banner"><small>⚡ Aksiya</small><b>Katta chegirmalar</b><span>Eng zo'r takliflar bir joyda</span></div>
+                <div class="ia-tools"><span class="t1"><em>🛠</em>Kompyuter yig'ish</span><span class="t2"><em>💰</em>Byudjetga mos</span><span class="t3"><em>⚖️</em>Taqqoslash</span><span class="t4"><em>📦</em>Buyurtmalarim</span></div>
+                <div class="ia-sec">🔥 Siz uchun</div>
                 <div class="ip-cards" id="ipCards"></div>
               </div>
-              <div class="ip-tabs"><i class="on"></i><i></i><i></i><i></i></div>
+              <div class="ia-tabbar">
+                <span class="on"><svg viewBox="0 0 24 24"><path d="M12 3l9 7.5V21h-6.5v-6h-5v6H3V10.5z"/></svg>Bosh sahifa</span>
+                <span><svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 015.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1110 3zm0 2a5 5 0 100 10 5 5 0 000-10z"/></svg>Katalog</span>
+                <span><svg viewBox="0 0 24 24"><path d="M7 18a2 2 0 110 4 2 2 0 010-4zm10 0a2 2 0 110 4 2 2 0 010-4zM1 2h3.3l1 2H21a1 1 0 011 1.2l-1.6 8A2 2 0 0118.4 15H8.1l-.9 1.6V17H19v2H7a2 2 0 01-1.8-2.9l1.4-2.6L3.1 4H1V2z"/></svg>Savat<em>3</em></span>
+                <span><svg viewBox="0 0 24 24"><path d="M12 21l-1.5-1.3C5.4 15.1 2 12 2 8.2 2 5.1 4.4 2.7 7.5 2.7c1.7 0 3.4.8 4.5 2.1a6 6 0 014.5-2.1c3.1 0 5.5 2.4 5.5 5.5 0 3.8-3.4 6.9-8.5 11.5z"/></svg>Saralangan</span>
+                <span><svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.4 0-9 2.2-9 5.5V22h18v-2.5c0-3.3-4.6-5.5-9-5.5z"/></svg>Kabinet</span>
+              </div>
             </div>
 
             <!-- Bildirishnoma -->
-            <div class="ip-notif"><img src="icons/icon-192.png" alt="" /><div><b>OPUS MARKET</b><span>Buyurtmangiz yo'lda 🚚 Kuryer 25 daqiqada yetib keladi</span></div><small>hozir</small></div>
+            <div class="ip-notif"><img src="icons/icon-192.png" alt="" /><div><b>OPUS MARKET</b><span>Buyurtma #OP4335 yo'lda 🚚 Kuryer ≈ 25 daqiqada yetib keladi</span></div><small>hozir</small></div>
+            <div class="ip-glass"></div>
             <div class="ip-homebar"></div>
           </div>
+          </div>
+        </div>
         </div>
         <img class="app-icon-big" src="icons/icon-512.png" alt="" />
       </div>
@@ -668,7 +701,7 @@
       } catch (e) {}
     })();
   </script>
-  <script src="app.js?v=33"></script>
+  <script src="app.js?v=34"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="showcase.js?v=33"></script>
   <script src="scrollfx.js?v=33"></script>
