@@ -918,6 +918,7 @@ function profileScreen() {
       <button class="mi" data-m="font"><span class="ri">🔠</span><span>Shrift o'lchami</span><small>${(FONT[store.get("app_font", "m")] || FONT.m)[1]}</small></button>
       <a class="mi" href="https://t.me/${BOT}" target="_blank" rel="noopener"><span class="ri">✈️</span><span>Telegram bot</span><small>@${BOT}</small></a>
       <a class="mi" href="tel:${SHOP_PHONE}"><span class="ri">📞</span><span>Qo'llab-quvvatlash</span><small>${fmtPhone(SHOP_PHONE.slice(1))}</small></a>
+      <button class="mi" data-m="whatsnew"><span class="ri">🆕</span><span>Yangilanishlar</span><small>v${esc(CHANGELOG.ver)}</small></button>
       <button class="mi" data-m="about"><span class="ri">ℹ️</span><span>Ilova haqida</span><small>v${esc(VERSION)}</small></button>
     </div>`;
   if (!u) return {
@@ -2323,3 +2324,80 @@ function initStack(root) {
   };
 }
 refreshRoot("home"); refreshRoot("profile");
+
+// =====================================================================
+// ---------- v2.7: yangilash oynasi va "Yangilanishlar" sahifasi ----------
+// =====================================================================
+const cmpVer = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
+const CHANGELOG = {
+  ver: "2.3", date: "3-noyabr, 2026",
+  groups: [
+    { t: "Yangi imkoniyatlar", e: "✨", items: [
+      ["🔍", "Aqlli qidiruv", "Kirill harflarida ham qidiradi (\"ноутбук\", \"мышка\"), ruscha va o'zbekcha so'zlarni tushunadi (naushnik → quloqchinlar, videokarta → RTX/Radeon). Xato yozsangiz ham topadi (\"noutbk asus\", \"macbok\"). Narxni ham tushunadi: \"5 mln gacha noutbuk\", \"2-5 mln\", \"arzon klaviatura\"."],
+      ["🛠", "Kompyuter yig'ish", "Protsessor, ona plata, videokarta, xotira, disk, blok pitaniya va sovutishni tanlab, o'z kompyuteringizni yig'ing. Jami narx va oylik to'lov ko'rinadi. Ilova razyom, xotira turi (DDR4/DDR5) va blok quvvati mosligini tekshiradi. Hammasini bitta tugma bilan savatga qo'shasiz."],
+      ["💰", "Byudjetga mos", "Summani tanlang (slayder yoki 500 ming, 1 mln, 5 mln...) va kerak bo'lsa bo'limni belgilang — ilova shu narxgacha bo'lgan mahsulotlarni ko'rsatadi."],
+      ["👆", "Tezkor ko'rish", "Istalgan mahsulot kartochkasini barmoq bilan bosib turing — rasm, narx va reyting pastdan chiqadi. Sahifaga kirmasdan savatga yoki saralanganga qo'shish mumkin."],
+      ["🃏", "Kun kartalari", "Bosh sahifada eng katta chegirmali mahsulotlar kartalar to'plami bo'lib turadi: chapga yoki o'ngga suring, bossangiz mahsulot ochiladi."],
+      ["🪪", "A'zolik kartasi", "Kabinetda ismingiz yozilgan OPUS kartasi ipga osilib turadi — uni barmoq bilan tortib, otib ko'ring."],
+      ["🔁", "Qayta buyurtma", "Yetkazilgan buyurtma sahifasida bitta tugma bilan o'sha mahsulotlarni yana savatga qo'yasiz. Omborda qolmaganlari alohida aytiladi."],
+      ["📡", "Oflayn rejim", "Internet uzilsa, ilova ogohlantiradi va saqlangan katalog bilan ishlashda davom etadi. Internet qaytsa, narxlar o'zi yangilanadi."],
+      ["🔠", "Shrift o'lchami", "Kabinet → Shrift o'lchami: Kichik, Oddiy, Katta yoki Juda katta."],
+      ["📌", "Ikonka yorliqlari", "Ilova ikonkasini bosib turing: Qidiruv, Savat, Buyurtmalarim va PC yig'ish yorliqlari chiqadi. Ularni bosh ekranga ham chiqarib qo'yish mumkin."],
+      ["🧰", "Asboblar bloki", "Bosh sahifada to'rtta tezkor tugma: Kompyuter yig'ish, Byudjetga mos, Taqqoslash va Buyurtmalarim."],
+    ] },
+    { t: "Dizayn va silliqlik", e: "🎨", items: [
+      ["🎬", "Animatsiyali kirish", "Ilova ochilganda logo, neon halqa va \"OPUS MARKET\" yozuvi bilan chiroyli kirish ekrani."],
+      ["👈", "Surib orqaga qaytish", "Ekranning chap chetidan barmoq bilan torting — sahifa barmoq ortidan yuradi va orqaga qaytadi."],
+      ["〰️", "Tab paneli", "Tanlangan bo'lim ustida qizil nur chiziq sirpanib yuradi, bo'limlar yo'nalish bo'yicha almashadi."],
+      ["⬇️", "Pastki oynalar", "Har qanday pastki oynani barmoq bilan pastga tortib yopish mumkin."],
+      ["✨", "Mayda effektlar", "Rasm yuklanayotganda yaltiroq skelet, savatga qo'shganda uchqunlar, bosilgan joydan yorug'lik va asosiy tugmalarda yaltiroq nur."],
+    ] },
+    { t: "Tuzatilgan xatolar", e: "🛠", items: [
+      ["🐞", "Tanlov aralashib ketishi", "Pastki oynalarda bitta tanlov boshqa joyni ham o'zgartirib yuborishi mumkin edi. Endi har bir oyna mustaqil ishlaydi."],
+      ["🐞", "Miltillash", "Ma'lumot yangilanganda bosh sahifadagi barcha kartochkalar qaytadan \"uchib\" chiqardi. Endi ekran jim yangilanadi."],
+      ["🐞", "YANGI5 promo-kodi", "Birinchi xarid uchun va'da qilingan 5% chegirma kodi to'lovda qabul qilinmasdi. Endi ishlaydi."],
+    ] },
+  ],
+};
+function openWhatsNew(auto) {
+  const all = CHANGELOG.groups.reduce((a, g) => a + g.items.length, 0);
+  push({
+    noTab: true, anim: auto ? "fade" : "enter",
+    html: hdr("🆕 Yangilanishlar") + `<div class="sb wn">
+      <div class="wn-hero"><div class="wn-badge"><img src="../icons/icon-192.png" alt="" /><b>v${esc(CHANGELOG.ver)}</b></div>
+        <h2>${auto ? "Ilova yangilandi! 🎉" : "Nimalar yangi?"}</h2><p class="muted">${esc(CHANGELOG.date)} · ${all} ta o'zgarish</p></div>
+      ${CHANGELOG.groups.map((g) => `<div class="sec"><div class="sec-h"><h2>${g.e} ${esc(g.t)}</h2><small class="muted">${g.items.length} ta</small></div>
+        <div class="wn-list">${g.items.map(([ic, t, d], i) => `<div class="wn-it" style="animation-delay:${Math.min(i, 8) * 45}ms"><span>${ic}</span><div><b>${esc(t)}</b><p>${esc(d)}</p></div></div>`).join("")}</div></div>`).join("")}
+      <div class="sec" style="padding-bottom:30px"><button class="btn block" data-back>Zo'r, boshladik! 🚀</button></div></div>`,
+  });
+  if (auto) setTimeout(() => window.confetti && confetti(), 400);
+}
+function openUpdate(u) {
+  openSheet(`<div class="up">
+      <div class="up-ic"><img src="../icons/icon-192.png" alt="" /><i>v${esc(u.version)}</i></div>
+      <h3>Yangi versiya tayyor!</h3>
+      <p class="muted">Sizda v${esc(VERSION)} o'rnatilgan. v${esc(u.version)} ga yangilang${u.sizeMB ? ` — atigi ${esc(u.sizeMB)} MB` : ""}.</p>
+      <ul class="up-l"><li>🔍 Aqlli qidiruv — kirillcha, xatolar va narx bilan</li><li>🛠 Kompyuter yig'ish va 💰 byudjetga mos tanlash</li><li>📌 Ikonkani bosib turganda tezkor yorliqlar</li><li>🔁 Qayta buyurtma, 📡 oflayn rejim va boshqalar</li></ul>
+      <div class="up-steps" id="upSteps" hidden><p><b>1.</b> Yuklab olingan faylni oching</p><p><b>2.</b> <b>"O'rnatish"</b> ni bosing (ma'lumotlaringiz saqlanadi)</p><p><b>3.</b> <b>"Ochish"</b> ni bosing — yangiliklar ro'yxati chiqadi</p></div>
+      <button class="btn block" id="upGo">⬇️ Yangilash</button>
+      <button class="btn ghost block" id="upLater" style="margin-top:8px">Keyinroq</button>
+    </div>`, (b) => {
+    $("#upGo", b).onclick = () => {
+      haptic(10); location.href = u.url;
+      $("#upSteps", b).hidden = false; $("#upGo", b).textContent = "⬇️ Qayta yuklash"; $("#upLater", b).textContent = "Yopish";
+      toast("⬇️ Yuklab olinmoqda… Tugagach faylni oching");
+    };
+    $("#upLater", b).onclick = closeSheet;
+  });
+}
+// Ishga tushganda: yangilangan bo'lsa — yangiliklar; eski versiya bo'lsa — yangilash taklifi
+setTimeout(() => {
+  if (VERSION === "web") return;
+  const seen = store.get("app_seen_ver", null);
+  store.set("app_seen_ver", VERSION);
+  if (seen && cmpVer(VERSION, seen) > 0) { openWhatsNew(true); return; }
+  const u = updateInfo();
+  let asked = null; try { asked = sessionStorage.getItem("opus_upd_asked"); } catch (e) {}
+  if (u && !asked && !$(".onb") && $("#sheet").hidden) { try { sessionStorage.setItem("opus_upd_asked", "1"); } catch (e) {} openUpdate(u); }
+}, 1400);
+document.addEventListener("click", (e) => { if (e.target.closest("[data-m='whatsnew']")) openWhatsNew(false); });
