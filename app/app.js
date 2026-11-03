@@ -554,9 +554,8 @@ function openSearch(q0 = "") {
             <div class="sec"><div class="sec-h"><h2>Ommabop</h2></div><div class="recent">${["Noutbuk", "Monitor", "RTX", "Klaviatura", "Sichqoncha", "Quloqchin", "SSD", "Apple", "ASUS", "Logitech"].map((s) => `<button data-q="${s}">🔥 ${s}</button>`).join("")}</div></div>`;
           return;
         }
-        const W = words(q);
-        const L = sortList(S.products.filter((p) => { const t = `${p.name} ${p.brand} ${catOf(p.cat).name || ""}`.toLowerCase(); return W.every((w) => t.includes(w)); }), "popular");
-        res.innerHTML = catHits(q) + `<p class="list-meta" style="padding-top:12px">${L.length} ta natija</p><div class="sec" style="padding-top:0">${L.length ? grid(L) : emptyBox("🔍", "Topilmadi", `"${esc(q)}" bo'yicha mahsulot yo'q. Boshqacha yozib ko'ring.`)}</div>`;
+        const R = smartSearch(q), L = R.list;
+        res.innerHTML = catHits(q) + searchHint(R.hint) + `<p class="list-meta" style="padding-top:12px">${L.length} ta natija</p><div class="sec" style="padding-top:0">${L.length ? grid(L) : emptyBox("🔍", "Topilmadi", `"${esc(q)}" bo'yicha mahsulot yo'q. Boshqacha yozib ko'ring.`)}</div>`;
       };
       let t;
       inp.addEventListener("input", () => { clearTimeout(t); t = setTimeout(draw, 160); });
@@ -916,6 +915,7 @@ function profileScreen() {
   const TH = { system: "Telefon sozlamasi", dark: "Tungi", light: "Kunduzgi" };
   const common = `<div class="menu">
       <button class="mi" data-m="theme"><span class="ri">🌓</span><span>Mavzu</span><small>${TH[theme]}</small></button>
+      <button class="mi" data-m="font"><span class="ri">🔠</span><span>Shrift o'lchami</span><small>${(FONT[store.get("app_font", "m")] || FONT.m)[1]}</small></button>
       <a class="mi" href="https://t.me/${BOT}" target="_blank" rel="noopener"><span class="ri">✈️</span><span>Telegram bot</span><small>@${BOT}</small></a>
       <a class="mi" href="tel:${SHOP_PHONE}"><span class="ri">📞</span><span>Qo'llab-quvvatlash</span><small>${fmtPhone(SHOP_PHONE.slice(1))}</small></a>
       <button class="mi" data-m="about"><span class="ri">ℹ️</span><span>Ilova haqida</span><small>v${esc(VERSION)}</small></button>
@@ -1119,6 +1119,7 @@ function openOrder(o) {
         <div class="row"><span class="ri">💳</span><div><b>${esc((PAYMENTS.find((p) => p.id === o.payment) || {}).name || o.payment)}</b><small>${o.months ? `${o.months} oyga bo'lib · oyiga ${fmt(o.total / o.months)}` : "To'lov usuli"}</small></div></div>
         ${o.note ? `<div class="row"><span class="ri">💬</span><div><small>${esc(o.note)}</small></div></div>` : ""}
       </div>
+      ${["Yetkazildi", "Bekor qilindi"].includes(o.status) ? `<button class="btn block" data-reorder="${esc(o.id)}">🔁 Qayta buyurtma qilish</button>` : ""}
       <a class="btn ghost block" href="tel:${SHOP_PHONE}">📞 Operator bilan bog'lanish</a>
       ${o.status === "Yangi" ? `<button class="btn ghost block" style="color:var(--red2)" id="oCancel">Buyurtmani bekor qilish</button>` : ""}
     </div></div>`,
@@ -1770,6 +1771,107 @@ function brandsRow() {
   const B = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 12);
   return `<div class="sec"><div class="sec-h"><h2>🏷 Brendlar</h2></div><div class="hscroll brands">${B.map(([b, n], i) => `<button class="brand-c" data-brand-q="${esc(b)}" style="--h:${(i * 47) % 360}"><b>${esc(b)}</b><small>${n} ta</small></button>`).join("")}</div></div>`;
 }
+
+// =====================================================================
+// ---------- v2.6: aqlli qidiruv, oflayn rejim, qayta buyurtma, shrift ----------
+// =====================================================================
+// Kirill → lotin (o'zbek va rus yozuvi), so'ng kichik harf
+const CYR = { а: "a", б: "b", в: "v", г: "g", ғ: "g'", д: "d", е: "e", ё: "yo", ж: "j", з: "z", и: "i", й: "y", к: "k", қ: "q", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ў: "o'", ф: "f", х: "x", ҳ: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sh", ъ: "", ы: "i", ь: "", э: "e", ю: "yu", я: "ya" };
+const normQ = (s) => String(s).toLowerCase().replace(/[а-яёғқўҳ]/g, (c) => CYR[c] ?? c).replace(/[ʻʼ`’‘]/g, "'").replace(/\s+/g, " ").trim();
+// Sinonimlar: rus/ingliz/o'zbekcha so'z → kategoriya yoki kalit so'zlar
+const SYN = [
+  [/^(nout|notebook|laptop|noutbuk)/, { cat: "laptop" }],
+  [/^(mish|mouse|sichqon)/, { cat: "mouse" }],
+  [/^(klav|keyboard)/, { cat: "keyboard" }],
+  [/^(monitor|ekran|display)/, { cat: "monitor" }],
+  [/^(naush|quloq|headphone|headset|garnit)/, { cat: "audio" }],
+  [/^(kompyut|komp$|pc$|sistem)/, { cat: "pc" }],
+  [/^(igr|o'yin|oyin|gaming|geym)/, { cat: "gaming" }],
+  [/^(disk|ssd|hdd|nakopit|xotira|fleshk)/, { cat: "storage" }],
+  [/^(videokart|gpu|vidyuxa|grafik)/, { kw: /rtx|gtx|radeon|geforce/ }],
+  [/^(protsess|protses|cpu|prosessor)/, { kw: /ryzen|core i\d|xeon/ }],
+  [/^(operativ|ram$|ozu|operativka)/, { kw: /ddr\d/ }],
+  [/^(blok|psu|pitan)/, { kw: /\d{3,4}\s?w\b/ }],
+];
+function lev(a, b, max) {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i]; let best = i;
+    for (let j = 1; j <= b.length; j++) { cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); best = Math.min(best, cur[j]); }
+    if (best > max) return max + 1;
+    prev = cur;
+  }
+  return prev[b.length];
+}
+function smartSearch(q0) {
+  let q = normQ(q0), min = null, max = null, cheap = false;
+  const hint = [];
+  // "5 mln gacha", "до 3 млн", "500 ming", "2-5 mln"
+  const num = (v, u) => +v.replace(",", ".") * (/^m/.test(u) ? 1e6 : 1e3);
+  q = q.replace(/(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*(mln|million|m|ming|k|tys)\b/, (_, a, b, u) => { min = num(a, u); max = num(b, u); return " "; });
+  q = q.replace(/(?:do\s+)?(\d+(?:[.,]\d+)?)\s*(mln|million|m|ming|k|tys)\b\s*(gacha|dan|do)?/, (_, v, u, w) => { if (w === "dan") min = num(v, u); else max = num(v, u); return " "; });
+  q = q.replace(/\b(arzon|deshev|cheap|byudjet)\w*/, () => { cheap = true; return " "; });
+  if (min != null || max != null) hint.push(`💰 ${min != null ? num0(min) + " dan " : ""}${max != null ? num0(max) + " gacha" : ""}`);
+  if (cheap) hint.push("⬇️ Arzonidan");
+  const W = q.split(" ").filter((w) => w.length > 0 && !/^(va|uchun|bilan|dlya|i|na|the|for)$/.test(w));
+  const rules = W.map((w) => { const s = SYN.find(([re]) => re.test(w)); return { w, s: s && s[1] }; });
+  rules.forEach((r) => { if (r.s && r.s.cat) hint.push("📂 " + catOf(r.s.cat).name); });
+  const scored = [];
+  S.products.forEach((p) => {
+    if (min != null && p.price < min) return;
+    if (max != null && p.price > max) return;
+    const name = normQ(p.name), text = normQ(`${p.name} ${p.brand} ${catOf(p.cat).name || ""} ${p.cat}`), toks = text.split(/[\s\-/()]+/);
+    let score = 0;
+    for (const r of rules) {
+      if (text.includes(r.w)) { score += name.startsWith(r.w) ? 6 : toks.some((t) => t.startsWith(r.w)) ? 4 : 2; continue; }
+      if (r.s && r.s.cat && p.cat === r.s.cat) { score += 3; continue; }
+      if (r.s && r.s.kw && r.s.kw.test(name)) { score += 3; continue; }
+      const tol = /\d/.test(r.w) ? 0 : r.w.length >= 7 ? 2 : r.w.length >= 4 ? 1 : 0;
+      if (tol && toks.some((t) => lev(r.w, t.slice(0, r.w.length + 1), tol) <= tol || lev(r.w, t, tol) <= tol)) { score += 1; continue; }
+      return;
+    }
+    scored.push({ p, score: score + (p.stock > 0 ? 0.5 : 0) + (p.popular || 0) / 1000 });
+  });
+  scored.sort((a, b) => (cheap ? a.p.price - b.p.price : b.score - a.score));
+  return { list: scored.map((x) => x.p), hint };
+}
+const num0 = (n) => n >= 1e6 ? +(n / 1e6).toFixed(1) + " mln" : Math.round(n / 1e3) + " ming";
+// Natijada mos qismni ajratib ko'rsatish uchun yordamchi chiplar
+function searchHint(h) { return h.length ? `<div class="s-hint">${h.map((x) => `<span>${esc(x)}</span>`).join("")}</div>` : ""; }
+
+// Oflayn rejim: internet uzilganda ogohlantirish, saqlangan katalog ishlayveradi
+(function offline() {
+  const bar = document.createElement("div"); bar.className = "offbar"; bar.innerHTML = "📡 Internet yo'q — saqlangan katalog ko'rsatilmoqda"; document.body.appendChild(bar);
+  const upd = (first) => {
+    const off = !navigator.onLine; bar.classList.toggle("on", off);
+    if (!first) { toast(off ? "📡 Internet uzildi" : "✅ Internet qayta ulandi"); if (!off) loadCatalog().then(() => { refreshRoot("home"); refreshRoot("catalog"); }).catch(() => {}); }
+  };
+  addEventListener("online", () => upd()); addEventListener("offline", () => upd()); upd(true);
+})();
+
+// Qayta buyurtma: eski buyurtmadagi mahsulotlarni savatga qo'yadi
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-reorder]"); if (!b) return;
+  const o = (S.orders || []).find((x) => String(x.id) === b.dataset.reorder); if (!o) return;
+  let ok = 0, miss = 0;
+  (o.items || []).forEach((i) => { const p = byId(i.id); if (!p || (p.stock || 0) <= 0) { miss++; return; } if (addToCart(p.id, Math.min(i.qty || 1, p.stock), true)) ok++; });
+  refreshCards(); badges(); refreshRoot("cart");
+  if (ok) { toast(`🔁 ${ok} ta mahsulot savatga qo'shildi${miss ? ` · ${miss} tasi hozir yo'q` : ""}`); switchTab("cart"); }
+  else toast("⚠️ Bu buyurtmadagi mahsulotlar hozir omborda yo'q");
+});
+
+// Shrift o'lchami (ko'rish qulayligi uchun)
+const FONT = { s: [0.92, "Kichik"], m: [1, "Oddiy"], l: [1.1, "Katta"], xl: [1.2, "Juda katta"] };
+function applyFont() { const k = store.get("app_font", "m"); document.documentElement.style.zoom = (FONT[k] || FONT.m)[0]; }
+applyFont();
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("[data-m='font']")) return;
+  const cur = store.get("app_font", "m");
+  openSheet(`<h3>🔠 Shrift o'lchami</h3><p class="muted" style="margin:-6px 0 8px">Matnlar va tugmalar kattaligi</p>${Object.entries(FONT).map(([k, [z, t]]) => `<button class="opt${cur === k ? " on" : ""}" data-fz="${k}"><span style="font-size:${15 * z}px">${t}</span><small class="muted">Aa</small></button>`).join("")}`, (b) =>
+    b.addEventListener("click", (ev) => { const f = ev.target.closest("[data-fz]"); if (!f) return; store.set("app_font", f.dataset.fz); applyFont(); closeSheet(); refreshRoot("profile"); }));
+});
+
 const ROOTS = { home: homeScreen, catalog: catalogScreen, cart: cartScreen, fav: favScreen, profile: profileScreen };
 matchMedia("(prefers-color-scheme: light)").addEventListener("change", applyTheme);
 applyTheme();
@@ -1844,8 +1946,12 @@ onboarding();
 syncOrders().catch(() => {});
 // Vidjetdan ochilgan bo'lsa — to'g'ridan-to'g'ri "Buyurtmalarim"
 function openFromHash() {
-  if (location.hash !== "#orders") return;
+  const h = location.hash.slice(1);
+  if (!/^(orders|search|cart|build)$/.test(h)) return;
   history.replaceState(history.state, "", location.pathname + location.search);
+  if (h === "cart") return switchTab("cart");
+  if (h === "search") { switchTab("home"); return setTimeout(() => openSearch(), 50); }
+  if (h === "build") { switchTab("home"); return setTimeout(() => openBuilder(), 50); }
   if (!auth.token) return switchTab("profile");
   switchTab("profile"); openOrders("active");
 }
