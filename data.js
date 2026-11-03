@@ -11,7 +11,7 @@ const SETTINGS = {
   // Onlayn to'lov (QR-kod). ID'larni Click/Payme bilan shartnoma tuzilgach ular beradi — admin panel → Sozlamalar.
   pay: { payme: { merchantId: "", account: "order_id" }, click: { serviceId: "", merchantId: "" } },
   // Android ilova (APK) — GitHub Releases'da
-  apk: { url: "https://javohir877.github.io/OPUS-MARKET/downloads/OPUS-2.2.apk", version: "2.2", sizeMB: 0.13 },
+  apk: { url: "https://javohir877.github.io/OPUS-MARKET/downloads/OPUS-2.3.apk", version: "2.3", sizeMB: 0.13 },
 };
 
 const CATEGORIES = [
