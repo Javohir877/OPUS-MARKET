@@ -929,3 +929,9 @@ body.no-tab .toasts { bottom: calc(92px + var(--safe-b)); }
 .dk-b strong { font-size: 18px; font-weight: 800; color: var(--red2); }
 
 @media (prefers-reduced-motion: reduce) { .btn::after, .home-hdr .brand, .spark { animation: none !important; } }
+
+/* =================== v2.6 =================== */
+.offbar { position: fixed; left: 50%; top: calc(8px + var(--safe-t)); z-index: 120; translate: -50% -160%; padding: 8px 14px; border-radius: 99px; font-size: 12.5px; font-weight: 700; color: #1c1013; background: var(--nasiya); box-shadow: 0 8px 24px rgba(0,0,0,.35); transition: translate .35s cubic-bezier(.2,1.2,.4,1); white-space: nowrap; pointer-events: none; }
+.offbar.on { translate: -50% 0; }
+.s-hint { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 14px 0; }
+.s-hint span { font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 99px; background: rgba(var(--prgb), .12); color: var(--red2); border: 1px solid rgba(var(--prgb), .25); animation: fadeIn .25s; }
