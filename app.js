@@ -154,6 +154,8 @@ window.addEventListener("scroll", () => {
 toTop.addEventListener("click", () => scrollTo({ top: 0 }));
 $("#burger").addEventListener("click", () => $("#nav").classList.toggle("open"));
 $$("#nav a").forEach((a) => a.addEventListener("click", () => $("#nav").classList.remove("open")));
+// Telefonda sarlavhadan menyuga ko'chirilgan tugmalar
+$$("[data-proxy]").forEach((b) => b.addEventListener("click", () => { $("#nav").classList.remove("open"); $("#" + b.dataset.proxy).click(); }));
 
 // ---------- Menyu animatsiyasi: suzuvchi kapsula + aylanuvchi matn + hozirgi bo'lim ----------
 (() => {
@@ -247,6 +249,9 @@ const io = new IntersectionObserver((entries) => {
 $$(".reveal").forEach((el, i) => { el.style.transitionDelay = (i % 4) * 0.08 + "s"; io.observe(el); });
 
 function countUp(el) {
+  // Haqiqiy katalogdan: mahsulotlar va brendlar soni
+  if (el.dataset.live === "products") el.dataset.count = PRODUCTS.length;
+  if (el.dataset.live === "brands") el.dataset.count = new Set(PRODUCTS.map((p) => p.brand)).size;
   const target = +el.dataset.count;
   const start = performance.now();
   const dur = 1600;
@@ -1205,11 +1210,10 @@ function mountConfirm(box, order, confirm, onDone) {
 }
 
 // Newsletter
-$("#newsForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  e.target.reset();
-  toast("📬 Obuna uchun rahmat! Promo-kod: YANGI5");
-  confetti(60);
+$("#promoCopy").addEventListener("click", () => {
+  try { navigator.clipboard.writeText("YANGI5"); } catch {}
+  toast("📋 YANGI5 nusxalandi — to'lov oynasida kiriting");
+  confetti(40);
 });
 
 // ---------- Toast ----------
