@@ -1839,10 +1839,10 @@ if (TG) {
   };
   const fab = document.createElement("button");
   fab.className = "oa-fab"; fab.id = "oaFab"; fab.title = "OPUS AI yordamchi"; fab.setAttribute("aria-label", "OPUS AI yordamchi");
-  fab.innerHTML = `<span class="oa-orb"><i></i><i></i><i></i><em>✨</em></span><b>OPUS AI</b>`;
+  fab.innerHTML = `<i class="oa-halo"></i><img src="icons/opus-ai.svg" alt="OPUS AI" />`;
   const box = document.createElement("section");
   box.className = "oa-box"; box.id = "oaBox"; box.setAttribute("aria-label", "OPUS AI suhbat"); box.hidden = true;
-  box.innerHTML = `<header class="oa-head"><span class="oa-orb sm"><i></i><i></i><i></i><em>✨</em></span><div><b>OPUS AI</b><small>Texnika tanlashda yordam beraman</small></div>
+  box.innerHTML = `<header class="oa-head"><img class="oa-logo" src="icons/opus-ai.svg" alt="" /><div><b>OPUS AI</b><small>Texnika tanlashda yordam beraman</small></div>
       <button class="oa-ib" data-oaclr title="Suhbatni tozalash">🗑</button><button class="oa-ib" data-oaclose title="Yopish">✕</button></header>
     <div class="oa-list" id="oaList"></div>
     <form class="oa-form" id="oaForm"><textarea id="oaIn" rows="1" maxlength="1000" placeholder="Savolingizni yozing…"></textarea><button class="oa-send" title="Yuborish"><svg viewBox="0 0 24 24"><path d="M3 20.5V14l9-2-9-2V3.5L22 12z"/></svg></button></form>
@@ -1852,7 +1852,7 @@ if (TG) {
   const bottom = () => requestAnimationFrame(() => { list.scrollTop = list.scrollHeight; });
   const bubble = (m) => `<div class="oa-m ${m.role}"><div class="oa-b">${m.role === "ai" ? html(m.text) : escapeHtml(m.text).replace(/\n/g, "<br>")}</div></div>`;
   const draw = () => {
-    list.innerHTML = msgs.length ? msgs.map(bubble).join("") : `<div class="oa-hero"><span class="oa-orb lg"><i></i><i></i><i></i><em>✨</em></span><h3>Salom! Men OPUS AI 👋</h3>
+    list.innerHTML = msgs.length ? msgs.map(bubble).join("") : `<div class="oa-hero"><img class="oa-logo lg" src="icons/opus-ai.svg" alt="" /><h3>Salom! Men OPUS AI 👋</h3>
       <p>Noutbuk, kompyuter, monitor yoki aksessuar tanlashda yordam beraman — faqat do'konimizdagi haqiqiy narxlar bilan.</p></div>
       <div class="oa-sug">${SUG.map((s) => `<button type="button" data-oaq="${escapeHtml(s.replace(/^\S+\s/, ""))}">${escapeHtml(s)}</button>`).join("")}</div>`;
     bottom();
