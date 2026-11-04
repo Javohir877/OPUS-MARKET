@@ -1439,3 +1439,12 @@ html.in-app #app, html.in-app #installBtn { display: none !important; }
   html.oa-on, html.oa-on body { overflow: hidden; }
 }
 @media (prefers-reduced-motion: reduce) { .oa-orb i, .oa-caret, .oa-dots i { animation: none; } }
+/* OPUS AI tugmasi — faqat rasm (yozuvsiz) */
+.oa-fab { width: 62px; height: 62px; padding: 0; border-radius: 20px; background: none; border: 0; box-shadow: 0 14px 34px rgba(112,0,255,.35), 0 8px 20px rgba(var(--prgb), .35); }
+.oa-fab img { position: relative; width: 100%; height: 100%; border-radius: 20px; display: block; }
+.oa-halo { position: absolute; inset: -6px; border-radius: 26px; background: conic-gradient(#ff2a40, #7a5cff, #00c2ff, #ff2a40); filter: blur(8px); opacity: .55; animation: oaSpin 5s linear infinite; }
+.oa-fab:hover { transform: translateY(-3px) rotate(-4deg) scale(1.05); }
+.oa-logo { width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+.oa-logo.lg { width: 84px; height: 84px; border-radius: 26px; box-shadow: 0 14px 34px rgba(112,0,255,.35); animation: oaFloat 3.5s ease-in-out infinite; }
+@keyframes oaFloat { 50% { transform: translateY(-6px) rotate(-3deg); } }
+@media (max-width: 640px) { .oa-fab { width: 54px; height: 54px; padding: 0; border-radius: 17px; } .oa-fab img { border-radius: 17px; } }
