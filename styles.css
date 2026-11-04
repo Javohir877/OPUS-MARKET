@@ -1462,3 +1462,7 @@ html.in-app #app, html.in-app #installBtn { display: none !important; }
 }
 .to-top { transition: transform .4s, opacity .3s; }
 .to-top:not(.show) { opacity: 0; pointer-events: none; transform: translateY(24px) scale(.8); }
+/* Ochilish/yopilish animatsiyasi JS'da (ikonkadan) — CSS o'tishi o'chirildi */
+.oa-box { transform: none; opacity: 1; transition: none; will-change: transform, opacity; }
+.oa-fab.hide { transition: opacity .15s, transform .15s; }
+.oa-fab { transition: transform .35s cubic-bezier(.2,1.5,.4,1), opacity .2s .05s; }
