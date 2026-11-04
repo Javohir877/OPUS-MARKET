@@ -94,9 +94,15 @@ async function loadRv() {
 }
 const rateTxt = (p) => p.reviews ? `<b>★</b> ${p.rating} <span>(${p.reviews} sharh)</span>` : `<span>☆ Hali baho yo'q</span>`;
 applyCatalog(store.get("app_catalog", null));
+// Yangi katalogdan keyin: o'chirilgan yoki tugagan mahsulotlar savatdan olinadi, ortiqcha miqdor kamaytiriladi
+function pruneCart() {
+  let gone = 0, cut = 0;
+  S.cart = S.cart.filter((x) => { const p = byId(x.id); if (!p || (p.stock || 0) <= 0) { gone++; return false; } if (x.qty > p.stock) { x.qty = p.stock; cut++; } return true; });
+  if (gone || cut) { saveCart(); refreshRoot("cart"); toast(gone ? `⚠️ ${gone} ta mahsulot tugagani uchun savatdan olindi` : "⚠️ Ba'zi mahsulotlar miqdori ombordagiga moslandi"); }
+}
 async function loadCatalog() {
   const d = await api("GET", "/api/catalog");
-  if (d.PRODUCTS && d.PRODUCTS.length) { applyCatalog(d); store.set("app_catalog", d); if (window.checkDrops) checkDrops(); }
+  if (d.PRODUCTS && d.PRODUCTS.length) { applyCatalog(d); store.set("app_catalog", d); if (window.checkDrops) checkDrops(); pruneCart(); }
 }
 
 // ---------- Ekranlar steki ----------
@@ -127,7 +133,7 @@ function push(def) {
   stage.appendChild(el);
   const anim = def.anim || "enter";
   el.classList.add(anim);
-  if (prev) { prev.classList.add("under"); setTimeout(() => { prev.classList.remove("under"); prev.setAttribute("inert", ""); }, 320); }
+  if (prev) { prev.classList.add("under"); setTimeout(() => { prev.classList.remove("under"); if (current() !== prev) prev.setAttribute("inert", ""); }, 320); }
   setTimeout(() => el.classList.remove(anim), 360);
   mount(el); syncTabbar();
   return el;
@@ -143,13 +149,14 @@ function pop() {
   el._def.unmount && el._def.unmount(el);
   setTimeout(() => { el.remove(); prev.classList.remove("back-in"); }, 270);
   if (prev._def.onShow) prev._def.onShow(prev);
+  if (s.length === 1 && (tab === "cart" || tab === "fav")) setTimeout(() => refreshRoot(tab), 280);
   syncTabbar();
   return true;
 }
 function switchTab(t, reset) {
   if (t === tab && !reset) {
     // Shu tabni qayta bosish: boshiga qaytish / yuqoriga aylantirish
-    if (stacks[t].length > 1) { while (stacks[t].length > 1) { const el = stacks[t].pop(); el._def.unmount && el._def.unmount(el); el.remove(); } current().removeAttribute("inert"); syncTabbar(); }
+    if (stacks[t].length > 1) { while (stacks[t].length > 1) { const el = stacks[t].pop(); el._def.unmount && el._def.unmount(el); el.remove(); } current().removeAttribute("inert"); syncTabbar(); refreshRoot(t); }
     else { const sb = $(".sb", current()); sb && sb.scrollTo({ top: 0, behavior: "smooth" }); }
     return;
   }
@@ -267,8 +274,9 @@ function addToCart(id, qty = 1, silent) {
 function setQty(id, qty) {
   const p = byId(id), it = S.cart.find((x) => x.id === +id);
   if (!it) return;
-  if (qty <= 0) S.cart = S.cart.filter((x) => x.id !== +id);
-  else it.qty = Math.min(qty, p ? p.stock : qty);
+  const q = Math.min(qty, p ? p.stock || 0 : 0);
+  if (q <= 0) S.cart = S.cart.filter((x) => x.id !== +id);
+  else it.qty = q;
   saveCart(); haptic(6); if (window.sfx) sfx(qty <= 0 ? "remove" : "tick");
 }
 function toggleFav(id, btn) {
@@ -453,7 +461,7 @@ function sortList(list, s) {
   return L.sort((a, b) => ((a.stock || 0) <= 0) - ((b.stock || 0) <= 0)); // tugaganlar oxirida
 }
 function openList(o) {
-  const base = S.products.filter((p) => (!o.cat || p.cat === o.cat) && (!o.filter || o.filter(p)) && (!o.ids || o.ids.includes(p.id)));
+  const base = S.products.filter((p) => (!o.cat || p.cat === o.cat) && (!o.brand || p.brand === o.brand) && (!o.filter || o.filter(p)) && (!o.ids || o.ids.includes(p.id)));
   if (o.keepOrder && o.ids) base.sort((a, b) => o.ids.indexOf(a.id) - o.ids.indexOf(b.id));
   const allBrands = o.brand ? [] : [...new Set(base.map((p) => p.brand))].sort();
   const st = { sort: o.sort || (o.deals ? "disc" : o.keepOrder ? "keep" : "popular"), sale: !!o.deals, stock: false, orig: false, rating: 0, min: null, max: null, brands: new Set(), view: store.get("app_view", "grid") };
@@ -555,7 +563,7 @@ function openSearch(q0 = "") {
           return;
         }
         const R = smartSearch(q), L = R.list;
-        res.innerHTML = catHits(q) + searchHint(R.hint) + `<p class="list-meta" style="padding-top:12px">${L.length} ta natija</p><div class="sec" style="padding-top:0">${L.length ? grid(L) : emptyBox("🔍", "Topilmadi", `"${esc(q)}" bo'yicha mahsulot yo'q. Boshqacha yozib ko'ring.`)}</div>`;
+        res.innerHTML = catHits(q) + searchHint(R.hint) + `<p class="list-meta" style="padding-top:12px">${L.length} ta natija</p><div class="sec" style="padding-top:0">${L.length ? grid(L) : emptyBox("🔍", "Topilmadi", `"${esc(q)}" bo'yicha mahsulot yo'q. Boshqacha yozib ko'ring.`)}</div><div class="sec" style="padding-bottom:24px"><button class="btn ghost block" data-ai="${esc(q)}">✨ OPUS AI'dan so'rash: “${esc(q)}”</button></div>`;
       };
       let t;
       inp.addEventListener("input", () => { clearTimeout(t); t = setTimeout(draw, 160); });
@@ -716,8 +724,8 @@ function cartScreen() {
   };
   const left = Math.max(0, T.free - T.subtotal);
   return {
-    html: `<div class="home-hdr"><div class="home-top"><h1 style="font-size:22px">Savat <small class="muted" style="font-size:14px;font-weight:500">${T.count} ta mahsulot</small></h1><button class="ib" data-clear aria-label="Tozalash">${svg(IC.trash)}</button></div></div>
-      <div class="sb" style="padding-bottom:calc(170px + var(--safe-b))"><div class="sec" style="display:flex;flex-direction:column;gap:10px">
+    html: `<div class="home-hdr"><div class="home-top"><h1 style="font-size:22px">Savat <small class="muted" style="font-size:14px;font-weight:500">${T.count} ta mahsulot</small></h1><span style="display:flex;gap:4px"><button class="ib" data-sharecart aria-label="Savatni ulashish">${svg(IC.share)}</button><button class="ib" data-clear aria-label="Tozalash">${svg(IC.trash)}</button></span></div></div>
+      <div class="sb" style="padding-bottom:110px"><div class="sec" style="display:flex;flex-direction:column;gap:10px">
         <div class="ship-prog" style="--w:${Math.min(100, (T.subtotal / T.free) * 100)}%">${left ? `<span>🚚 Bepul yetkazish uchun yana <b>${fmt(left)}</b> xarid qiling</span>` : `<span>🎉 Yetkazib berish <b>bepul!</b></span>`}<i></i></div>
         ${T.items.map((x) => `<div class="ci-row" data-row="${x.id}">
           <button class="thumb" data-pid="${x.id}"><img src="${esc(hi(x.p.img, 330))}" alt="" onerror="imgErr(this)" /></button>
@@ -735,7 +743,7 @@ function cartScreen() {
           <small class="muted">Yetkazish narxi keyingi qadamda hisoblanadi</small>
         </div></div>
       </div></div>
-      <div class="buybar" style="bottom:calc(var(--tab-h) + var(--safe-b));padding-bottom:10px"><div><small>${T.count} ta mahsulot</small><b>${fmt(T.subtotal - T.discount)}</b></div><button class="btn flex" data-checkout>Rasmiylashtirish</button></div>`,
+      <div class="buybar" style="padding-bottom:10px"><div><small>${T.count} ta mahsulot</small><b>${fmt(T.subtotal - T.discount)}</b></div><button class="btn flex" data-checkout>Rasmiylashtirish</button></div>`,
     mount(el) {
       el.addEventListener("click", (e) => {
         const row = e.target.closest("[data-row]");
@@ -790,7 +798,7 @@ function openCheckout() {
             <div><span>Yetkazib berish</span><span>${ship ? fmt(ship) : `<b style="color:var(--ok)">Bepul</b>`}</span></div>
             <div class="tot"><span>Jami</span><span>${fmt(total)}</span></div></div>
             <small class="muted">Buyurtmani tasdiqlash uchun Telegram'ga 6 xonali kod yuboriladi.</small></div>`;
-        $("#coBar", el).innerHTML = `<div><small>Jami</small><b>${fmt(total)}</b></div><button class="btn flex" id="place">Buyurtma berish</button>`;
+        $("#coBar", el).innerHTML = `<div><small>Jami</small><b>${fmt(total)}</b></div><button class="btn flex" id="place" ${el._busy ? "disabled" : ""}>${el._busy ? "Yuborilmoqda…" : "Buyurtma berish"}</button>`;
       };
       const keep = () => { const r = $("#reg", el), a = $("#addr", el), n = $("#note", el); if (r) o.region = r.value; if (a) o.address = a.value; if (n) o.note = n.value; };
       el.addEventListener("click", async (e) => {
@@ -798,21 +806,22 @@ function openCheckout() {
         const py = e.target.closest("[data-pay]"); if (py) { keep(); o.payment = py.dataset.pay; haptic(5); draw(); return; }
         const mo = e.target.closest("[data-mo]"); if (mo) { keep(); o.months = +mo.dataset.mo; draw(); return; }
         if (e.target.closest("#place")) {
+          if (el._busy) return;
           keep();
           if (o.delivery === "courier" && o.address.trim().length < 3) { const a = $("#addr", el); a.classList.remove("err"); void a.offsetWidth; a.classList.add("err"); a.focus(); toast("⚠️ Yetkazib berish manzilini kiriting"); return; }
-          const b = $("#place", el); b.disabled = true; b.textContent = "Yuborilmoqda…";
+          el._busy = true; const b = $("#place", el); b.disabled = true; b.textContent = "Yuborilmoqda…";
           try {
             const r = await api("POST", "/api/orders", {
-              items: S.cart.map((x) => ({ id: x.id, qty: x.qty })), delivery: o.delivery, region: o.region, address: o.address, note: o.note,
+              items: totals().items.map((x) => ({ id: x.id, qty: x.qty })), delivery: o.delivery, region: o.region, address: o.address, note: o.note,
               payment: o.payment, months: o.payment === "uzum" ? o.months : null, promo: S.promo,
             });
-            S.cart = []; saveCart(); S.promo = null; store.set("app_promo", null); S.orders = null;
+            S.cart = []; saveCart(); S.promo = null; store.set("app_promo", null); S.orders = null; refreshRoot("cart");
             if (auth.user && o.delivery === "courier") { auth.user.region = o.region; auth.user.address = o.address; store.set("user", auth.user); }
             loadCatalog().catch(() => {});
             haptic(25);
             if (r.confirm) openConfirm(r.order, r.confirm, true);
             else openDone(r.order);
-          } catch (ex) { toast("⚠️ " + ex.message); b.disabled = false; b.textContent = "Buyurtma berish"; }
+          } catch (ex) { el._busy = false; toast("⚠️ " + ex.message); const nb = $("#place", el); if (nb) { nb.disabled = false; nb.textContent = "Buyurtma berish"; } }
         }
       });
       draw();
@@ -886,7 +895,7 @@ function openDone(order, confirmed) {
       <button class="btn block" id="dOrders">Buyurtmalarim</button><button class="btn ghost block" id="dHome">Xaridni davom ettirish</button></div></div>`,
     mount(el) {
       haptic([20, 60, 30]); window.sfx && sfx("success"); setTimeout(confetti, 350);
-      $("#dOrders", el).onclick = () => { switchTab("profile", true); setTimeout(openOrders, 50); while (stacks.cart.length > 1) { const x = stacks.cart.pop(); x.remove(); } refreshRoot("cart"); };
+      $("#dOrders", el).onclick = () => { while (stacks[tab].length > 1) { const x = stacks[tab].pop(); x._def.unmount && x._def.unmount(x); x.remove(); } current().removeAttribute("inert"); refreshRoot(tab); refreshRoot("cart"); switchTab("profile", true); setTimeout(openOrders, 50); };
       $("#dHome", el).onclick = () => { while (stacks[tab].length > 1) { const x = stacks[tab].pop(); x.remove(); } current().removeAttribute("inert"); refreshRoot(tab); switchTab("home"); };
     },
   });
@@ -918,6 +927,8 @@ function profileScreen() {
       <button class="mi" data-m="font"><span class="ri">🔠</span><span>Shrift o'lchami</span><small>${(FONT[store.get("app_font", "m")] || FONT.m)[1]}</small></button>
       <a class="mi" href="https://t.me/${BOT}" target="_blank" rel="noopener"><span class="ri">✈️</span><span>Telegram bot</span><small>@${BOT}</small></a>
       <a class="mi" href="tel:${SHOP_PHONE}"><span class="ri">📞</span><span>Qo'llab-quvvatlash</span><small>${fmtPhone(SHOP_PHONE.slice(1))}</small></a>
+      <button class="mi" data-ai=""><span class="ri">✨</span><span>OPUS AI yordamchi</span><small>yangi</small></button>
+      <button class="mi" data-m="help"><span class="ri">💬</span><span>Yordam markazi</span><small>savol-javob</small></button>
       <button class="mi" data-m="whatsnew"><span class="ri">🆕</span><span>Yangilanishlar</span><small>v${esc(CHANGELOG.ver)}</small></button>
       <button class="mi" data-m="about"><span class="ri">ℹ️</span><span>Ilova haqida</span><small>v${esc(VERSION)}</small></button>
     </div>`;
@@ -1095,7 +1106,7 @@ function openOrders(f0) {
       el._def.onShow = draw;
       draw();
       const reload = async () => { await loadOrders(); draw(); refreshRoot("profile"); };
-      reload().catch((ex) => { $("#ol", el).innerHTML = emptyBox("📡", "Yuklab bo'lmadi", ex.message); });
+      reload().catch((ex) => { $("#ol", el).innerHTML = emptyBox("📡", "Yuklab bo'lmadi", esc(ex.message)); });
       pullToRefresh($(".sb", el), $("#ptr", el), reload);
     },
   });
@@ -1121,6 +1132,7 @@ function openOrder(o) {
         ${o.note ? `<div class="row"><span class="ri">💬</span><div><small>${esc(o.note)}</small></div></div>` : ""}
       </div>
       ${["Yetkazildi", "Bekor qilindi"].includes(o.status) ? `<button class="btn block" data-reorder="${esc(o.id)}">🔁 Qayta buyurtma qilish</button>` : ""}
+      <button class="btn ghost block" data-receipt="${esc(o.id)}">🧾 Chekni ulashish</button>
       <a class="btn ghost block" href="tel:${SHOP_PHONE}">📞 Operator bilan bog'lanish</a>
       ${o.status === "Yangi" ? `<button class="btn ghost block" style="color:var(--red2)" id="oCancel">Buyurtmani bekor qilish</button>` : ""}
     </div></div>`,
@@ -1706,16 +1718,17 @@ function openStories(gi) {
     }
   };
   const loop = (now) => {
+    if (st.dead) return;
     if (!st.paused) {
       const p = Math.min(1, (st.elapsed + now - st.t0) / DUR);
       const bar = $$(".st-bars b", box)[st.si]; if (bar) bar.style.width = p * 100 + "%";
       if (p >= 1) step(1);
     }
-    st.raf = requestAnimationFrame(loop);
+    if (!st.dead) st.raf = requestAnimationFrame(loop);
   };
   const pause = () => { if (!st.paused) { st.paused = true; st.elapsed += performance.now() - st.t0; } };
   const resume = () => { if (st.paused) { st.paused = false; st.t0 = performance.now(); } };
-  const close = () => { cancelAnimationFrame(st.raf); box.classList.add("out"); setTimeout(() => box.remove(), 260); storyState = null; sfx("close"); refreshRoot("home"); };
+  const close = () => { if (st.dead) return; st.dead = true; cancelAnimationFrame(st.raf); box.classList.add("out"); setTimeout(() => box.remove(), 260); storyState = null; sfx("close"); refreshRoot("home"); };
   st.close = close;
   // Barmoq bilan: yon tomonga surish — keyingi/oldingi guruh (3D), pastga — yopish, bosib turish — pauza
   let x0 = 0, y0 = 0, tDown = 0, drag = false, holdT = 0;
@@ -1873,6 +1886,51 @@ document.addEventListener("click", (e) => {
     b.addEventListener("click", (ev) => { const f = ev.target.closest("[data-fz]"); if (!f) return; store.set("app_font", f.dataset.fz); applyFont(); closeSheet(); refreshRoot("profile"); }));
 });
 
+const cmpVer = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
+const CHANGELOG = {
+  ver: "2.3", build: "2026-11-04", date: "4-noyabr, 2026",
+  groups: [
+    { t: "Eng so'nggi qo'shilganlar", e: "🔥", items: [
+      ["✨", "OPUS AI yordamchi", "Sun'iy intellekt bilan suhbat: \"10 mln gacha o'yin noutbuki\", \"RTX 4070 yoki RX 6800 XT?\", \"30 mln ga kompyuter yig'ib ber\" deb so'rang. Javob yozila borib chiqadi, tavsiya qilingan mahsulotlar kartasi bilan ko'rinadi va darhol savatga qo'shiladi. Narxlar faqat katalogimizdan olinadi. Bosh sahifadagi OPUS AI banneri yoki Kabinet orqali oching."],
+      ["💬", "Yordam markazi", "Kabinet → Yordam markazi: yetkazish, bo'lib to'lash, kafolat, qaytarish va Telegram kodi haqidagi savol-javoblar, qo'ng'iroq va Telegram tugmalari, ilovadan foydalanish sirlari."],
+      ["🔗", "Savatni ulashish", "Savat tepasidagi ulashish tugmasi havola yaratadi — uni ochgan odamning savatiga o'sha mahsulotlar bitta tugma bilan tushadi."],
+      ["🧾", "Chekni ulashish", "Buyurtma sahifasida \"Chekni ulashish\" — mahsulotlar, summa va holat matn ko'rinishida yuboriladi."],
+    ] },
+    { t: "Yangi imkoniyatlar", e: "✨", items: [
+      ["🔍", "Aqlli qidiruv", "Kirill harflarida ham qidiradi (\"ноутбук\", \"мышка\"), ruscha va o'zbekcha so'zlarni tushunadi (naushnik → quloqchinlar, videokarta → RTX/Radeon). Xato yozsangiz ham topadi (\"noutbk asus\", \"macbok\"). Narxni ham tushunadi: \"5 mln gacha noutbuk\", \"2-5 mln\", \"arzon klaviatura\"."],
+      ["🛠", "Kompyuter yig'ish", "Protsessor, ona plata, videokarta, xotira, disk, blok pitaniya va sovutishni tanlab, o'z kompyuteringizni yig'ing. Jami narx va oylik to'lov ko'rinadi. Ilova razyom, xotira turi (DDR4/DDR5) va blok quvvati mosligini tekshiradi. Hammasini bitta tugma bilan savatga qo'shasiz."],
+      ["💰", "Byudjetga mos", "Summani tanlang (slayder yoki 500 ming, 1 mln, 5 mln...) va kerak bo'lsa bo'limni belgilang — ilova shu narxgacha bo'lgan mahsulotlarni ko'rsatadi."],
+      ["👆", "Tezkor ko'rish", "Istalgan mahsulot kartochkasini barmoq bilan bosib turing — rasm, narx va reyting pastdan chiqadi. Sahifaga kirmasdan savatga yoki saralanganga qo'shish mumkin."],
+      ["🃏", "Kun kartalari", "Bosh sahifada eng katta chegirmali mahsulotlar kartalar to'plami bo'lib turadi: chapga yoki o'ngga suring, bossangiz mahsulot ochiladi."],
+      ["🪪", "A'zolik kartasi", "Kabinetda ismingiz yozilgan OPUS kartasi ipga osilib turadi — uni barmoq bilan tortib, otib ko'ring."],
+      ["🔁", "Qayta buyurtma", "Yetkazilgan buyurtma sahifasida bitta tugma bilan o'sha mahsulotlarni yana savatga qo'yasiz. Omborda qolmaganlari alohida aytiladi."],
+      ["📡", "Oflayn rejim", "Internet uzilsa, ilova ogohlantiradi va saqlangan katalog bilan ishlashda davom etadi. Internet qaytsa, narxlar o'zi yangilanadi."],
+      ["🔠", "Shrift o'lchami", "Kabinet → Shrift o'lchami: Kichik, Oddiy, Katta yoki Juda katta."],
+      ["📌", "Ikonka yorliqlari", "Ilova ikonkasini bosib turing: Qidiruv, Savat, Buyurtmalarim va PC yig'ish yorliqlari chiqadi. Ularni bosh ekranga ham chiqarib qo'yish mumkin."],
+      ["🧰", "Asboblar bloki", "Bosh sahifada to'rtta tezkor tugma: Kompyuter yig'ish, Byudjetga mos, Taqqoslash va Buyurtmalarim."],
+    ] },
+    { t: "Dizayn va silliqlik", e: "🎨", items: [
+      ["🎬", "Animatsiyali kirish", "Ilova ochilganda logo, neon halqa va \"OPUS MARKET\" yozuvi bilan chiroyli kirish ekrani."],
+      ["👈", "Surib orqaga qaytish", "Ekranning chap chetidan barmoq bilan torting — sahifa barmoq ortidan yuradi va orqaga qaytadi."],
+      ["〰️", "Tab paneli", "Tanlangan bo'lim ustida qizil nur chiziq sirpanib yuradi, bo'limlar yo'nalish bo'yicha almashadi."],
+      ["⬇️", "Pastki oynalar", "Har qanday pastki oynani barmoq bilan pastga tortib yopish mumkin."],
+      ["✨", "Mayda effektlar", "Rasm yuklanayotganda yaltiroq skelet, savatga qo'shganda uchqunlar, bosilgan joydan yorug'lik va asosiy tugmalarda yaltiroq nur."],
+    ] },
+    { t: "Tuzatilgan xatolar", e: "🛠", items: [
+      ["🐞", "Vidjetdan ochilganda qotish", "\"Buyurtmam qayerda\" vidjeti yoki \"Buyurtmalarim\" yorlig'i bosilganda ilova kirish ekranida qotib qolardi. Endi to'g'ri ochiladi."],
+      ["🐞", "Stories batareyani yerdi", "Oxirgi story o'zi tugaganda ilova orqa fonda to'xtovsiz ishlab, bosish va batareyaga ta'sir qilardi. Tuzatildi."],
+      ["🐞", "Brend sahifasi", "Brendni (masalan ASUS) bossangiz, butun katalog chiqardi. Endi faqat o'sha brend mahsulotlari."],
+      ["🐞", "Savat va buyurtma", "Buyurtmadan keyin orqaga qaytilganda savatda eski mahsulotlar ko'rinib qolardi; tugagan yoki o'chirilgan mahsulot savatda yashirin qolib, buyurtma xato berardi; tez-tez bosilganda bitta savatdan ikkita buyurtma ketishi mumkin edi. Hammasi tuzatildi."],
+      ["🐞", "Bo'sh ekran", "Sahifa ochilib, darhol orqaga qaytilganda ba'zan bo'sh ekran qolardi. Tuzatildi."],
+      ["🐞", "Ikki marta orqaga", "Android'ning chetdan surish ishorasi ba'zan ikki sahifa orqaga qaytarardi. Tuzatildi."],
+      ["🐞", "Savat paneli", "\"Rasmiylashtirish\" paneli tab panelidan ancha yuqorida osilib turardi. Endi joyida."],
+      ["🐞", "A'zolik kartasi", "Kabinetdagi osilgan karta barcha telefonlarda silliq ishlaydi (60/90/120 Hz), avatar cho'zilib ketmaydi, tortganda matn belgilanib qolmaydi."],
+      ["🐞", "Tanlov aralashib ketishi", "Pastki oynalarda bitta tanlov boshqa joyni ham o'zgartirib yuborishi mumkin edi. Endi har bir oyna mustaqil ishlaydi."],
+      ["🐞", "Miltillash", "Ma'lumot yangilanganda bosh sahifadagi barcha kartochkalar qaytadan \"uchib\" chiqardi. Endi ekran jim yangilanadi."],
+      ["🐞", "YANGI5 promo-kodi", "Birinchi xarid uchun va'da qilingan 5% chegirma kodi to'lovda qabul qilinmasdi. Endi ishlaydi."],
+    ] },
+  ],
+};
 const ROOTS = { home: homeScreen, catalog: catalogScreen, cart: cartScreen, fav: favScreen, profile: profileScreen };
 matchMedia("(prefers-color-scheme: light)").addEventListener("change", applyTheme);
 applyTheme();
@@ -2023,9 +2081,10 @@ moveInd();
       s.pop(); b.removeAttribute("inert");
       a._def.unmount && a._def.unmount(a); a.remove();
       b._def.onShow && b._def.onShow(b); syncTabbar();
+      if (s.length === 1 && (tab === "cart" || tab === "fav")) refreshRoot(tab);
     }, 250);
   };
-  stage.addEventListener("touchend", end); stage.addEventListener("touchcancel", end);
+  stage.addEventListener("touchend", end); stage.addEventListener("touchcancel", () => { dx = 0; t0 = 0; end(); });
 })();
 
 // Pastki oynani pastga tortib yopish
@@ -2176,60 +2235,73 @@ const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 // Lanyard: Kabinetdagi a'zolik kartasi ipga osilgan, barmoq bilan tortib tashlash mumkin
 function initLanyard(root) {
   const box = $(".lan", root); if (!box) return;
-  const card = $(".lan-card", box), path = $(".lan-strap path", box), svgEl = $(".lan-strap", box);
-  const L = 74, G = 1500, K = 420, DAMP = 4;
-  let W = box.clientWidth, px = W / 2;
-  let x = 0, y = L, vx = 0, vy = 0, rot = 0, vr = 0, drag = null, raf = 0, last = 0;
+  const card = $(".lan-card", box), path = $(".lan-strap path", box), glare = $(".lan-glare", box);
+  // Fizika: qat'iy 1/120 s qadam — 60, 90 va 120 Hz ekranlarda bir xil harakat
+  const L = 74, G = 1500, K = 420, DAMP = 4, STEP = 1 / 120, REST = L + G / K;
+  let W = 0, px = 0, x = 0, y = REST, vx = 0, vy = 0, rot = 0, vr = 0;
+  let drag = false, tx = 0, ty = 0, raf = 0, last = 0, acc = 0, visible = true;
+  const measure = () => { const w = box.clientWidth; if (w && w !== W) { W = w; px = W / 2; } };
   const draw = () => {
-    if (!W || W !== box.clientWidth) { W = box.clientWidth; px = W / 2; }
-    const a = Math.atan2(x, y);
-    card.style.transform = `translate(${px + x}px, ${y}px) translate(-50%, 0) rotate(${(-a * 180) / Math.PI + rot}deg)`;
-    card.style.setProperty("--hx", (50 + x * 0.6).toFixed(1) + "%");
-    card.style.setProperty("--hy", (50 + (y - L) * 0.8 + rot * 2).toFixed(1) + "%");
-    const mx = px + x * 0.5, my = y * 0.5 + 8;
-    path.setAttribute("d", `M${px} -4 Q${mx + x * 0.1} ${my} ${px + x} ${y + 6}`);
+    measure();
+    const a = (-Math.atan2(x, y) * 180) / Math.PI + rot;
+    card.style.transform = `translate3d(${(px + x).toFixed(2)}px, ${y.toFixed(2)}px, 0) translateX(-50%) rotate(${a.toFixed(2)}deg)`;
+    // Yaltiroq faqat transform bilan siljiydi (qayta chizilmaydi — zaif telefonlarda ham silliq)
+    if (glare) glare.style.transform = `translate3d(${(x * 0.9 + rot * 3).toFixed(1)}px, 0, 0)`;
+    path.setAttribute("d", `M${px.toFixed(1)} -4 Q${(px + x * 0.6).toFixed(1)} ${(y * 0.5 + 8).toFixed(1)} ${(px + x).toFixed(1)} ${(y + 6).toFixed(1)}`);
   };
-  const step = (t) => {
-    const dt = Math.min(0.032, (t - (last || t)) / 1000 || 0.016); last = t;
-    if (!drag) {
+  const phys = (dt) => {
+    if (drag) {
+      // Barmoq ortidan qattiq prujina bilan ergashadi — sensor sakrashlari silliqlanadi
+      vx += ((tx - x) * 900 - vx * 55) * dt; vy += ((ty - y) * 900 - vy * 55) * dt;
+    } else {
       const d = Math.hypot(x, y) || 1, f = -K * (d - L);
-      let ax = f * (x / d) - DAMP * vx, ay = f * (y / d) + G - DAMP * vy;
-      vx += ax * dt; vy += ay * dt; x += vx * dt; y += vy * dt;
-      if (y < 10) { y = 10; vy = Math.abs(vy) * 0.3; }
-      // Karta o'z o'qi atrofida biroz chayqaladi
-      vr += (-rot * 40 - vr * 4 - vx * 0.4) * dt; rot += vr * dt;
+      vx += (f * (x / d) - DAMP * vx) * dt; vy += (f * (y / d) + G - DAMP * vy) * dt;
     }
-    draw();
-    const still = !drag && Math.abs(vx) + Math.abs(vy) < 2 && Math.abs(x) < 0.5 && Math.abs(y - L - G / K) < 0.5 && Math.abs(rot) + Math.abs(vr) < 0.05;
-    if (still || !box.isConnected) { raf = 0; last = 0; return; }
-    raf = requestAnimationFrame(step);
+    x += vx * dt; y += vy * dt;
+    if (y < 10) { y = 10; vy = Math.abs(vy) * 0.3; }
+    vr += (-rot * 40 - vr * 4 - vx * 0.4) * dt; rot += vr * dt;
   };
-  const kick = () => { if (!raf && !reduceMotion) raf = requestAnimationFrame(step); };
-  let ox = 0, oy = 0, hist = [];
+  const frame = (t) => {
+    raf = 0;
+    if (!box.isConnected) return;
+    acc += Math.min(0.1, last ? (t - last) / 1000 : STEP); last = t;
+    while (acc >= STEP) { phys(STEP); acc -= STEP; }
+    draw();
+    const still = !drag && Math.abs(vx) + Math.abs(vy) < 2 && Math.abs(x) < 0.5 && Math.abs(y - REST) < 0.5 && Math.abs(rot) + Math.abs(vr) < 0.05;
+    if (still || !visible || document.hidden) { last = 0; acc = 0; return; }
+    raf = requestAnimationFrame(frame);
+  };
+  const kick = () => { if (!raf && !reduceMotion) raf = requestAnimationFrame(frame); };
+  let ox = 0, oy = 0, pid = null;
+  const local = (e) => { const r = box.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
   card.addEventListener("pointerdown", (e) => {
-    if (e.target.closest("a, button")) return;
-    W = box.clientWidth; px = W / 2;
-    const r = box.getBoundingClientRect();
-    drag = true; ox = e.clientX - r.left - px - x; oy = e.clientY - r.top - y; hist = [];
-    try { card.setPointerCapture(e.pointerId); } catch (er) {} card.classList.add("grab"); haptic(6); kick();
+    if (pid !== null || e.button > 0) return;
+    measure(); const [lx, ly] = local(e);
+    pid = e.pointerId; drag = true; ox = lx - px - x; oy = ly - y; tx = x; ty = y;
+    try { card.setPointerCapture(pid); } catch (er) {}
+    card.classList.add("grab"); document.body.classList.add("no-select"); haptic(6); kick();
   });
   card.addEventListener("pointermove", (e) => {
-    if (!drag) return;
-    const r = box.getBoundingClientRect();
-    x = Math.max(-W / 2 + 40, Math.min(W / 2 - 40, e.clientX - r.left - px - ox));
-    y = Math.max(20, Math.min(L * 2.6, e.clientY - r.top - oy));
-    hist.push({ x, y, t: performance.now() }); if (hist.length > 5) hist.shift();
+    if (e.pointerId !== pid) return;
+    const [lx, ly] = local(e);
+    tx = Math.max(-W / 2 + 40, Math.min(W / 2 - 40, lx - px - ox));
+    ty = Math.max(20, Math.min(L * 2.6, ly - oy));
+    kick();
   });
-  const up = () => {
-    if (!drag) return; drag = null; card.classList.remove("grab");
-    if (hist.length > 1) { const a = hist[0], b = hist[hist.length - 1], dt = Math.max(16, b.t - a.t) / 1000; vx = (b.x - a.x) / dt * 0.6; vy = (b.y - a.y) / dt * 0.6; }
-    if (Math.hypot(x, y - L) > 30) haptic(10);
+  const up = (e) => {
+    if (e.pointerId !== pid) return;
+    pid = null; drag = false; card.classList.remove("grab"); document.body.classList.remove("no-select");
+    if (Math.hypot(x, y - REST) > 30) haptic(10);
     kick();
   };
-  card.addEventListener("pointerup", up); card.addEventListener("pointercancel", up);
+  card.addEventListener("pointerup", up); card.addEventListener("pointercancel", up); card.addEventListener("lostpointercapture", up);
+  // Ekrandan chiqsa yoki ilova fonga o'tsa — hisoblash to'xtaydi
+  if (window.IntersectionObserver) { const io = new IntersectionObserver((en) => { if (!box.isConnected) return io.disconnect(); visible = en[0].isIntersecting; if (visible) kick(); }); io.observe(box); }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
+  if (window.ResizeObserver) { const ro = new ResizeObserver(() => { if (!box.isConnected) return ro.disconnect(); measure(); draw(); }); ro.observe(box); }
   // Ochilganda tepadan tushib keladi
-  draw(); if (!reduceMotion) { y = 8; x = 26; vy = 0; draw(); setTimeout(kick, 120); } else { y = L + G / K; x = 0; draw(); }
-  if (window.ResizeObserver) new ResizeObserver(() => draw()).observe(box);
+  if (reduceMotion) { draw(); return; }
+  x = 26; y = 8; draw(); setTimeout(kick, 120);
 }
 {
   const _prof = ROOTS.profile;
@@ -2328,37 +2400,6 @@ refreshRoot("home"); refreshRoot("profile");
 // =====================================================================
 // ---------- v2.7: yangilash oynasi va "Yangilanishlar" sahifasi ----------
 // =====================================================================
-const cmpVer = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
-const CHANGELOG = {
-  ver: "2.3", date: "3-noyabr, 2026",
-  groups: [
-    { t: "Yangi imkoniyatlar", e: "✨", items: [
-      ["🔍", "Aqlli qidiruv", "Kirill harflarida ham qidiradi (\"ноутбук\", \"мышка\"), ruscha va o'zbekcha so'zlarni tushunadi (naushnik → quloqchinlar, videokarta → RTX/Radeon). Xato yozsangiz ham topadi (\"noutbk asus\", \"macbok\"). Narxni ham tushunadi: \"5 mln gacha noutbuk\", \"2-5 mln\", \"arzon klaviatura\"."],
-      ["🛠", "Kompyuter yig'ish", "Protsessor, ona plata, videokarta, xotira, disk, blok pitaniya va sovutishni tanlab, o'z kompyuteringizni yig'ing. Jami narx va oylik to'lov ko'rinadi. Ilova razyom, xotira turi (DDR4/DDR5) va blok quvvati mosligini tekshiradi. Hammasini bitta tugma bilan savatga qo'shasiz."],
-      ["💰", "Byudjetga mos", "Summani tanlang (slayder yoki 500 ming, 1 mln, 5 mln...) va kerak bo'lsa bo'limni belgilang — ilova shu narxgacha bo'lgan mahsulotlarni ko'rsatadi."],
-      ["👆", "Tezkor ko'rish", "Istalgan mahsulot kartochkasini barmoq bilan bosib turing — rasm, narx va reyting pastdan chiqadi. Sahifaga kirmasdan savatga yoki saralanganga qo'shish mumkin."],
-      ["🃏", "Kun kartalari", "Bosh sahifada eng katta chegirmali mahsulotlar kartalar to'plami bo'lib turadi: chapga yoki o'ngga suring, bossangiz mahsulot ochiladi."],
-      ["🪪", "A'zolik kartasi", "Kabinetda ismingiz yozilgan OPUS kartasi ipga osilib turadi — uni barmoq bilan tortib, otib ko'ring."],
-      ["🔁", "Qayta buyurtma", "Yetkazilgan buyurtma sahifasida bitta tugma bilan o'sha mahsulotlarni yana savatga qo'yasiz. Omborda qolmaganlari alohida aytiladi."],
-      ["📡", "Oflayn rejim", "Internet uzilsa, ilova ogohlantiradi va saqlangan katalog bilan ishlashda davom etadi. Internet qaytsa, narxlar o'zi yangilanadi."],
-      ["🔠", "Shrift o'lchami", "Kabinet → Shrift o'lchami: Kichik, Oddiy, Katta yoki Juda katta."],
-      ["📌", "Ikonka yorliqlari", "Ilova ikonkasini bosib turing: Qidiruv, Savat, Buyurtmalarim va PC yig'ish yorliqlari chiqadi. Ularni bosh ekranga ham chiqarib qo'yish mumkin."],
-      ["🧰", "Asboblar bloki", "Bosh sahifada to'rtta tezkor tugma: Kompyuter yig'ish, Byudjetga mos, Taqqoslash va Buyurtmalarim."],
-    ] },
-    { t: "Dizayn va silliqlik", e: "🎨", items: [
-      ["🎬", "Animatsiyali kirish", "Ilova ochilganda logo, neon halqa va \"OPUS MARKET\" yozuvi bilan chiroyli kirish ekrani."],
-      ["👈", "Surib orqaga qaytish", "Ekranning chap chetidan barmoq bilan torting — sahifa barmoq ortidan yuradi va orqaga qaytadi."],
-      ["〰️", "Tab paneli", "Tanlangan bo'lim ustida qizil nur chiziq sirpanib yuradi, bo'limlar yo'nalish bo'yicha almashadi."],
-      ["⬇️", "Pastki oynalar", "Har qanday pastki oynani barmoq bilan pastga tortib yopish mumkin."],
-      ["✨", "Mayda effektlar", "Rasm yuklanayotganda yaltiroq skelet, savatga qo'shganda uchqunlar, bosilgan joydan yorug'lik va asosiy tugmalarda yaltiroq nur."],
-    ] },
-    { t: "Tuzatilgan xatolar", e: "🛠", items: [
-      ["🐞", "Tanlov aralashib ketishi", "Pastki oynalarda bitta tanlov boshqa joyni ham o'zgartirib yuborishi mumkin edi. Endi har bir oyna mustaqil ishlaydi."],
-      ["🐞", "Miltillash", "Ma'lumot yangilanganda bosh sahifadagi barcha kartochkalar qaytadan \"uchib\" chiqardi. Endi ekran jim yangilanadi."],
-      ["🐞", "YANGI5 promo-kodi", "Birinchi xarid uchun va'da qilingan 5% chegirma kodi to'lovda qabul qilinmasdi. Endi ishlaydi."],
-    ] },
-  ],
-};
 function openWhatsNew(auto) {
   const all = CHANGELOG.groups.reduce((a, g) => a + g.items.length, 0);
   push({
@@ -2377,7 +2418,7 @@ function openUpdate(u) {
       <div class="up-ic"><img src="../icons/icon-192.png" alt="" /><i>v${esc(u.version)}</i></div>
       <h3>Yangi versiya tayyor!</h3>
       <p class="muted">Sizda v${esc(VERSION)} o'rnatilgan. v${esc(u.version)} ga yangilang${u.sizeMB ? ` — atigi ${esc(u.sizeMB)} MB` : ""}.</p>
-      <ul class="up-l"><li>🔍 Aqlli qidiruv — kirillcha, xatolar va narx bilan</li><li>🛠 Kompyuter yig'ish va 💰 byudjetga mos tanlash</li><li>📌 Ikonkani bosib turganda tezkor yorliqlar</li><li>🔁 Qayta buyurtma, 📡 oflayn rejim va boshqalar</li></ul>
+      <ul class="up-l"><li>✨ OPUS AI — sun'iy intellekt yordamchi</li><li>🔍 Aqlli qidiruv — kirillcha, xatolar va narx bilan</li><li>🛠 Kompyuter yig'ish va 💰 byudjetga mos tanlash</li><li>📌 Ikonkani bosib turganda tezkor yorliqlar</li><li>🔁 Qayta buyurtma, 📡 oflayn rejim va boshqalar</li></ul>
       <div class="up-steps" id="upSteps" hidden><p><b>1.</b> Yuklab olingan faylni oching</p><p><b>2.</b> <b>"O'rnatish"</b> ni bosing (ma'lumotlaringiz saqlanadi)</p><p><b>3.</b> <b>"Ochish"</b> ni bosing — yangiliklar ro'yxati chiqadi</p></div>
       <button class="btn block" id="upGo">⬇️ Yangilash</button>
       <button class="btn ghost block" id="upLater" style="margin-top:8px">Keyinroq</button>
@@ -2395,9 +2436,169 @@ setTimeout(() => {
   if (VERSION === "web") return;
   const seen = store.get("app_seen_ver", null);
   store.set("app_seen_ver", VERSION);
-  if (seen && cmpVer(VERSION, seen) > 0) { openWhatsNew(true); return; }
   const u = updateInfo();
+  const fresh = seen && (cmpVer(VERSION, seen) > 0 || (!u && store.get("app_seen_build", null) !== CHANGELOG.build));
+  if (fresh) { store.set("app_seen_build", CHANGELOG.build); openWhatsNew(true); return; }
+  if (!seen) store.set("app_seen_build", CHANGELOG.build);
   let asked = null; try { asked = sessionStorage.getItem("opus_upd_asked"); } catch (e) {}
   if (u && !asked && !$(".onb") && $("#sheet").hidden) { try { sessionStorage.setItem("opus_upd_asked", "1"); } catch (e) {} openUpdate(u); }
 }, 1400);
 document.addEventListener("click", (e) => { if (e.target.closest("[data-m='whatsnew']")) openWhatsNew(false); });
+
+// =====================================================================
+// ---------- v2.8: Yordam markazi, savatni ulashish, buyurtma cheki ----------
+// =====================================================================
+const APP_URL = "https://javohir877.github.io/OPUS-MARKET/app/";
+async function shareText(title, text, url) {
+  try { if (navigator.share) { await navigator.share({ title, text, url }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+  try { await navigator.clipboard.writeText(url ? `${text}\n${url}` : text); toast("📋 Nusxalandi — xohlagan joyga yuboring"); }
+  catch (e) { location.href = `https://t.me/share/url?url=${encodeURIComponent(url || APP_URL)}&text=${encodeURIComponent(text)}`; }
+}
+
+// Yordam markazi: saytdagi savol-javoblar bilan bir xil ma'lumot
+const HELP = [
+  ["🚚", "Yetkazib berish qancha vaqt oladi?", () => `Toshkent bo'ylab 24 soat ichida, viloyatlarga 2–4 ish kunida yetkazamiz. ${num(S.settings.freeShipFrom || 1000000)} so'mdan yuqori xaridlarda yetkazish bepul, aks holda ${fmt(S.settings.shipPrice || 50000)}. Do'kondan o'zingiz olib ketishingiz ham mumkin.`],
+  ["💜", "Bo'lib to'lash qanday ishlaydi?", () => "Uzum Nasiya orqali 3, 6, 12 yoki 24 oyga 0% ustama bilan bo'lib to'lashingiz mumkin. Faqat pasport va karta kerak. Rasmiylashtirishda \"Uzum Nasiya\" to'lov usulini tanlang."],
+  ["🛡", "Mahsulotlarga kafolat bormi?", () => "Barcha mahsulotlar rasmiy — 12 oydan 36 oygacha ishlab chiqaruvchi kafolati beriladi."],
+  ["↩️", "Mahsulotni qaytarsam bo'ladimi?", () => "Ha, 14 kun ichida qadoqlanishi buzilmagan mahsulotni bepul qaytarishingiz mumkin. Buning uchun operatorimizga qo'ng'iroq qiling."],
+  ["✈️", "Nega Telegram kodi so'raladi?", () => `Buyurtmani tasdiqlash uchun @${BOT} bot 6 xonali kod yuboradi. Bu buyurtmani siz berganingizni tasdiqlaydi. 2 soat ichida tasdiqlanmagan buyurtma avtomatik bekor qilinadi.`],
+  ["📦", "Buyurtmamni qanday kuzataman?", () => "Kabinet → Buyurtmalarim. Holat o'zgarganda ilova bildirishnoma ko'rsatadi. Android'da \"Buyurtmam qayerda\" vidjetini bosh ekranga qo'shsangiz, holat doim ko'rinib turadi."],
+];
+const TIPS = [
+  ["👆", "Kartochkani bosib turing — tezkor ko'rish ochiladi"],
+  ["👈", "Ekranning chap chetidan suring — orqaga qaytasiz"],
+  ["📌", "Ilova ikonkasini bosib turing — Qidiruv, Savat va boshqa yorliqlar"],
+  ["🔍", "Qidiruvda \"5 mln gacha noutbuk\" yoki \"arzon sichqoncha\" deb yozing"],
+  ["⬇️", "Pastki oynani pastga tortib yopish mumkin"],
+];
+function openHelp() {
+  push({
+    html: hdr("💬 Yordam markazi") + `<div class="sb"><div class="help-hero"><b>Qanday yordam bera olamiz?</b><small class="muted">Har kuni 09:00 – 21:00</small>
+        <div class="help-act"><a href="tel:${SHOP_PHONE}"><span>📞</span>Qo'ng'iroq</a><a href="https://t.me/${BOT}" target="_blank" rel="noopener"><span>✈️</span>Telegram</a><button data-h="map"><span>📍</span>Do'kon</button></div></div>
+      <div class="sec"><div class="sec-h"><h2>❓ Ko'p so'raladigan savollar</h2></div><div class="faq">${HELP.map(([e, q, a], i) => `<div class="fq" data-fq="${i}"><button><span>${e}</span><b>${esc(q)}</b><i>⌄</i></button><p>${esc(a())}</p></div>`).join("")}</div></div>
+      <div class="sec"><div class="sec-h"><h2>💡 Ilova sirlari</h2></div><div class="tips">${TIPS.map(([e, t]) => `<div><span>${e}</span>${esc(t)}</div>`).join("")}</div></div>
+      <div class="sec" style="padding-bottom:28px"><button class="btn ghost block" data-h="new">🆕 Ilovadagi yangiliklar</button></div></div>`,
+    mount(el) {
+      el.addEventListener("click", (e) => {
+        const f = e.target.closest("[data-fq] > button");
+        if (f) { const it = f.parentElement, open = !it.classList.contains("on"); $$(".fq.on", el).forEach((x) => x.classList.remove("on")); it.classList.toggle("on", open); haptic(5); return; }
+        const h = e.target.closest("[data-h]"); if (!h) return;
+        if (h.dataset.h === "new") openWhatsNew(false);
+        if (h.dataset.h === "map") infoSheet("📍 Do'konimiz", "Toshkent sh., Amir Temur ko'chasi. Har kuni 09:00 – 21:00. Buyurtmani do'kondan o'zingiz olib ketishingiz ham mumkin — rasmiylashtirishda \"Do'kondan olib ketish\"ni tanlang.");
+      });
+    },
+  });
+}
+document.addEventListener("click", (e) => { if (e.target.closest("[data-m='help']")) openHelp(); });
+
+// Savatni ulashish: havola ochilganda mahsulotlar savatga tushadi (#c=27.1-26.2)
+function cartLink() { return APP_URL + "#c=" + S.cart.map((x) => `${x.id}.${x.qty}`).join("-"); }
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("[data-sharecart]")) return;
+  const T = totals();
+  shareText("OPUS MARKET savati", `🛒 Mening OPUS MARKET savatim (${T.count} ta mahsulot, ${fmt(T.subtotal)}):\n` + T.items.map((x) => `• ${x.p.name} × ${x.qty}`).join("\n"), cartLink());
+});
+function importCart(h) {
+  const L = h.split("-").map((s) => s.split(".").map(Number)).filter(([id, q]) => byId(id) && q > 0).slice(0, 30);
+  if (!L.length) { toast("⚠️ Havoladagi mahsulotlar topilmadi"); return switchTab("cart"); }
+  const names = L.map(([id, q]) => `<div class="row"><img src="${esc(hi(byId(id).img, 330))}" alt="" style="width:44px;height:44px;border-radius:10px;background:#fff;object-fit:contain;padding:3px" onerror="imgErr(this)" /><div><span>${esc(byId(id).name)}</span><small class="muted">${q} dona · ${fmt(byId(id).price * q)}</small></div></div>`).join("");
+  openSheet(`<h3>🛒 Sizga savat yuborishdi</h3><div class="imp">${names}</div><button class="btn block" id="impGo" style="margin-top:12px">Savatga qo'shish</button>`, (b) => {
+    $("#impGo", b).onclick = () => { let ok = 0; L.forEach(([id, q]) => { const p = byId(id); if ((p.stock || 0) > 0 && addToCart(id, Math.min(q, p.stock), true)) ok++; }); refreshCards(); badges(); refreshRoot("cart"); closeSheet(); toast(`✅ ${ok} ta mahsulot savatga qo'shildi`); switchTab("cart"); };
+  });
+}
+function cartHash() {
+  const m = location.hash.match(/^#c=([\d.\-]+)$/); if (!m) return;
+  history.replaceState(history.state, "", location.pathname + location.search);
+  setTimeout(() => importCart(m[1]), 300);
+}
+cartHash(); addEventListener("hashchange", cartHash);
+
+// Buyurtma chekini ulashish
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-receipt]"); if (!b) return;
+  const o = (S.orders || []).find((x) => String(x.id) === b.dataset.receipt); if (!o) return;
+  const lines = (o.items || []).map((i) => `• ${(byId(i.id) || i).name || "Mahsulot"} × ${i.qty}`).join("\n");
+  shareText(`Buyurtma #${o.id}`, `🧾 OPUS MARKET — buyurtma #${o.id}\nHolat: ${o.status}\n${lines}\nJami: ${fmt(o.total)}${o.months ? ` (${o.months} oyga, oyiga ${fmt(o.total / o.months)})` : ""}`);
+});
+
+// =====================================================================
+// ---------- v2.9: OPUS AI — aqlli yordamchi (Gemini, server orqali) ----------
+// =====================================================================
+S.ai = store.get("app_ai", []).slice(-30);
+const AI_SUGGEST = ["🎮 10 mln gacha o'yin noutbuki", "🖥 Ofis uchun arzon monitor", "⚖️ RTX 4070 yoki RX 6800 XT?", "🛠 30 mln ga kompyuter yig'ib ber", "🎧 Shovqinni yutadigan quloqchin", "🚚 Yetkazish qancha turadi?"];
+// Xavfsiz chizish: avval hammasi ekranlanadi, keyin **qalin**, ro'yxat va mahsulot teglari qo'llanadi
+function aiHtml(t, live) {
+  const ids = [];
+  let h = esc(t).replace(/\[{1,2}p:(\d+)\]{1,2}/g, (_, id) => { if (byId(+id) && !ids.includes(+id)) ids.push(+id); return ""; })
+    .replace(/\[{1,2}p?:?\d*$/, "")
+    .replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>").replace(/(^|\n)\s*[*•-]\s+/g, "$1• ").replace(/\n{3,}/g, "\n\n").replace(/\n/g, "<br>");
+  if (live) h += `<i class="ai-caret"></i>`;
+  const cards = ids.slice(0, 4).map((id) => { const p = byId(id), out = (p.stock || 0) <= 0, d = disc(p); return `<div class="ai-pc rc" data-pid="${p.id}"><img src="${esc(hi(p.img, 330))}" alt="" onerror="imgErr(this)" /><div><b>${esc(p.name)}</b><span>${d ? `<s>${num(p.old)}</s> ` : ""}${fmt(p.price)}</span><small>${out ? "Tugagan" : `${num(p.price / 12)} so'm/oydan`}</small></div><button class="add${inCart(p.id) ? " in" : ""}" data-add="${p.id}" ${out ? "disabled" : ""} aria-label="Savatga">${svg(inCart(p.id) ? IC.check : IC.cart)}</button></div>`; }).join("");
+  return h + (cards ? `<div class="ai-cards">${cards}</div>` : "");
+}
+const aiSave = () => store.set("app_ai", S.ai.slice(-30));
+function openAI(q0) {
+  let busy = false;
+  push({
+    noTab: true,
+    html: hdr("✨ OPUS AI", `<button class="ib" data-aiclr aria-label="Tozalash">${svg(IC.trash)}</button>`) + `<div class="sb ai-sb" id="aiSb"><div id="aiList"></div></div>
+      <form class="ai-bar" id="aiForm"><textarea id="aiIn" rows="1" maxlength="1000" placeholder="Savolingizni yozing…" enterkeyhint="send"></textarea><button class="ai-send" aria-label="Yuborish"><svg viewBox="0 0 24 24"><path d="M3 20.5V14l9-2-9-2V3.5L22 12z"/></svg></button></form>`,
+    mount(el) {
+      const list = $("#aiList", el), sb = $("#aiSb", el), inp = $("#aiIn", el), form = $("#aiForm", el);
+      const bottom = () => requestAnimationFrame(() => { sb.scrollTop = sb.scrollHeight; });
+      const bubble = (m) => `<div class="ai-m ${m.role}">${m.role === "ai" ? `<span class="ai-av">✨</span>` : ""}<div class="ai-b">${m.role === "ai" ? aiHtml(m.text) : esc(m.text).replace(/\n/g, "<br>")}</div></div>`;
+      const draw = () => {
+        list.innerHTML = S.ai.length ? S.ai.map(bubble).join("") : `<div class="ai-hero"><div class="ai-orb"><i></i><i></i><i></i><span>✨</span></div><h2>OPUS AI</h2>
+          <p class="muted">Texnika tanlash, solishtirish, kompyuter yig'ish va do'kon haqidagi savollarga javob beraman — faqat katalogimizdagi haqiqiy narxlar bilan.</p></div>
+          <div class="ai-sug">${AI_SUGGEST.map((s) => `<button data-aiq="${esc(s.replace(/^\S+\s/, ""))}">${esc(s)}</button>`).join("")}</div>`;
+        bottom();
+      };
+      const fit = () => { inp.style.height = "auto"; inp.style.height = Math.min(120, inp.scrollHeight) + "px"; };
+      async function ask(q) {
+        q = q.trim(); if (!q || busy) return;
+        if (!navigator.onLine) { toast("📡 Internet yo'q"); return; }
+        busy = true; form.classList.add("busy"); haptic(8); window.sfx && sfx("tick");
+        S.ai.push({ role: "user", text: q.slice(0, 1000) }); aiSave(); inp.value = ""; fit(); draw();
+        list.insertAdjacentHTML("beforeend", `<div class="ai-m ai live"><span class="ai-av">✨</span><div class="ai-b"><span class="ai-dots"><i></i><i></i><i></i></span></div></div>`);
+        const b = $(".ai-m.live .ai-b", list); bottom();
+        let text = "";
+        try {
+          const res = await fetch(API_BASE + "/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: S.ai.slice(-12) }) });
+          if (!res.ok) { let e = {}; try { e = await res.json(); } catch {} throw new Error(e.error || "Xatolik (" + res.status + ")"); }
+          const rd = res.body && res.body.getReader ? res.body.getReader() : null, dec = new TextDecoder();
+          if (rd) { for (;;) { const { done, value } = await rd.read(); if (done) break; text += dec.decode(value, { stream: true }); b.innerHTML = aiHtml(text, true); if (sb.scrollHeight - sb.scrollTop - sb.clientHeight < 160) bottom(); } }
+          else text = await res.text();
+          if (!text.trim()) throw new Error("Javob kelmadi. Qayta urinib ko'ring.");
+          S.ai.push({ role: "ai", text }); aiSave();
+          b.innerHTML = aiHtml(text); b.parentElement.classList.remove("live"); haptic(6);
+        } catch (ex) {
+          b.parentElement.classList.remove("live"); b.parentElement.classList.add("err");
+          b.innerHTML = `⚠️ ${esc(ex.message === "Failed to fetch" ? "Internet aloqasi yo'q" : ex.message)}<button class="ai-retry" data-airetry>↻ Qayta so'rash</button>`;
+          S.ai.pop(); aiSave(); b.dataset.q = q;
+        }
+        busy = false; form.classList.remove("busy"); bottom();
+      }
+      form.addEventListener("submit", (e) => { e.preventDefault(); ask(inp.value); });
+      inp.addEventListener("input", fit);
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !matchMedia("(pointer: coarse)").matches) { e.preventDefault(); ask(inp.value); } });
+      el.addEventListener("click", (e) => {
+        const s = e.target.closest("[data-aiq]"); if (s) { ask(s.dataset.aiq); return; }
+        const r = e.target.closest("[data-airetry]"); if (r) { const q = r.closest(".ai-b").dataset.q; const m = r.closest(".ai-m"); if (m.previousElementSibling) m.previousElementSibling.remove(); m.remove(); ask(q); return; }
+        if (e.target.closest("[data-aiclr]")) { if (busy) return; S.ai = []; aiSave(); draw(); toast("🧹 Suhbat tozalandi"); }
+      });
+      draw();
+      if (q0) setTimeout(() => ask(q0), 250); else setTimeout(() => inp.focus(), 400);
+    },
+  });
+}
+// Kirish nuqtalari: bosh sahifa (AI banner), Kabinet menyusi, qidiruvda "AI'dan so'rash"
+function aiBanner() { return `<div class="sec"><button class="ai-ban" data-ai><span class="ai-orb sm"><i></i><i></i><i></i><span>✨</span></span><span><b>OPUS AI</b><small>Qaysi texnika kerak? So'rang — tanlab beraman</small></span><em>›</em></button></div>`; }
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("[data-ai]"); if (!a) return;
+  openAI(a.dataset.ai || "");
+});
+{
+  const _home2 = ROOTS.home;
+  ROOTS.home = () => { const d = _home2(); d.html = d.html.replace(`<div class="sec"><div class="tools">`, () => aiBanner() + `<div class="sec"><div class="tools">`); return d; };
+}
+refreshRoot("home");
