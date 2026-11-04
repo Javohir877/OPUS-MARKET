@@ -1448,3 +1448,17 @@ html.in-app #app, html.in-app #installBtn { display: none !important; }
 .oa-logo.lg { width: 84px; height: 84px; border-radius: 26px; box-shadow: 0 14px 34px rgba(112,0,255,.35); animation: oaFloat 3.5s ease-in-out infinite; }
 @keyframes oaFloat { 50% { transform: translateY(-6px) rotate(-3deg); } }
 @media (max-width: 640px) { .oa-fab { width: 54px; height: 54px; padding: 0; border-radius: 17px; } .oa-fab img { border-radius: 17px; } }
+/* OPUS AI — o'ng tomonda; "yuqoriga" tugmasi uning ustida */
+.oa-fab { left: auto; right: 22px; bottom: 22px; }
+.oa-box { left: auto; right: 22px; transform-origin: 90% 100%; }
+.to-top { bottom: 98px; }
+.has-compare .oa-fab { bottom: 96px; }
+.has-compare .to-top { bottom: 172px; }
+@media (max-width: 640px) {
+  .oa-fab { right: 14px; bottom: 14px; }
+  .to-top { right: 16px; bottom: 80px; }
+  .has-compare .to-top { bottom: 150px; }
+  .oa-box { right: 0; left: 0; transform-origin: 50% 100%; }
+}
+.to-top { transition: transform .4s, opacity .3s; }
+.to-top:not(.show) { opacity: 0; pointer-events: none; transform: translateY(24px) scale(.8); }
