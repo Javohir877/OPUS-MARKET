@@ -2541,14 +2541,14 @@ function openAI(q0) {
   let busy = false;
   push({
     noTab: true,
-    html: hdr("✨ OPUS AI", `<button class="ib" data-aiclr aria-label="Tozalash">${svg(IC.trash)}</button>`) + `<div class="sb ai-sb" id="aiSb"><div id="aiList"></div></div>
+    html: hdr("OPUS AI", `<button class="ib" data-aiclr aria-label="Tozalash">${svg(IC.trash)}</button>`) + `<div class="sb ai-sb" id="aiSb"><div id="aiList"></div></div>
       <form class="ai-bar" id="aiForm"><textarea id="aiIn" rows="1" maxlength="1000" placeholder="Savolingizni yozing…" enterkeyhint="send"></textarea><button class="ai-send" aria-label="Yuborish"><svg viewBox="0 0 24 24"><path d="M3 20.5V14l9-2-9-2V3.5L22 12z"/></svg></button></form>`,
     mount(el) {
       const list = $("#aiList", el), sb = $("#aiSb", el), inp = $("#aiIn", el), form = $("#aiForm", el);
       const bottom = () => requestAnimationFrame(() => { sb.scrollTop = sb.scrollHeight; });
-      const bubble = (m) => `<div class="ai-m ${m.role}">${m.role === "ai" ? `<span class="ai-av">✨</span>` : ""}<div class="ai-b">${m.role === "ai" ? aiHtml(m.text) : esc(m.text).replace(/\n/g, "<br>")}</div></div>`;
+      const bubble = (m) => `<div class="ai-m ${m.role}">${m.role === "ai" ? `<img class="ai-av" src="../icons/opus-ai.svg" alt="" />` : ""}<div class="ai-b">${m.role === "ai" ? aiHtml(m.text) : esc(m.text).replace(/\n/g, "<br>")}</div></div>`;
       const draw = () => {
-        list.innerHTML = S.ai.length ? S.ai.map(bubble).join("") : `<div class="ai-hero"><div class="ai-orb"><i></i><i></i><i></i><span>✨</span></div><h2>OPUS AI</h2>
+        list.innerHTML = S.ai.length ? S.ai.map(bubble).join("") : `<div class="ai-hero"><img class="ai-logo lg" src="../icons/opus-ai.svg" alt="" /><h2>OPUS AI</h2>
           <p class="muted">Texnika tanlash, solishtirish, kompyuter yig'ish va do'kon haqidagi savollarga javob beraman — faqat katalogimizdagi haqiqiy narxlar bilan.</p></div>
           <div class="ai-sug">${AI_SUGGEST.map((s) => `<button data-aiq="${esc(s.replace(/^\S+\s/, ""))}">${esc(s)}</button>`).join("")}</div>`;
         bottom();
@@ -2559,7 +2559,7 @@ function openAI(q0) {
         if (!navigator.onLine) { toast("📡 Internet yo'q"); return; }
         busy = true; form.classList.add("busy"); haptic(8); window.sfx && sfx("tick");
         S.ai.push({ role: "user", text: q.slice(0, 1000) }); aiSave(); inp.value = ""; fit(); draw();
-        list.insertAdjacentHTML("beforeend", `<div class="ai-m ai live"><span class="ai-av">✨</span><div class="ai-b"><span class="ai-dots"><i></i><i></i><i></i></span></div></div>`);
+        list.insertAdjacentHTML("beforeend", `<div class="ai-m ai live"><img class="ai-av" src="../icons/opus-ai.svg" alt="" /><div class="ai-b"><span class="ai-dots"><i></i><i></i><i></i></span></div></div>`);
         const b = $(".ai-m.live .ai-b", list); bottom();
         let text = "";
         try {
@@ -2592,7 +2592,7 @@ function openAI(q0) {
   });
 }
 // Kirish nuqtalari: bosh sahifa (AI banner), Kabinet menyusi, qidiruvda "AI'dan so'rash"
-function aiBanner() { return `<div class="sec"><button class="ai-ban" data-ai><span class="ai-orb sm"><i></i><i></i><i></i><span>✨</span></span><span><b>OPUS AI</b><small>Qaysi texnika kerak? So'rang — tanlab beraman</small></span><em>›</em></button></div>`; }
+function aiBanner() { return `<div class="sec"><button class="ai-ban" data-ai><img class="ai-logo" src="../icons/opus-ai.svg" alt="" /><span><b>OPUS AI</b><small>Qaysi texnika kerak? So'rang — tanlab beraman</small></span><em>›</em></button></div>`; }
 document.addEventListener("click", (e) => {
   const a = e.target.closest("[data-ai]"); if (!a) return;
   openAI(a.dataset.ai || "");
