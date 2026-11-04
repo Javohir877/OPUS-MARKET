@@ -1050,3 +1050,23 @@ body.no-select, body.no-select * { user-select: none !important; -webkit-user-se
 .ai-logo.lg { width: 92px; height: 92px; border-radius: 28px; box-shadow: 0 16px 38px rgba(112,0,255,.4); animation: aiFloat 3.5s ease-in-out infinite; }
 @keyframes aiFloat { 50% { transform: translateY(-6px) rotate(-3deg); } }
 img.ai-av { width: 28px; height: 28px; border-radius: 9px; background: none; }
+
+/* =================== OPUS AI — alohida bo'lim (pastki panel o'rtasida) =================== */
+.tabbar { grid-template-columns: repeat(6, 1fr); }
+.tabbar button span { font-size: 9.8px; }
+.tb-ind { width: calc(100% / 6); }
+.tabbar .tb-ai { overflow: visible; }
+.tb-ai img { position: relative; width: 50px; height: 50px; border-radius: 16px; margin-top: -22px; box-shadow: 0 0 0 4px var(--bg2), 0 10px 24px rgba(112,0,255,.4); transition: transform .3s cubic-bezier(.2,1.5,.4,1); }
+.tb-ai > i { position: absolute; top: -26px; left: 50%; width: 58px; height: 58px; margin-left: -29px; border-radius: 20px; background: conic-gradient(#ff2a40, #7a5cff, #00c2ff, #ff2a40); filter: blur(9px); opacity: .45; animation: aiSpin 6s linear infinite; pointer-events: none; }
+.tb-ai.active img { transform: translateY(-3px) scale(1.06); box-shadow: 0 0 0 4px var(--bg2), 0 0 0 6px rgba(160,110,255,.7), 0 12px 28px rgba(112,0,255,.55); }
+.tb-ai.active > i { opacity: .8; }
+.tb-ai:active img { transform: scale(.9); }
+.tabbar button.tb-ai.active svg { animation: none; }
+/* AI bo'limi sarlavhasi */
+.ai-hdr .home-top { gap: 10px; }
+.ai-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ai-title img { width: 40px; height: 40px; border-radius: 13px; box-shadow: 0 6px 16px rgba(112,0,255,.35); }
+.ai-title span { display: flex; flex-direction: column; min-width: 0; }
+.ai-title b { font: 800 17px "Orbitron", sans-serif; letter-spacing: .6px; background: linear-gradient(90deg, #ff8aa0, #c9a2ff, #7fd6ff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.ai-title small { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ai-sb { padding-bottom: 84px; }
