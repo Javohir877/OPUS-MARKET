@@ -6,6 +6,7 @@
 //          GET  /api/me    PATCH /api/me    POST /api/me/password
 //          GET  /api/orders    POST /api/orders    POST /api/orders/:id/cancel
 //          GET  /api/products/:id/reviews (ochiq)   POST /api/products/:id/reviews
+//          POST /api/ai                          — OPUS AI yordamchisi (Gemini, oqim bilan javob)
 // Admin:   POST /api/admin/login | /api/admin/logout | /api/admin/password
 //          GET  /api/admin/stats
 //          GET  /api/admin/users   GET|PATCH|DELETE /api/admin/users/:id   POST /api/admin/users/:id/reset-password
@@ -814,6 +815,99 @@ route("POST", "/api/admin/images", async (req, env) => {
 });
 
 // ---------- Kirish nuqtasi ----------
+// ---------- OPUS AI (Google Gemini) ----------
+// Kalit faqat Worker maxfiy sozlamasida (wrangler secret put GEMINI_KEY) — sayt yoki ilova kodida yo'q.
+// Javob oqim (stream) bo'lib keladi: matn yozila borib ko'rinadi.
+const AI_MODELS = [["gemini-3.5-flash", true], ["gemini-3.5-flash-lite", true], ["gemini-flash-lite-latest", false]];
+function aiSystem(c) {
+  const s = c.SETTINGS || {}, cats = Object.fromEntries((c.CATEGORIES || []).map((x) => [x.id, x.name]));
+  const fmtN = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  const lines = (c.PRODUCTS || []).map((p) => {
+    const sp = p.specs ? " | " + Object.entries(p.specs).map(([k, v]) => `${k}: ${v}`).join("; ") : "";
+    return `[[p:${p.id}]] ${p.name} | ${p.brand} | ${cats[p.cat] || p.cat} | ${fmtN(p.price)} so'm${p.old && p.old > p.price ? ` (avval ${fmtN(p.old)})` : ""} | ${(p.stock || 0) > 0 ? `omborda ${p.stock} dona` : "TUGAGAN"}${sp}`;
+  }).join("\n");
+  return `Sen "OPUS AI" — OPUS MARKET onlayn do'konining (O'zbekiston, kompyuterlar va aksessuarlar) aqlli yordamchisisan.
+
+QOIDALAR:
+- Foydalanuvchi qaysi tilda yozsa, o'sha tilda javob ber (odatda o'zbek lotin yozuvi; ruscha yozsa — ruscha).
+- Qisqa va aniq bo'l: odatda 2–6 jumla yoki qisqa ro'yxat. Sarlavha (#) ishlatma; **qalin** va "•" ro'yxat mumkin.
+- Faqat quyidagi katalogdagi mahsulotlarni tavsiya qil. Mahsulotni tilga olganingda nomidan keyin uning tegini yoz, masalan: ASUS ROG Strix G16 [[p:1]] — ilova shu teg o'rniga mahsulot kartasini ko'rsatadi. Bir javobda ko'pi bilan 4 ta mahsulot.
+- Narx, ombordagi soni va chegirmani FAQAT katalogdan ol, hech qachon o'ylab topma. Katalogda yo'q mahsulot so'ralsa — "hozircha bizda yo'q" deb ayt va eng yaqin muqobilini taklif qil. TUGAGAN mahsulotni sotib olishni taklif qilma.
+- Foydalanuvchi byudjet aytsa (masalan "10 mln gacha"), faqat narxi shu summadan OSHMAYDIGAN mahsulotlarni tavsiya qil. Mos keladigani bo'lmasa, buni ochiq ayt va eng yaqin variantni narx farqi bilan ko'rsat.
+- Maqsadga mos tavsiya qil: o'yin uchun diskret videokartali (RTX/Radeon) modellarni, ofis uchun yengil va arzonlarini.
+- Mijoz sharhlari, reytinglar yoki sotuv sonlari haqida raqam aytma.
+- Buyurtma bera olmaysan va foydalanuvchining buyurtmalarini ko'ra olmaysan: buning uchun ilovadagi Savat va "Kabinet → Buyurtmalarim" bo'limlarini ko'rsat.
+- Texnik maslahatni (qaysi protsessor, qancha RAM, moslik) umumiy bilimingdan berishing mumkin, lekin ishonching komil bo'lmasa, shuni ayt.
+- Do'konga aloqasi yo'q mavzularda muloyimlik bilan suhbatni texnika va xaridga qaytar.
+
+DO'KON MA'LUMOTLARI:
+- Yetkazish: Toshkent bo'ylab 24 soat ichida, viloyatlarga 2–4 ish kuni. ${fmtN(s.freeShipFrom || 1000000)} so'mdan yuqori xaridda bepul, aks holda ${fmtN(s.shipPrice || 50000)} so'm. Do'kondan olib ketish ham mumkin.
+- To'lov: Click, Payme, Uzcard, Humo, Visa, Mastercard va Uzum Nasiya (3, 6, 12, 24 oyga 0% ustama).
+- Kafolat: rasmiy, 12 oydan 36 oygacha. Qaytarish: 14 kun ichida, qadoq buzilmagan bo'lsa bepul.
+- Buyurtma Telegram bot (@opussmarketbot) yuborgan 6 xonali kod bilan tasdiqlanadi.
+- Ish vaqti: har kuni 09:00–21:00. Telefon: +998 71 200 00 00. Manzil: Toshkent sh., Amir Temur ko'chasi.
+- Ilovada "Kompyuter yig'ish" (qismlar mosligini tekshiradi) va "Byudjetga mos" bo'limlari bor.
+
+KATALOG (teg | nomi | brend | bo'lim | narx | ombor | xususiyatlar):
+${lines}`;
+}
+route("POST", "/api/ai", async (req, env) => {
+  if (!env.GEMINI_KEY) fail(503, "OPUS AI hozircha sozlanmagan");
+  const key = "ai:" + ip(req);
+  await checkLimit(env, key, 25, 15 * 60 * 1000);
+  const b = await body(req, 40000);
+  const contents = (Array.isArray(b.messages) ? b.messages : []).slice(-12)
+    .map((m) => ({ role: m && m.role === "ai" ? "model" : "user", parts: [{ text: str(m && m.text, 1500) }] }))
+    .filter((m) => m.parts[0].text);
+  if (!contents.length || contents[contents.length - 1].role !== "user") fail(400, "Savol bo'sh");
+  while (contents.length && contents[0].role !== "user") contents.shift();
+  await recordFail(env, key);
+  const sys = aiSystem(await getCatalog(env));
+  let up = null;
+  for (const [model, think] of AI_MODELS) {
+    const gc = { maxOutputTokens: 1000, temperature: 0.5 };
+    if (think) gc.thinkingConfig = { thinkingLevel: "minimal" };
+    const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 20000);
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`, {
+        method: "POST", signal: ac.signal,
+        headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_KEY },
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents, generationConfig: gc }),
+      });
+      clearTimeout(tm);
+      if (r.ok && r.body) { up = r; break; }
+      console.log("ai", model, r.status);
+    } catch (e) { clearTimeout(tm); console.log("ai", model, e && e.message); }
+  }
+  if (!up) fail(503, "OPUS AI hozir band. Birozdan keyin qayta urinib ko'ring.");
+  // Gemini SSE → oddiy matn oqimi (fikrlash qismlari tashlab yuboriladi)
+  const { readable, writable } = new TransformStream();
+  (async () => {
+    const w = writable.getWriter(), rd = up.body.getReader(), dec = new TextDecoder();
+    let buf = "";
+    try {
+      for (;;) {
+        const { done, value } = await rd.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i;
+        while ((i = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+          if (!line.startsWith("data:")) continue;
+          try {
+            const j = JSON.parse(line.slice(5));
+            const parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
+            const t = parts.filter((p) => !p.thought && p.text).map((p) => p.text).join("");
+            if (t) await w.write(enc.encode(t));
+          } catch {}
+        }
+      }
+    } catch (e) { console.log("ai stream", e && e.message); }
+    finally { try { await w.close(); } catch {} }
+  })();
+  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
+});
+
 export default {
   async scheduled(event, env) { await pollUpdates(env); await expireUnconfirmed(env); await setupMenuButton(env); },
   async fetch(req, env) {
