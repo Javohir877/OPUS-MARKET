@@ -1046,3 +1046,7 @@ body.no-select, body.no-select * { user-select: none !important; -webkit-user-se
 .ai-send svg { width: 20px; height: 20px; fill: #fff; }
 .ai-send:active { transform: scale(.9); }
 .ai-bar.busy .ai-send { opacity: .5; pointer-events: none; }
+.ai-logo { width: 46px; height: 46px; border-radius: 14px; flex-shrink: 0; box-shadow: 0 6px 16px rgba(112,0,255,.35); }
+.ai-logo.lg { width: 92px; height: 92px; border-radius: 28px; box-shadow: 0 16px 38px rgba(112,0,255,.4); animation: aiFloat 3.5s ease-in-out infinite; }
+@keyframes aiFloat { 50% { transform: translateY(-6px) rotate(-3deg); } }
+img.ai-av { width: 28px; height: 28px; border-radius: 9px; background: none; }
