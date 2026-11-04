@@ -38,8 +38,10 @@
     voices.clear();
   }
   // Bitta nota: chastota, boshlanish (s), davomiylik (s), to'lqin turi, balandlik, chastota siljishi
+  let jit = 1;
   function tone(f, t0, dur, type = "sine", v = 0.2, slideTo) {
     const c = ac(); if (!c) return;
+    f *= jit; if (slideTo) slideTo *= jit;
     const t = c.currentTime + t0, o = c.createOscillator(), g = c.createGain();
     o.type = type;
     o.frequency.setValueAtTime(f, t);
@@ -111,14 +113,15 @@
   // ---------- Yozib olingan ovozlar (sounds/*.mp3, myinstants.com) ----------
   // Har bir effekt: [fayl, balandlik, eng uzun davomiyligi (s)] — uzun ovozlar silliq qisqartiriladi.
   // Fayl hali yuklanmagan bo'lsa yoki yuklanmasa — yuqoridagi sintez ovoz chalinadi.
+  // Faqat o'ziga xos voqealar yozib olingan ovozni oladi; oddiy tugma, ikonka, havola, chip, tanlov, +/−,
+  // o'tish va xavfli amallar — har biri o'zining sintez ovozida (avval hammasi bitta click.mp3 edi va bir xil eshitilardi).
+  // [fayl, balandlik, eng uzun davomiylik (s), tezlik/balandlik koeffitsienti]
   const SAMPLES = {
-    click: ["click", 0.55, 0.3], icon: ["click", 0.5, 0.3], link: ["click", 0.45, 0.3], toggle: ["click", 0.5, 0.3], submit: ["click", 0.6, 0.3],
-    nav: ["open", 0.45, 0.45], next: ["open", 0.45, 0.45], open: ["open", 0.4, 0.5],
-    back: ["close", 0.45, 0.45], close: ["close", 0.4, 0.45],
-    tab: ["tab", 0.6, 0.35], chip: ["pop", 0.7, 0.3], select: ["pop", 0.6, 0.3], checkOn: ["pop", 0.7, 0.3], plus: ["pop", 0.55, 0.25], minus: ["pop", 0.45, 0.25],
-    add: ["add", 0.6, 1.1], remove: ["remove", 0.6, 0.5], danger: ["remove", 0.6, 0.5], checkOff: ["remove", 0.45, 0.4],
-    notify: ["notify", 0.6, 1.2], ok: ["notify", 0.5, 1.2], error: ["error", 0.55, 0.9],
-    success: ["success", 0.7, 2.2], check: ["success", 0.7, 2.2], confetti: ["confetti", 0.6, 1.8],
+    click: ["click", 0.5, 0.3, 1],
+    tab: ["tab", 0.6, 0.35, 1], open: ["open", 0.4, 0.5, 1], close: ["close", 0.4, 0.45, 1],
+    add: ["add", 0.6, 1.1, 1], remove: ["remove", 0.6, 0.5, 1],
+    notify: ["notify", 0.6, 1.2, 1], error: ["error", 0.55, 0.9, 1],
+    success: ["success", 0.7, 2.2, 1], check: ["success", 0.7, 2.2, 1], confetti: ["confetti", 0.6, 1.8, 1],
   };
   const base = (() => { try { return new URL("sounds/", document.currentScript.src).href; } catch { return "sounds/"; } })();
   const buffers = {};
@@ -144,7 +147,8 @@
     if (!b) return false;
     const c = ac(), src = c.createBufferSource(), g = c.createGain(), t = c.currentTime;
     src.buffer = b.buf;
-    const len = b.buf.duration - b.off, dur = Math.min(len, sm[2]), v = sm[1] * b.norm;
+    const rate = (sm[3] || 1) * jit; src.playbackRate.value = rate;
+    const len = (b.buf.duration - b.off) / rate, dur = Math.min(len, sm[2]), v = sm[1] * b.norm;
     g.gain.setValueAtTime(v, t);
     if (len > sm[2]) { g.gain.setValueAtTime(v, t + dur - 0.12); g.gain.linearRampToValueAtTime(0.0001, t + dur); }
     src.connect(g).connect(bus || master);
@@ -175,7 +179,9 @@
           bus = c.createGain(); bus.connect(master); voices.add(bus);
           const mine = bus; setTimeout(() => voices.delete(mine), 1600);
         }
+        jit = 1 + (Math.random() - 0.5) * 0.06;
         if (!sample(name)) s[0]();
+        jit = 1;
       } catch {} finally { bus = null; }
     }
     if (haptic && s[1] && !(opts && opts.noHaptic) && navigator.vibrate && matchMedia("(pointer: coarse)").matches) { try { navigator.vibrate(s[1]); } catch {} }
