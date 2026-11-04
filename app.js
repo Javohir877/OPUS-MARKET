@@ -1818,3 +1818,83 @@ if (TG) {
 }
 // Yangilik havolasi orqali kelganda (#news-3) — maqolani ochamiz
 { const m = location.hash.match(/^#news-(\d+)$/); if (m) setTimeout(() => openNews(+m[1]), 1500); }
+
+// ---------- OPUS AI — sayt uchun suhbat oynasi (ilova bilan bir xil server va tarix) ----------
+(() => {
+  if (IN_APP) return; // ilova ichida o'zining OPUS AI ekrani bor
+  const KEY = "opus_app_ai";
+  const load = () => { try { return (JSON.parse(localStorage.getItem(KEY)) || []).slice(-30); } catch { return []; } };
+  const save = (m) => { try { localStorage.setItem(KEY, JSON.stringify(m.slice(-30))); } catch {} };
+  let msgs = load(), busy = false;
+  const SUG = ["🎮 10 mln gacha o'yin noutbuki", "🖥 Ofis uchun arzon monitor", "⚖️ RTX 4070 yoki RX 6800 XT?", "🛠 30 mln ga kompyuter yig'ib ber", "🎧 Shovqinni yutadigan quloqchin", "🚚 Yetkazish qancha turadi?"];
+  const pById = (id) => PRODUCTS.find((p) => p.id === id);
+  const html = (t, live) => {
+    const ids = [];
+    let h = escapeHtml(t).replace(/\[{1,2}p:(\d+)\]{1,2}/g, (_, id) => { if (pById(+id) && !ids.includes(+id)) ids.push(+id); return ""; })
+      .replace(/\[{1,2}p?:?\d*$/, "").replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>").replace(/(^|\n)\s*[*•-]\s+/g, "$1• ").replace(/\n{3,}/g, "\n\n").replace(/\n/g, "<br>");
+    if (live) h += `<i class="oa-caret"></i>`;
+    const cards = ids.slice(0, 4).map((id) => { const p = pById(id), out = (p.stock || 0) <= 0;
+      return `<div class="oa-pc" data-oapid="${p.id}"><img src="${pImg(p, 200)}" alt="" loading="lazy" /><div><b>${escapeHtml(p.name)}</b><span>${fmt(p.price)}</span></div><button class="oa-add" data-oaadd="${p.id}" ${out ? "disabled" : ""} title="Savatga">${out ? "Tugagan" : "🛒"}</button></div>`; }).join("");
+    return h + (cards ? `<div class="oa-cards">${cards}</div>` : "");
+  };
+  const fab = document.createElement("button");
+  fab.className = "oa-fab"; fab.id = "oaFab"; fab.title = "OPUS AI yordamchi"; fab.setAttribute("aria-label", "OPUS AI yordamchi");
+  fab.innerHTML = `<span class="oa-orb"><i></i><i></i><i></i><em>✨</em></span><b>OPUS AI</b>`;
+  const box = document.createElement("section");
+  box.className = "oa-box"; box.id = "oaBox"; box.setAttribute("aria-label", "OPUS AI suhbat"); box.hidden = true;
+  box.innerHTML = `<header class="oa-head"><span class="oa-orb sm"><i></i><i></i><i></i><em>✨</em></span><div><b>OPUS AI</b><small>Texnika tanlashda yordam beraman</small></div>
+      <button class="oa-ib" data-oaclr title="Suhbatni tozalash">🗑</button><button class="oa-ib" data-oaclose title="Yopish">✕</button></header>
+    <div class="oa-list" id="oaList"></div>
+    <form class="oa-form" id="oaForm"><textarea id="oaIn" rows="1" maxlength="1000" placeholder="Savolingizni yozing…"></textarea><button class="oa-send" title="Yuborish"><svg viewBox="0 0 24 24"><path d="M3 20.5V14l9-2-9-2V3.5L22 12z"/></svg></button></form>
+    <small class="oa-note">OPUS AI xato qilishi mumkin — narx va mavjudlikni mahsulot sahifasida tekshiring.</small>`;
+  document.body.append(fab, box);
+  const list = $("#oaList"), inp = $("#oaIn"), form = $("#oaForm");
+  const bottom = () => requestAnimationFrame(() => { list.scrollTop = list.scrollHeight; });
+  const bubble = (m) => `<div class="oa-m ${m.role}"><div class="oa-b">${m.role === "ai" ? html(m.text) : escapeHtml(m.text).replace(/\n/g, "<br>")}</div></div>`;
+  const draw = () => {
+    list.innerHTML = msgs.length ? msgs.map(bubble).join("") : `<div class="oa-hero"><span class="oa-orb lg"><i></i><i></i><i></i><em>✨</em></span><h3>Salom! Men OPUS AI 👋</h3>
+      <p>Noutbuk, kompyuter, monitor yoki aksessuar tanlashda yordam beraman — faqat do'konimizdagi haqiqiy narxlar bilan.</p></div>
+      <div class="oa-sug">${SUG.map((s) => `<button type="button" data-oaq="${escapeHtml(s.replace(/^\S+\s/, ""))}">${escapeHtml(s)}</button>`).join("")}</div>`;
+    bottom();
+  };
+  const open = () => { box.hidden = false; requestAnimationFrame(() => box.classList.add("open")); fab.classList.add("hide"); document.documentElement.classList.add("oa-on"); draw(); setTimeout(() => inp.focus(), 250); };
+  const close = () => { box.classList.remove("open"); fab.classList.remove("hide"); document.documentElement.classList.remove("oa-on"); setTimeout(() => { if (!box.classList.contains("open")) box.hidden = true; }, 300); };
+  const fit = () => { inp.style.height = "auto"; inp.style.height = Math.min(120, inp.scrollHeight) + "px"; };
+  async function ask(q) {
+    q = q.trim(); if (!q || busy) return;
+    busy = true; form.classList.add("busy");
+    msgs.push({ role: "user", text: q.slice(0, 1000) }); save(msgs); inp.value = ""; fit(); draw();
+    list.insertAdjacentHTML("beforeend", `<div class="oa-m ai live"><div class="oa-b"><span class="oa-dots"><i></i><i></i><i></i></span></div></div>`);
+    const b = $(".oa-m.live .oa-b", list); bottom();
+    let text = "";
+    try {
+      const res = await fetch(API_BASE + "/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: msgs.slice(-12) }) });
+      if (!res.ok) { let e = {}; try { e = await res.json(); } catch {} throw new Error(e.error || "Xatolik (" + res.status + ")"); }
+      const rd = res.body && res.body.getReader ? res.body.getReader() : null, dec = new TextDecoder();
+      if (rd) { for (;;) { const { done, value } = await rd.read(); if (done) break; text += dec.decode(value, { stream: true }); b.innerHTML = html(text, true); if (list.scrollHeight - list.scrollTop - list.clientHeight < 160) bottom(); } }
+      else text = await res.text();
+      if (!text.trim()) throw new Error("Javob kelmadi. Qayta urinib ko'ring.");
+      msgs.push({ role: "ai", text }); save(msgs);
+      b.innerHTML = html(text); b.parentElement.classList.remove("live");
+    } catch (ex) {
+      b.parentElement.classList.remove("live"); b.parentElement.classList.add("err");
+      b.innerHTML = `⚠️ ${escapeHtml(ex.message === "Failed to fetch" ? "Internet aloqasi yo'q" : ex.message)}<button type="button" class="oa-retry" data-oaretry>↻ Qayta so'rash</button>`;
+      b.dataset.q = q; msgs.pop(); save(msgs);
+    }
+    busy = false; form.classList.remove("busy"); bottom();
+  }
+  fab.addEventListener("click", open);
+  form.addEventListener("submit", (e) => { e.preventDefault(); ask(inp.value); });
+  inp.addEventListener("input", fit);
+  inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(inp.value); } if (e.key === "Escape") close(); });
+  box.addEventListener("click", (e) => {
+    if (e.target.closest("[data-oaclose]")) return close();
+    if (e.target.closest("[data-oaclr]")) { if (!busy) { msgs = []; save(msgs); draw(); } return; }
+    const s = e.target.closest("[data-oaq]"); if (s) return ask(s.dataset.oaq);
+    const r = e.target.closest("[data-oaretry]"); if (r) { const q = r.closest(".oa-b").dataset.q, m = r.closest(".oa-m"); if (m.previousElementSibling) m.previousElementSibling.remove(); m.remove(); return ask(q); }
+    const a = e.target.closest("[data-oaadd]"); if (a) { e.stopPropagation(); addToCart(+a.dataset.oaadd, 1, a); return; }
+    const c = e.target.closest("[data-oapid]"); if (c) { if (innerWidth < 640) close(); openProduct(+c.dataset.oapid); }
+  });
+  // Qidiruvdan ham chaqirish mumkin: window.openOpusAI("savol")
+  window.openOpusAI = (q) => { open(); if (q) setTimeout(() => ask(q), 200); };
+})();
