@@ -1857,8 +1857,33 @@ if (TG) {
       <div class="oa-sug">${SUG.map((s) => `<button type="button" data-oaq="${escapeHtml(s.replace(/^\S+\s/, ""))}">${escapeHtml(s)}</button>`).join("")}</div>`;
     bottom();
   };
-  const open = () => { box.hidden = false; requestAnimationFrame(() => box.classList.add("open")); fab.classList.add("hide"); document.documentElement.classList.add("oa-on"); draw(); setTimeout(() => inp.focus(), 250); };
-  const close = () => { box.classList.remove("open"); fab.classList.remove("hide"); document.documentElement.classList.remove("oa-on"); setTimeout(() => { if (!box.classList.contains("open")) box.hidden = true; }, 300); };
+  // Oyna aynan ikonkaning o'zidan kattalashib chiqadi va yopilganda unga qaytib kiradi
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let anim = null;
+  const fromFab = () => {
+    const r = box.getBoundingClientRect(), f = fab.getBoundingClientRect();
+    const s = Math.max(0.08, f.width / r.width);
+    return `translate(${f.left + f.width / 2 - (r.left + r.width / 2)}px, ${f.top + f.height / 2 - (r.top + r.height / 2)}px) scale(${s})`;
+  };
+  const open = () => {
+    if (box.classList.contains("open")) return;
+    box.hidden = false; box.classList.add("open"); document.documentElement.classList.add("oa-on"); draw();
+    const from = fromFab(); fab.classList.add("hide");
+    if (anim) anim.cancel();
+    if (!reduce) anim = box.animate([{ transform: from, opacity: 0, borderRadius: "60px" }, { transform: "none", opacity: 1, borderRadius: "24px" }], { duration: 380, easing: "cubic-bezier(.2,.9,.25,1)" });
+    setTimeout(() => inp.focus(), 300);
+  };
+  const close = () => {
+    if (!box.classList.contains("open")) return;
+    box.classList.remove("open"); document.documentElement.classList.remove("oa-on");
+    const done = () => { if (box.classList.contains("open")) return; box.hidden = true; fab.classList.remove("hide"); };
+    if (reduce) return done();
+    const to = fromFab(); if (anim) anim.cancel();
+    anim = box.animate([{ transform: "none", opacity: 1, borderRadius: "24px" }, { transform: to, opacity: 0, borderRadius: "60px" }], { duration: 300, easing: "cubic-bezier(.4,0,.7,.2)", fill: "forwards" });
+    const me = anim; let fin = false;
+    const end = () => { if (fin) return; fin = true; if (anim === me) { me.cancel(); anim = null; } done(); };
+    me.onfinish = end; setTimeout(end, 340);
+  };
   const fit = () => { inp.style.height = "auto"; inp.style.height = Math.min(120, inp.scrollHeight) + "px"; };
   async function ask(q) {
     q = q.trim(); if (!q || busy) return;
