@@ -106,7 +106,7 @@ async function loadCatalog() {
 }
 
 // ---------- Ekranlar steki ----------
-const TABS = ["home", "catalog", "cart", "fav", "profile"];
+const TABS = ["home", "catalog", "ai", "cart", "fav", "profile"];
 const stacks = Object.fromEntries(TABS.map((t) => [t, []]));
 let tab = null;
 const stage = $("#stage");
@@ -927,7 +927,6 @@ function profileScreen() {
       <button class="mi" data-m="font"><span class="ri">🔠</span><span>Shrift o'lchami</span><small>${(FONT[store.get("app_font", "m")] || FONT.m)[1]}</small></button>
       <a class="mi" href="https://t.me/${BOT}" target="_blank" rel="noopener"><span class="ri">✈️</span><span>Telegram bot</span><small>@${BOT}</small></a>
       <a class="mi" href="tel:${SHOP_PHONE}"><span class="ri">📞</span><span>Qo'llab-quvvatlash</span><small>${fmtPhone(SHOP_PHONE.slice(1))}</small></a>
-      <button class="mi" data-ai=""><span class="ri">✨</span><span>OPUS AI yordamchi</span><small>yangi</small></button>
       <button class="mi" data-m="help"><span class="ri">💬</span><span>Yordam markazi</span><small>savol-javob</small></button>
       <button class="mi" data-m="whatsnew"><span class="ri">🆕</span><span>Yangilanishlar</span><small>v${esc(CHANGELOG.ver)}</small></button>
       <button class="mi" data-m="about"><span class="ri">ℹ️</span><span>Ilova haqida</span><small>v${esc(VERSION)}</small></button>
@@ -1891,7 +1890,7 @@ const CHANGELOG = {
   ver: "2.3", build: "2026-11-04", date: "4-noyabr, 2026",
   groups: [
     { t: "Eng so'nggi qo'shilganlar", e: "🔥", items: [
-      ["✨", "OPUS AI yordamchi", "Sun'iy intellekt bilan suhbat: \"10 mln gacha o'yin noutbuki\", \"RTX 4070 yoki RX 6800 XT?\", \"30 mln ga kompyuter yig'ib ber\" deb so'rang. Javob yozila borib chiqadi, tavsiya qilingan mahsulotlar kartasi bilan ko'rinadi va darhol savatga qo'shiladi. Narxlar faqat katalogimizdan olinadi. Bosh sahifadagi OPUS AI banneri yoki Kabinet orqali oching."],
+      ["✨", "OPUS AI yordamchi", "Sun'iy intellekt bilan suhbat: \"10 mln gacha o'yin noutbuki\", \"RTX 4070 yoki RX 6800 XT?\", \"30 mln ga kompyuter yig'ib ber\" deb so'rang. Javob yozila borib chiqadi, tavsiya qilingan mahsulotlar kartasi bilan ko'rinadi va darhol savatga qo'shiladi. Narxlar faqat katalogimizdan olinadi. OPUS AI endi alohida bo'lim: pastki paneldagi o'rtadagi rasmli tugmani bosing."],
       ["💬", "Yordam markazi", "Kabinet → Yordam markazi: yetkazish, bo'lib to'lash, kafolat, qaytarish va Telegram kodi haqidagi savol-javoblar, qo'ng'iroq va Telegram tugmalari, ilovadan foydalanish sirlari."],
       ["🔗", "Savatni ulashish", "Savat tepasidagi ulashish tugmasi havola yaratadi — uni ochgan odamning savatiga o'sha mahsulotlar bitta tugma bilan tushadi."],
       ["🧾", "Chekni ulashish", "Buyurtma sahifasida \"Chekni ulashish\" — mahsulotlar, summa va holat matn ko'rinishida yuboriladi."],
@@ -1931,7 +1930,7 @@ const CHANGELOG = {
     ] },
   ],
 };
-const ROOTS = { home: homeScreen, catalog: catalogScreen, cart: cartScreen, fav: favScreen, profile: profileScreen };
+const ROOTS = { home: homeScreen, catalog: catalogScreen, ai: aiScreen, cart: cartScreen, fav: favScreen, profile: profileScreen };
 matchMedia("(prefers-color-scheme: light)").addEventListener("change", applyTheme);
 applyTheme();
 badges();
@@ -2006,7 +2005,8 @@ syncOrders().catch(() => {});
 // Vidjetdan ochilgan bo'lsa — to'g'ridan-to'g'ri "Buyurtmalarim"
 function openFromHash() {
   const h = location.hash.slice(1);
-  if (!/^(orders|search|cart|build)$/.test(h)) return;
+  if (!/^(orders|search|cart|build|ai)$/.test(h)) return;
+  if (h === "ai") { history.replaceState(history.state, "", location.pathname + location.search); return setTimeout(() => switchTab("ai"), 50); }
   history.replaceState(history.state, "", location.pathname + location.search);
   if (h === "cart") return switchTab("cart");
   if (h === "search") { switchTab("home"); return setTimeout(() => openSearch(), 50); }
@@ -2037,7 +2037,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) sync
     moveInd();
     if (had && had !== t) { const top = current(); top.classList.remove("fade", "tab-l", "tab-r"); void top.offsetWidth; top.classList.add(TABS.indexOf(t) > from ? "tab-r" : "tab-l"); setTimeout(() => top.classList.remove("tab-l", "tab-r"), 300); }
   };
-  refreshRoot = function (t) { _refresh(t); const el = stacks[t][0]; if (el) el.classList.add("quiet"); };
+  refreshRoot = function (t) { if (t === "ai" && stacks.ai.length) return; _refresh(t); const el = stacks[t][0]; if (el) el.classList.add("quiet"); };
 }
 // Tab panelidagi suzuvchi indikator
 const tbInd = document.createElement("i"); tbInd.className = "tb-ind"; $("#tabbar").appendChild(tbInd);
@@ -2537,11 +2537,10 @@ function aiHtml(t, live) {
   return h + (cards ? `<div class="ai-cards">${cards}</div>` : "");
 }
 const aiSave = () => store.set("app_ai", S.ai.slice(-30));
-function openAI(q0) {
+function aiScreen() {
   let busy = false;
-  push({
-    noTab: true,
-    html: hdr("OPUS AI", `<button class="ib" data-aiclr aria-label="Tozalash">${svg(IC.trash)}</button>`) + `<div class="sb ai-sb" id="aiSb"><div id="aiList"></div></div>
+  return {
+    html: `<div class="home-hdr ai-hdr"><div class="home-top"><span class="ai-title"><img src="../icons/opus-ai.svg" alt="" /><span><b>OPUS AI</b><small>Aqlli yordamchi · katalog narxlari bilan</small></span></span><button class="ib" data-aiclr aria-label="Suhbatni tozalash">${svg(IC.trash)}</button></div></div><div class="sb ai-sb" id="aiSb"><div id="aiList"></div></div>
       <form class="ai-bar" id="aiForm"><textarea id="aiIn" rows="1" maxlength="1000" placeholder="Savolingizni yozing…" enterkeyhint="send"></textarea><button class="ai-send" aria-label="Yuborish"><svg viewBox="0 0 24 24"><path d="M3 20.5V14l9-2-9-2V3.5L22 12z"/></svg></button></form>`,
     mount(el) {
       const list = $("#aiList", el), sb = $("#aiSb", el), inp = $("#aiIn", el), form = $("#aiForm", el);
@@ -2586,10 +2585,19 @@ function openAI(q0) {
         const r = e.target.closest("[data-airetry]"); if (r) { const q = r.closest(".ai-b").dataset.q; const m = r.closest(".ai-m"); if (m.previousElementSibling) m.previousElementSibling.remove(); m.remove(); ask(q); return; }
         if (e.target.closest("[data-aiclr]")) { if (busy) return; S.ai = []; aiSave(); draw(); toast("🧹 Suhbat tozalandi"); }
       });
+      // Klaviatura ochilganda tab paneli yashiriladi (yozish joyi kattaroq)
+      inp.addEventListener("focus", () => document.body.classList.add("no-tab"));
+      inp.addEventListener("blur", () => setTimeout(syncTabbar, 120));
+      el._ask = ask;
       draw();
-      if (q0) setTimeout(() => ask(q0), 250); else setTimeout(() => inp.focus(), 400);
     },
-  });
+  };
+}
+// Boshqa joydan (qidiruv va h.k.) savol bilan ochish
+function openAI(q) {
+  switchTab("ai");
+  const el = stacks.ai[0];
+  if (q && el && el._ask) setTimeout(() => el._ask(q), 260);
 }
 // Kirish nuqtalari: bosh sahifa (AI banner), Kabinet menyusi, qidiruvda "AI'dan so'rash"
 function aiBanner() { return `<div class="sec"><button class="ai-ban" data-ai><img class="ai-logo" src="../icons/opus-ai.svg" alt="" /><span><b>OPUS AI</b><small>Qaysi texnika kerak? So'rang — tanlab beraman</small></span><em>›</em></button></div>`; }
@@ -2597,8 +2605,4 @@ document.addEventListener("click", (e) => {
   const a = e.target.closest("[data-ai]"); if (!a) return;
   openAI(a.dataset.ai || "");
 });
-{
-  const _home2 = ROOTS.home;
-  ROOTS.home = () => { const d = _home2(); d.html = d.html.replace(`<div class="sec"><div class="tools">`, () => aiBanner() + `<div class="sec"><div class="tools">`); return d; };
-}
-refreshRoot("home");
+refreshRoot("home"); refreshRoot("profile");
