@@ -155,7 +155,7 @@ toTop.addEventListener("click", () => scrollTo({ top: 0 }));
 $("#burger").addEventListener("click", () => $("#nav").classList.toggle("open"));
 $$("#nav a").forEach((a) => a.addEventListener("click", () => $("#nav").classList.remove("open")));
 // Telefonda sarlavhadan menyuga ko'chirilgan tugmalar
-$$("[data-proxy]").forEach((b) => b.addEventListener("click", () => { $("#nav").classList.remove("open"); $("#" + b.dataset.proxy).click(); }));
+$$("[data-proxy]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); $("#nav").classList.remove("open"); $("#" + b.dataset.proxy).click(); }));
 
 // ---------- Menyu animatsiyasi: suzuvchi kapsula + aylanuvchi matn + hozirgi bo'lim ----------
 (() => {
@@ -375,12 +375,54 @@ function setCat(cat) {
 }
 
 // ---------- Products ----------
-const haystack = (p) => (p.name + " " + p.brand + " " + catOf(p).name + " " + Object.values(p.specs).join(" ")).toLowerCase();
-function search(q) {
-  q = q.trim().toLowerCase();
+const haystack = (p) => (p.name + " " + p.brand + " " + ((catOf(p) || {}).name || "") + " " + Object.values(p.specs || {}).join(" ")).toLowerCase();
+// Aqlli qidiruv (ilova bilan bir xil): kirill → lotin, ruscha/o'zbekcha sinonimlar, xato yozuvga chidamlilik, "5 mln gacha"
+const CYR = { а: "a", б: "b", в: "v", г: "g", ғ: "g'", д: "d", е: "e", ё: "yo", ж: "j", з: "z", и: "i", й: "y", к: "k", қ: "q", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ў: "o'", ф: "f", х: "x", ҳ: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sh", ъ: "", ы: "i", ь: "", э: "e", ю: "yu", я: "ya" };
+const normQ = (s) => String(s).toLowerCase().replace(/[а-яёғқўҳ]/g, (c) => CYR[c] ?? c).replace(/[ʻʼ`’‘]/g, "'").replace(/\s+/g, " ").trim();
+const SYN = [
+  [/^(nout|notebook|laptop|noutbuk)/, { cat: "laptop" }], [/^(mish|mouse|sichqon)/, { cat: "mouse" }], [/^(klav|keyboard)/, { cat: "keyboard" }],
+  [/^(monitor|ekran|display)/, { cat: "monitor" }], [/^(naush|quloq|headphone|headset|garnit)/, { cat: "audio" }], [/^(kompyut|komp$|pc$|sistem)/, { cat: "pc" }],
+  [/^(igr|o'yin|oyin|gaming|geym)/, { cat: "gaming" }], [/^(disk|ssd|hdd|nakopit|xotira|fleshk)/, { cat: "storage" }],
+  [/^(videokart|gpu|vidyuxa|grafik)/, { kw: /rtx|gtx|radeon|geforce/ }], [/^(protsess|protses|cpu|prosessor)/, { kw: /ryzen|core i\d|xeon/ }],
+  [/^(operativ|ram$|ozu|operativka)/, { kw: /ddr\d/ }], [/^(blok|psu|pitan)/, { kw: /\d{3,4}\s?w\b/ }],
+];
+function lev(a, b, max) {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i]; let best = i;
+    for (let j = 1; j <= b.length; j++) { cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); best = Math.min(best, cur[j]); }
+    if (best > max) return max + 1;
+    prev = cur;
+  }
+  return prev[b.length];
+}
+function search(q0) {
+  let q = normQ(q0 || ""), min = null, max = null, cheap = false;
   if (!q) return PRODUCTS.slice();
-  const words = q.split(/\s+/);
-  return PRODUCTS.filter((p) => { const h = haystack(p); return words.every((w) => h.includes(w)); });
+  const num = (v, u) => +v.replace(",", ".") * (/^m/.test(u) ? 1e6 : 1e3);
+  q = q.replace(/(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*(mln|million|m|ming|k|tys)\b/, (_, a, b, u) => { min = num(a, u); max = num(b, u); return " "; });
+  q = q.replace(/(?:do\s+)?(\d+(?:[.,]\d+)?)\s*(mln|million|m|ming|k|tys)\b\s*(gacha|dan|do)?/, (_, v, u, w) => { if (w === "dan") min = num(v, u); else max = num(v, u); return " "; });
+  q = q.replace(/\b(arzon|deshev|cheap|byudjet)\w*/, () => { cheap = true; return " "; });
+  const rules = q.split(" ").filter((w) => w && !/^(va|uchun|bilan|dlya|i|na|the|for)$/.test(w)).map((w) => { const s = SYN.find(([re]) => re.test(w)); return { w, s: s && s[1] }; });
+  const scored = [];
+  PRODUCTS.forEach((p) => {
+    if (min != null && p.price < min) return;
+    if (max != null && p.price > max) return;
+    const name = normQ(p.name), text = normQ(haystack(p)), toks = text.split(/[\s\-/()]+/);
+    let score = 0;
+    for (const r of rules) {
+      if (text.includes(r.w)) { score += name.startsWith(r.w) ? 6 : toks.some((t) => t.startsWith(r.w)) ? 4 : 2; continue; }
+      if (r.s && r.s.cat && p.cat === r.s.cat) { score += 3; continue; }
+      if (r.s && r.s.kw && r.s.kw.test(name)) { score += 3; continue; }
+      const tol = /\d/.test(r.w) ? 0 : r.w.length >= 7 ? 2 : r.w.length >= 4 ? 1 : 0;
+      if (tol && toks.some((t) => lev(r.w, t.slice(0, r.w.length + 1), tol) <= tol || lev(r.w, t, tol) <= tol)) { score += 1; continue; }
+      return;
+    }
+    scored.push({ p, score: score + ((p.stock || 0) > 0 ? 0.5 : 0) + (p.popular || 0) / 1000 });
+  });
+  scored.sort((a, b) => (cheap ? a.p.price - b.p.price : b.score - a.score));
+  return scored.map((x) => x.p);
 }
 
 function filtered() {
@@ -396,6 +438,8 @@ function filtered() {
     rating: (a, b) => b.rating - a.rating,
     discount: (a, b) => discount(b) - discount(a),
   };
+  // Qidiruvda "Ommabop" saralash — mos kelish darajasi bo'yicha qoladi
+  if (state.query.trim() && state.sort === "popular") return list;
   return list.sort(sorters[state.sort]);
 }
 
@@ -498,14 +542,14 @@ function highlight(text, q) {
 function renderSuggest() {
   const q = searchInput.value;
   if (!q.trim()) { suggest.hidden = true; return; }
-  const list = search(q).sort((a, b) => b.popular - a.popular);
+  const list = search(q);
   sgIndex = -1;
   suggest.innerHTML = list.length
     ? list.slice(0, 6).map((p) => `<div class="sg-item" data-id="${p.id}">
         <img src="${pImg(p, 250)}" alt="" />
         <div><b>${highlight(p.name, q)}</b><small>${fmt(p.price)}</small></div>
       </div>`).join("") + `<button class="sg-all">Barcha natijalar (${list.length}) →</button>`
-    : `<div class="sg-empty">"${escapeHtml(q)}" bo'yicha hech narsa topilmadi</div>`;
+    : `<div class="sg-empty">"${escapeHtml(q)}" bo'yicha hech narsa topilmadi</div><button class="sg-ai" type="button" data-sgai><img src="icons/opus-ai.svg" alt="" /> OPUS AI'dan so'rash</button>`;
   suggest.hidden = false;
 }
 function applySearch() {
@@ -540,6 +584,7 @@ suggest.addEventListener("click", (e) => {
   const it = e.target.closest(".sg-item");
   if (it) { suggest.hidden = true; openProduct(+it.dataset.id); }
   else if (e.target.closest(".sg-all")) applySearch();
+  else if (e.target.closest("[data-sgai]") && window.openOpusAI) { suggest.hidden = true; window.openOpusAI(searchInput.value); }
 });
 document.addEventListener("click", (e) => { if (!e.target.closest("#searchBox")) suggest.hidden = true; });
 
@@ -1867,7 +1912,7 @@ if (TG) {
   };
   const open = () => {
     if (box.classList.contains("open")) return;
-    box.hidden = false; box.classList.add("open"); document.documentElement.classList.add("oa-on"); draw();
+    box.hidden = false; box.classList.add("open"); document.documentElement.classList.add("oa-on"); if (!busy) draw();
     const from = fromFab(); fab.classList.add("hide");
     if (anim) anim.cancel();
     if (!reduce) anim = box.animate([{ transform: from, opacity: 0, borderRadius: "60px" }, { transform: "none", opacity: 1, borderRadius: "24px" }], { duration: 380, easing: "cubic-bezier(.2,.9,.25,1)" });
@@ -1893,7 +1938,7 @@ if (TG) {
     const b = $(".oa-m.live .oa-b", list); bottom();
     let text = "";
     try {
-      const res = await fetch(API_BASE + "/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: msgs.slice(-12) }) });
+      const res = await fetch(API_BASE + "/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: msgs.slice(-12).map((m) => ({ role: m.role, text: m.text.slice(0, 1500) })) }) });
       if (!res.ok) { let e = {}; try { e = await res.json(); } catch {} throw new Error(e.error || "Xatolik (" + res.status + ")"); }
       const rd = res.body && res.body.getReader ? res.body.getReader() : null, dec = new TextDecoder();
       if (rd) { for (;;) { const { done, value } = await rd.read(); if (done) break; text += dec.decode(value, { stream: true }); b.innerHTML = html(text, true); if (list.scrollHeight - list.scrollTop - list.clientHeight < 160) bottom(); } }
