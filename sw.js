@@ -1,6 +1,6 @@
 // OPUS MARKET — service worker: ilova tez ochilishi va internet sekin/yo'q bo'lganda ham ishlashi uchun kesh.
 // Sayt yangilanganda VERSION ni oshiring.
-const VERSION = "opus-v45";
+const VERSION = "opus-v46";
 const CORE = [
   "./", "index.html", "styles.css", "sfx.js", "assets.js", "data.js", "app.js", "showcase.js", "scrollfx.js",
   "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "img/hero.jpg", "img/deals.jpg",
@@ -28,11 +28,15 @@ self.addEventListener("fetch", (e) => {
   if (url.origin !== location.origin && !CDN.includes(url.hostname)) return;
 
   // Sahifaning o'zi: avval internet (yangi versiya), bo'lmasa — kesh
+  // Sayt (/) va ilova (/app/) sahifalari alohida kalitlarda saqlanadi; faqat muvaffaqiyatli javoblar (404 emas)
   if (req.mode === "navigate") {
+    const inApp = url.pathname.includes("/app/");
+    const key = new URL(inApp ? "app/" : "./", self.registration.scope).href, kp = new URL(key).pathname;
+    const isPage = url.pathname === kp || url.pathname === kp + "index.html";
     e.respondWith(
       fetch(req)
-        .then((res) => { const copy = res.clone(); caches.open(VERSION).then((c) => c.put("index.html", copy)); return res; })
-        .catch(() => caches.match("index.html"))
+        .then((res) => { if (isPage && res.ok && !res.redirected) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(key, copy)); } return res; })
+        .catch(() => caches.match(key).then((hit) => hit || (inApp ? undefined : caches.match("index.html"))))
     );
     return;
   }
