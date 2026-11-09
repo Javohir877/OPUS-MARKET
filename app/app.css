@@ -1069,4 +1069,13 @@ img.ai-av { width: 28px; height: 28px; border-radius: 9px; background: none; }
 .ai-title span { display: flex; flex-direction: column; min-width: 0; }
 .ai-title b { font: 800 17px "Orbitron", sans-serif; letter-spacing: .6px; background: linear-gradient(90deg, #ff8aa0, #c9a2ff, #7fd6ff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .ai-title small { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ai-sb { padding-bottom: 84px; }
+.ai-sb { padding-bottom: calc(var(--aibar, 70px) + 14px); }
+/* OPUS AI'ga tezkor savol tugmasi (mahsulot, taqqoslash, kompyuter yig'ish) */
+.ai-ask { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 12px; padding: 10px 12px; border-radius: 16px; text-align: left; color: #fff;
+  background: linear-gradient(120deg, #1a0a14, #2a0b2e 55%, #0b1a33); border: 1px solid rgba(160,110,255,.35); box-shadow: 0 8px 22px rgba(112,0,255,.2); position: relative; overflow: hidden; }
+.ai-ask::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.1) 50%, transparent 70%); background-size: 250% 100%; animation: shimmer 3.4s linear infinite; pointer-events: none; }
+.ai-ask img { width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0; }
+.ai-ask span { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.ai-ask b { font-size: 14px; } .ai-ask small { font-size: 12px; opacity: .8; }
+.ai-ask em { font-style: normal; font-size: 20px; opacity: .7; }
+.ai-ask:active { transform: scale(.98); }
