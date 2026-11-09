@@ -86,7 +86,8 @@ const orderOut = (o) => ({ ...o, items: JSON.parse(o.items_json || "[]"), items_
 // Xato urinishlar: oynada (windowMs) max dan ortiq bo'lsa — 429
 async function checkLimit(env, key, max, windowMs) {
   const now = Date.now();
-  await env.DB.prepare("DELETE FROM attempts WHERE ts < ?").bind(now - windowMs).run();
+  // Faqat shu kalitning eskirgan yozuvlari o'chiriladi (boshqa cheklovlarning oynasi buzilmasin)
+  await env.DB.prepare("DELETE FROM attempts WHERE key = ? AND ts < ?").bind(key, now - windowMs).run();
   const r = await env.DB.prepare("SELECT COUNT(*) AS c FROM attempts WHERE key = ?").bind(key).first();
   if (r.c >= max) fail(429, "Juda ko'p urinish. 15 daqiqadan keyin qayta urinib ko'ring.");
 }
@@ -861,7 +862,6 @@ route("POST", "/api/ai", async (req, env) => {
     .filter((m) => m.parts[0].text);
   if (!contents.length || contents[contents.length - 1].role !== "user") fail(400, "Savol bo'sh");
   while (contents.length && contents[0].role !== "user") contents.shift();
-  await recordFail(env, key);
   const sys = aiSystem(await getCatalog(env));
   let up = null;
   for (const [model, think] of AI_MODELS) {
@@ -880,6 +880,7 @@ route("POST", "/api/ai", async (req, env) => {
     } catch (e) { clearTimeout(tm); console.log("ai", model, e && e.message); }
   }
   if (!up) fail(503, "OPUS AI hozir band. Birozdan keyin qayta urinib ko'ring.");
+  await recordFail(env, key);
   // Gemini SSE → oddiy matn oqimi (fikrlash qismlari tashlab yuboriladi)
   const { readable, writable } = new TransformStream();
   (async () => {
@@ -909,7 +910,11 @@ route("POST", "/api/ai", async (req, env) => {
 });
 
 export default {
-  async scheduled(event, env) { await pollUpdates(env); await expireUnconfirmed(env); await setupMenuButton(env); },
+  async scheduled(event, env) {
+    await pollUpdates(env); await expireUnconfirmed(env); await setupMenuButton(env);
+    // Eski urinish yozuvlarini vaqti-vaqti bilan tozalash (eng uzun oyna — 1 soat)
+    if (Math.random() < 0.1) await env.DB.prepare("DELETE FROM attempts WHERE ts < ?").bind(Date.now() - 2 * 3600 * 1000).run();
+  },
   async fetch(req, env) {
     const cors = corsHeaders(req, env);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
