@@ -1466,3 +1466,5 @@ html.in-app #app, html.in-app #installBtn { display: none !important; }
 .oa-box { transform: none; opacity: 1; transition: none; will-change: transform, opacity; }
 .oa-fab.hide { transition: opacity .15s, transform .15s; }
 .oa-fab { transition: transform .35s cubic-bezier(.2,1.5,.4,1), opacity .2s .05s; }
+.sg-ai { display: flex; align-items: center; justify-content: center; gap: 8px; width: calc(100% - 16px); margin: 0 8px 8px; padding: 10px; border-radius: 12px; font-weight: 700; color: #fff; background: linear-gradient(120deg, #1a0a14, #2a0b2e 55%, #0b1a33); border: 1px solid rgba(160,110,255,.4); cursor: pointer; }
+.sg-ai img { width: 24px; height: 24px; border-radius: 7px; }
