@@ -605,6 +605,7 @@ function openProduct(id) {
           ${d ? `<div class="save">💰 Tejaysiz: <b>${fmt(p.old - p.price)}</b></div>` : ""}
           <h2 class="pd-name">${esc(p.name)}</h2>
           <div class="pd-meta"><button data-torv>${p.reviews ? `<b>★ ${p.rating}</b> · ${p.reviews} sharh` : "☆ Hali baho yo'q — birinchi bo'ling"}</button><button data-brand-go>${esc(p.brand)} ›</button>${p.original !== false ? `<span>🛡 Original</span>` : ""}<button class="cmp-btn${S.compare.includes(p.id) ? " on" : ""}" data-cmp="${p.id}">⚖️ Taqqoslash</button></div>
+          <button class="ai-ask" data-ai="${esc(p.name + " haqida: kimga mos, afzalliklari va kamchiliklari qanday? Shu narxdagi muqobillari bormi?")}"><img src="../icons/opus-ai.svg" alt="" /><span><b>OPUS AI'dan so'rash</b><small>Kimga mos, afzallik va kamchiliklari</small></span><em>›</em></button>
           <button class="nasiya" id="nas"><span>💜</span><div><b id="nasB">${fmt(p.price / S.months)} × ${S.months} oy</b><small>Uzum Nasiya orqali 0% bo'lib to'lash</small></div><span>›</span></button>
           <div class="box">
             <div class="row"><span class="ri">📦</span><div><b class="${stock <= 0 ? "stock-out" : stock <= 5 ? "stock-low" : "stock-ok"}">${stock <= 0 ? "Tugagan" : stock <= 5 ? `Tez tugaydi — ${stock} dona qoldi` : `Omborda ${stock} dona bor`}</b><small>OPUS MARKET omboridan</small></div></div>
@@ -1542,7 +1543,8 @@ function openCompare() {
           <p class="cmp-k">Omborda</p><div class="cmp-row">${L.map((p) => `<div class="cmp-c"><b class="${(p.stock || 0) <= 0 ? "stock-out" : (p.stock || 0) <= 5 ? "stock-low" : "stock-ok"}">${(p.stock || 0) <= 0 ? "Tugagan" : p.stock + " dona"}</b></div>`).join("")}</div>
           ${keys.map((k) => `<p class="cmp-k">${esc(k)}</p><div class="cmp-row">${L.map((p) => `<div class="cmp-c">${esc((p.specs || {})[k] || "—")}</div>`).join("")}</div>`).join("")}
           <div class="cmp-row" style="margin-top:12px">${L.map((p) => `<div class="cmp-c"><button class="btn sm block" data-cadd="${p.id}" ${(p.stock || 0) <= 0 ? "disabled" : ""}>${inCart(p.id) ? "✓ Savatda" : "Savatga"}</button></div>`).join("")}</div>
-        </div>`;
+        </div>
+        <div class="sec"><button class="ai-ask" data-ai="${esc("Shu mahsulotlarni taqqoslab, qaysi biri kimga mos ekanini qisqa xulosa qilib ber: " + L.map((p) => p.name).join(", "))}"><img src="../icons/opus-ai.svg" alt="" /><span><b>OPUS AI xulosasi</b><small>Qaysi biri sizga mos — qisqa tahlil</small></span><em>›</em></button></div>`;
       };
       el.addEventListener("click", (e) => {
         const x = e.target.closest("[data-cx]"); if (x) { toggleCompare(x.dataset.cx); draw(); }
@@ -1573,7 +1575,8 @@ function newsProducts(n) {
   return [...byName, ...byBrand].filter((p, i, a) => a.indexOf(p) === i).slice(0, 8);
 }
 function newsCover(n) {
-  if (n.img && !/^icons\//.test(n.img)) return n.img;
+  // OPUS AI rasmi yangilik muqovasi sifatida o'zi ko'rsatiladi; boshqa ikonkalar o'rniga mahsulot rasmi
+  if (n.img && (!/^icons\//.test(n.img) || /opus-ai/.test(n.img))) return n.img;
   const p = newsProducts(n)[0] || S.products.slice().sort((a, b) => (b.popular || 0) - (a.popular || 0))[0];
   return p ? p.img : n.img;
 }
@@ -1887,9 +1890,11 @@ document.addEventListener("click", (e) => {
 
 const cmpVer = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
 const CHANGELOG = {
-  ver: "2.3", build: "2026-11-04", date: "4-noyabr, 2026",
+  ver: "2.3", build: "2026-11-09", date: "9-noyabr, 2026",
   groups: [
     { t: "Eng so'nggi qo'shilganlar", e: "🔥", items: [
+      ["🧠", "OPUS AI hamma joyda", "Mahsulot sahifasida \"OPUS AI'dan so'rash\" (kimga mos, afzallik va kamchiliklari), taqqoslashda \"OPUS AI xulosasi\" va kompyuter yig'ishda \"AI bilan tekshirish\" tugmalari."],
+      ["📰", "Yangiliklar", "Yangiliklar bo'limida OPUS AI va so'nggi yangilanishlar haqida batafsil maqolalar."],
       ["✨", "OPUS AI yordamchi", "Sun'iy intellekt bilan suhbat: \"10 mln gacha o'yin noutbuki\", \"RTX 4070 yoki RX 6800 XT?\", \"30 mln ga kompyuter yig'ib ber\" deb so'rang. Javob yozila borib chiqadi, tavsiya qilingan mahsulotlar kartasi bilan ko'rinadi va darhol savatga qo'shiladi. Narxlar faqat katalogimizdan olinadi. OPUS AI endi alohida bo'lim: pastki paneldagi o'rtadagi rasmli tugmani bosing."],
       ["💬", "Yordam markazi", "Kabinet → Yordam markazi: yetkazish, bo'lib to'lash, kafolat, qaytarish va Telegram kodi haqidagi savol-javoblar, qo'ng'iroq va Telegram tugmalari, ilovadan foydalanish sirlari."],
       ["🔗", "Savatni ulashish", "Savat tepasidagi ulashish tugmasi havola yaratadi — uni ochgan odamning savatiga o'sha mahsulotlar bitta tugma bilan tushadi."],
@@ -1916,6 +1921,8 @@ const CHANGELOG = {
       ["✨", "Mayda effektlar", "Rasm yuklanayotganda yaltiroq skelet, savatga qo'shganda uchqunlar, bosilgan joydan yorug'lik va asosiy tugmalarda yaltiroq nur."],
     ] },
     { t: "Tuzatilgan xatolar", e: "🛠", items: [
+      ["🐞", "OPUS AI suhbati", "Uzoq suhbatdan keyin savollar \"So'rov juda katta\" xatosi bilan qaytarilardi; javob kutilayotganda yangi savol jim yo'qolardi; yozish paneli oxirgi javobni yopib qo'yardi. Tuzatildi."],
+      ["🐞", "AI tugmalari", "Boshqa sahifadan AI'ga savol yuborilganda ba'zan suhbat o'rniga eski mahsulot sahifasi ochilardi. Tuzatildi."],
       ["🐞", "Vidjetdan ochilganda qotish", "\"Buyurtmam qayerda\" vidjeti yoki \"Buyurtmalarim\" yorlig'i bosilganda ilova kirish ekranida qotib qolardi. Endi to'g'ri ochiladi."],
       ["🐞", "Stories batareyani yerdi", "Oxirgi story o'zi tugaganda ilova orqa fonda to'xtovsiz ishlab, bosish va batareyaga ta'sir qilardi. Tuzatildi."],
       ["🐞", "Brend sahifasi", "Brendni (masalan ASUS) bossangiz, butun katalog chiqardi. Endi faqat o'sha brend mahsulotlari."],
@@ -2166,6 +2173,7 @@ function openBuilder() {
         const sum = items.reduce((a, x) => a + (x.p ? x.p.price : 0), 0), n = items.filter((x) => x.p).length, warn = pcCheck(b);
         $("#bSb", el).innerHTML = `<div class="b-hero"><div class="b-ring" style="--p:${(n / PC_SLOTS.length) * 100}%"><b>${n}/${PC_SLOTS.length}</b></div><div><h2>O'z kompyuteringizni yig'ing</h2><p class="muted">Har bir bo'limdan ehtiyot qism tanlang — narx va moslik shu yerda ko'rinadi.</p></div></div>
           ${warn.length ? `<div class="b-warn">${warn.map((w) => `<p>⚠️ ${esc(w)}</p>`).join("")}</div>` : n >= 2 ? `<div class="b-ok">✓ Tanlangan qismlarda ma'lum nomuvofiqlik topilmadi</div>` : ""}
+          ${n >= 2 ? `<div style="padding:10px 14px 0"><button class="ai-ask" data-ai="${esc("Men shu qismlardan kompyuter yig'moqchiman: " + items.filter((x) => x.p).map((x) => x.s.t + " — " + x.p.name).join("; ") + ". Moslik, quvvat va muvozanatni tekshirib, nimani qo'shish yoki almashtirish kerakligini ayt.")}"><img src="../icons/opus-ai.svg" alt="" /><span><b>AI bilan tekshirish</b><small>Moslik, quvvat va muvozanat tahlili</small></span><em>›</em></button></div>` : ""}
           <div class="slots">${items.map(({ s, p }, i) => `<button class="slot${p ? " on" : ""}" data-slot="${s.k}" style="animation-delay:${i * 40}ms"><span class="sl-i">${p ? `<img src="${esc(hi(p.img, 330))}" alt="" onerror="imgErr(this)" />` : s.e}</span><span class="sl-t"><small>${s.t}</small><b>${p ? esc(p.name) : "Tanlash"}</b>${p ? `<em>${fmt(p.price)}</em>` : ""}</span>${p ? `<i class="sl-x" data-unset="${s.k}">✕</i>` : `<i class="sl-plus">+</i>`}</button>`).join("")}</div>
           <p class="muted b-note">Moslik faqat razyom, xotira turi va blok quvvati bo'yicha tekshiriladi. Savollar bo'lsa, operatorimiz yordam beradi.</p>`;
         $("#bBar", el).innerHTML = `<div><small class="muted">Jami · ${n} ta qism</small><b>${fmt(sum)}</b>${sum ? `<small class="muted">${num(sum / 12)} so'm/oydan</small>` : ""}</div><button class="btn" data-ball ${n ? "" : "disabled"}>🛒 Savatga</button>`;
@@ -2554,7 +2562,8 @@ function aiScreen() {
       };
       const fit = () => { inp.style.height = "auto"; inp.style.height = Math.min(120, inp.scrollHeight) + "px"; };
       async function ask(q) {
-        q = q.trim(); if (!q || busy) return;
+        q = q.trim(); if (!q) return;
+        if (busy) { inp.value = q; fit(); toast("⏳ Avvalgi javob tugashini kuting — savolingiz yozib qo'yildi"); return; }
         if (!navigator.onLine) { toast("📡 Internet yo'q"); return; }
         busy = true; form.classList.add("busy"); haptic(8); window.sfx && sfx("tick");
         S.ai.push({ role: "user", text: q.slice(0, 1000) }); aiSave(); inp.value = ""; fit(); draw();
@@ -2562,7 +2571,7 @@ function aiScreen() {
         const b = $(".ai-m.live .ai-b", list); bottom();
         let text = "";
         try {
-          const res = await fetch(API_BASE + "/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: S.ai.slice(-12) }) });
+          const res = await fetch(API_BASE + "/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: S.ai.slice(-12).map((m) => ({ role: m.role, text: m.text.slice(0, 1500) })) }) });
           if (!res.ok) { let e = {}; try { e = await res.json(); } catch {} throw new Error(e.error || "Xatolik (" + res.status + ")"); }
           const rd = res.body && res.body.getReader ? res.body.getReader() : null, dec = new TextDecoder();
           if (rd) { for (;;) { const { done, value } = await rd.read(); if (done) break; text += dec.decode(value, { stream: true }); b.innerHTML = aiHtml(text, true); if (sb.scrollHeight - sb.scrollTop - sb.clientHeight < 160) bottom(); } }
@@ -2589,6 +2598,7 @@ function aiScreen() {
       inp.addEventListener("focus", () => document.body.classList.add("no-tab"));
       inp.addEventListener("blur", () => setTimeout(syncTabbar, 120));
       el._ask = ask;
+      if (window.ResizeObserver) new ResizeObserver(() => { el.style.setProperty("--aibar", form.offsetHeight + "px"); }).observe(form);
       draw();
     },
   };
@@ -2596,6 +2606,7 @@ function aiScreen() {
 // Boshqa joydan (qidiruv va h.k.) savol bilan ochish
 function openAI(q) {
   switchTab("ai");
+  if (stacks.ai.length > 1) switchTab("ai"); // shu tabni qayta bosish — ildizga (suhbatga) qaytaradi
   const el = stacks.ai[0];
   if (q && el && el._ask) setTimeout(() => el._ask(q), 260);
 }
