@@ -7,7 +7,8 @@
 //          GET  /api/orders    POST /api/orders    POST /api/orders/:id/cancel
 //          GET  /api/products/:id/reviews (ochiq)   POST /api/products/:id/reviews
 //          POST /api/ai                          — OPUS AI yordamchisi (Gemini, oqim bilan javob)
-// Admin:   POST /api/admin/login | /api/admin/logout | /api/admin/password
+// Admin:   POST /api/admin/login | /api/admin/logout | /api/admin/password   GET /api/admin/me
+//          GET|POST /api/admin/admins   PATCH|DELETE /api/admin/admins/:id  (faqat Owner)
 //          GET  /api/admin/stats
 //          GET  /api/admin/users   GET|PATCH|DELETE /api/admin/users/:id   POST /api/admin/users/:id/reset-password
 //          GET  /api/admin/orders  PATCH /api/admin/orders/:id
@@ -329,7 +330,22 @@ route("POST", "/api/orders", async (req, env) => {
 });
 
 // ---------- Admin ----------
-const admin = (req, env) => session(req, env, "admin");
+// Admin akkauntlari: Owner (do'kon egasi) va Adminlar. Sessiyada akkaunt ID'si saqlanadi;
+// eski (ID'siz) admin sessiyalari Owner'niki hisoblanadi.
+const pubAdmin = (a) => ({ id: a.id, login: a.login, name: a.name, role: a.role, disabled: !!a.disabled, created_at: a.created_at, last_login: a.last_login });
+async function admin(req, env) {
+  const s = await session(req, env, "admin");
+  const a = s.user_id
+    ? await env.DB.prepare("SELECT * FROM admins WHERE id = ?").bind(s.user_id).first()
+    : await env.DB.prepare("SELECT * FROM admins WHERE role = 'owner' ORDER BY id LIMIT 1").first();
+  if (!a || a.disabled) fail(401, "Akkaunt o'chirilgan yoki topilmadi. Qaytadan kiring.");
+  return a;
+}
+async function owner(req, env) {
+  const a = await admin(req, env);
+  if (a.role !== "owner") fail(403, "Bu amal faqat Owner uchun");
+  return a;
+}
 
 // ---------- Telegram bot ----------
 // Token va webhook kaliti — Cloudflare maxfiy o'zgaruvchilari (wrangler secret): TELEGRAM_TOKEN, TG_WEBHOOK_SECRET, TG_ADMIN_CHAT.
@@ -579,26 +595,80 @@ route("POST", "/api/admin/login", async (req, env) => {
   const b = await body(req);
   const key = "admin:" + ip(req);
   await checkLimit(env, key, 8, 15 * 60e3);
-  const a = await env.DB.prepare("SELECT * FROM admin WHERE id = 1").first();
-  if (!a) fail(503, "Admin paroli hali o'rnatilmagan");
-  if (!safeEqual(await pbkdf2(String(b.password || ""), a.pass_salt, a.iter), a.pass_hash)) { await recordFail(env, key); fail(401, "Parol noto'g'ri"); }
-  return json({ token: await createSession(env, null, "admin", ADMIN_SESSION_HOURS * 3600e3) });
+  const login = str(b.login, 40).toLowerCase();
+  const a = login
+    ? await env.DB.prepare("SELECT * FROM admins WHERE login = ?").bind(login).first()
+    : await env.DB.prepare("SELECT * FROM admins WHERE role = 'owner' ORDER BY id LIMIT 1").first();
+  if (!a || a.disabled || !safeEqual(await pbkdf2(String(b.password || ""), a.pass_salt, a.iter), a.pass_hash)) {
+    await recordFail(env, key); fail(401, login ? "Login yoki parol noto'g'ri" : "Parol noto'g'ri");
+  }
+  await env.DB.prepare("UPDATE admins SET last_login = ? WHERE id = ?").bind(Date.now(), a.id).run();
+  return json({ token: await createSession(env, a.id, "admin", ADMIN_SESSION_HOURS * 3600e3), me: pubAdmin(a) });
 });
 route("POST", "/api/admin/logout", async (req, env) => {
   const t = bearer(req);
   if (t) await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ? AND role = 'admin'").bind(await sha256(t)).run();
   return json({ ok: true });
 });
-route("POST", "/api/admin/password", async (req, env) => {
-  await admin(req, env);
+route("GET", "/api/admin/me", async (req, env) => json({ me: pubAdmin(await admin(req, env)) }));
+route("GET", "/api/admin/admins", async (req, env) => {
+  await owner(req, env);
+  const r = await env.DB.prepare("SELECT * FROM admins ORDER BY role = 'owner' DESC, id").all();
+  return json({ admins: r.results.map(pubAdmin) });
+});
+const ADMIN_LOGIN = /^[a-z0-9_.-]{3,30}$/;
+route("POST", "/api/admin/admins", async (req, env) => {
+  await owner(req, env);
   const b = await body(req);
-  const a = await env.DB.prepare("SELECT * FROM admin WHERE id = 1").first();
+  const login = str(b.login, 40).toLowerCase(), name = str(b.name, 40), pass = String(b.password || "");
+  if (!ADMIN_LOGIN.test(login)) fail(400, "Login 3–30 ta lotin harfi, raqam yoki . _ - belgilaridan iborat bo'lsin");
+  if (!name) fail(400, "Ismni kiriting");
+  if (pass.length < 8) fail(400, "Parol kamida 8 belgidan iborat bo'lsin");
+  if (await env.DB.prepare("SELECT 1 FROM admins WHERE login = ?").bind(login).first()) fail(409, "Bu login band");
+  const salt = randHex(16);
+  const r = await env.DB.prepare("INSERT INTO admins (login, name, role, pass_hash, pass_salt, iter, created_at) VALUES (?, ?, 'admin', ?, ?, ?, ?)")
+    .bind(login, name, await pbkdf2(pass, salt), salt, ITER, Date.now()).run();
+  const a = await env.DB.prepare("SELECT * FROM admins WHERE id = ?").bind(r.meta.last_row_id).first();
+  return json({ admin: pubAdmin(a) });
+});
+route("PATCH", "/api/admin/admins/:id", async (req, env, p) => {
+  const me = await owner(req, env);
+  const a = await env.DB.prepare("SELECT * FROM admins WHERE id = ?").bind(+p.id).first();
+  if (!a) fail(404, "Akkaunt topilmadi");
+  const b = await body(req);
+  if (b.name != null) { const n = str(b.name, 40); if (!n) fail(400, "Ismni kiriting"); await env.DB.prepare("UPDATE admins SET name = ? WHERE id = ?").bind(n, a.id).run(); }
+  if (b.password != null) {
+    const pass = String(b.password);
+    if (pass.length < 8) fail(400, "Parol kamida 8 belgidan iborat bo'lsin");
+    const salt = randHex(16);
+    await env.DB.prepare("UPDATE admins SET pass_hash = ?, pass_salt = ?, iter = ? WHERE id = ?").bind(await pbkdf2(pass, salt), salt, ITER, a.id).run();
+    if (a.id !== me.id) await env.DB.prepare("DELETE FROM sessions WHERE role = 'admin' AND user_id = ?").bind(a.id).run();
+  }
+  if (b.disabled != null) {
+    if (a.role === "owner") fail(400, "Owner akkauntini o'chirib bo'lmaydi");
+    await env.DB.prepare("UPDATE admins SET disabled = ? WHERE id = ?").bind(b.disabled ? 1 : 0, a.id).run();
+    if (b.disabled) await env.DB.prepare("DELETE FROM sessions WHERE role = 'admin' AND user_id = ?").bind(a.id).run();
+  }
+  return json({ admin: pubAdmin(await env.DB.prepare("SELECT * FROM admins WHERE id = ?").bind(a.id).first()) });
+});
+route("DELETE", "/api/admin/admins/:id", async (req, env, p) => {
+  await owner(req, env);
+  const a = await env.DB.prepare("SELECT * FROM admins WHERE id = ?").bind(+p.id).first();
+  if (!a) fail(404, "Akkaunt topilmadi");
+  if (a.role === "owner") fail(400, "Owner akkauntini o'chirib bo'lmaydi");
+  await env.DB.prepare("DELETE FROM sessions WHERE role = 'admin' AND user_id = ?").bind(a.id).run();
+  await env.DB.prepare("DELETE FROM admins WHERE id = ?").bind(a.id).run();
+  return json({ ok: true });
+});
+route("POST", "/api/admin/password", async (req, env) => {
+  const a = await admin(req, env);
+  const b = await body(req);
   if (!safeEqual(await pbkdf2(String(b.old || ""), a.pass_salt, a.iter), a.pass_hash)) fail(400, "Joriy parol noto'g'ri");
   const next = String(b.new || "");
   if (next.length < 8) fail(400, "Yangi parol kamida 8 belgidan iborat bo'lsin");
   const salt = randHex(16);
-  await env.DB.prepare("UPDATE admin SET pass_hash = ?, pass_salt = ?, iter = ? WHERE id = 1").bind(await pbkdf2(next, salt), salt, ITER).run();
-  await env.DB.prepare("DELETE FROM sessions WHERE role = 'admin' AND token_hash != ?").bind(await sha256(bearer(req))).run();
+  await env.DB.prepare("UPDATE admins SET pass_hash = ?, pass_salt = ?, iter = ? WHERE id = ?").bind(await pbkdf2(next, salt), salt, ITER, a.id).run();
+  await env.DB.prepare("DELETE FROM sessions WHERE role = 'admin' AND user_id = ? AND token_hash != ?").bind(a.id, await sha256(bearer(req))).run();
   return json({ ok: true });
 });
 
@@ -779,7 +849,7 @@ route("DELETE", "/api/admin/reviews/:id", async (req, env, p) => {
 });
 
 route("PUT", "/api/admin/catalog", async (req, env) => {
-  await admin(req, env);
+  const who = await admin(req, env);
   const b = await body(req, 3_000_000);
   if (!b || typeof b.SETTINGS !== "object" || !Array.isArray(b.CATEGORIES) || !Array.isArray(b.PRODUCTS) || !Array.isArray(b.NEWS)) fail(400, "Katalog formati noto'g'ri");
   const ids = new Set();
@@ -787,9 +857,10 @@ route("PUT", "/api/admin/catalog", async (req, env) => {
     if (!Number.isInteger(p.id) || ids.has(p.id)) fail(400, "Mahsulot ID'lari takrorlanmas butun son bo'lishi kerak");
     ids.add(p.id);
     if (typeof p.name !== "string" || !p.name.trim() || !(p.price >= 0)) fail(400, `Mahsulot #${p.id}: nomi yoki narxi noto'g'ri`);
+    if (p.stock != null && !(Number.isInteger(+p.stock) && +p.stock >= 0 && +p.stock <= 99999)) fail(400, `Mahsulot #${p.id}: ombor soni 0–99 999 oralig'ida bo'lishi kerak`);
   }
   const { adminPass, ...settings } = b.SETTINGS; // eski panel versiyasidan qolgan maydon saqlanmaydi
-  await saveCatalog(env, { SETTINGS: settings, CATEGORIES: b.CATEGORIES, PRODUCTS: b.PRODUCTS, NEWS: b.NEWS }, str(b.note, 120) || "Admin panel");
+  await saveCatalog(env, { SETTINGS: settings, CATEGORIES: b.CATEGORIES, PRODUCTS: b.PRODUCTS, NEWS: b.NEWS }, (str(b.note, 120) || "Admin panel") + " · " + who.name);
   return json({ ok: true, updated_at: Date.now() });
 });
 route("GET", "/api/admin/catalog/versions", async (req, env) => {
