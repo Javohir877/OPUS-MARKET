@@ -153,12 +153,26 @@ function update() { renderAll(); markDirty(); }
 
 // ---------- Ishga tushirish ----------
 async function start() {
+  try { S.me = (await api("GET", "/api/admin/me")).me; } catch (ex) { if (ex.status === 401) throw ex; }
+  renderMe();
   await loadData();
   try { await loadServer(); } catch (ex) { toast("❌ " + apiError(ex)); }
   enterApp();
 }
+const ROLE = { owner: "👑 Owner", admin: "🛡 Admin" };
+function renderMe() {
+  const me = S.me || { name: "Admin", role: "admin" };
+  const ini = (me.name || "A").trim().charAt(0).toUpperCase();
+  $("#profileBtn .ad-ava").textContent = ini;
+  $("#profileBtn .ad-hide-m").textContent = me.role === "owner" ? "Owner" : me.name;
+  $("#profileBtn").title = `${me.name} · ${ROLE[me.role] || me.role}`;
+  document.documentElement.dataset.role = me.role;
+  $("#adminsPanel").hidden = me.role !== "owner";
+  if (me.role === "owner") loadAdmins();
+}
 function refreshMode() {
-  $("#adUser").innerHTML = `<b>👑 Administrator</b><span class="ad-mode">Serverga ulangan</span><span class="muted">"E'lon qilish" o'zgarishlarni saytga darhol yozadi</span>`
+  const me = S.me || { name: "Admin", role: "admin" };
+  $("#adUser").innerHTML = `<b>${esc(me.name)} <span class="ad-role ${me.role}">${ROLE[me.role] || esc(me.role)}</span></b>${me.login ? `<span class="muted">Login: ${esc(me.login)}</span>` : ""}<span class="ad-mode">Serverga ulangan</span><span class="muted">"E'lon qilish" o'zgarishlarni saytga darhol yozadi</span>`
     + `<button class="ad-pop-item ad-danger" id="lockNowBtn" type="button">🔒 Chiqish (qulflash)</button>`;
   $("#lockNowBtn").addEventListener("click", lockNow);
   $("#publishBtn").title = "Saytga e'lon qilish (Ctrl+S)";
@@ -1252,6 +1266,7 @@ addEventListener("beforeunload", (e) => { if (S.data && S.token && diff().n) { e
 // ---------- Admin kirishi ----------
 // Parol serverda tekshiriladi (PBKDF2 xeshi D1 bazasida). Brauzerda faqat 12 soatlik seans tokeni (sessionStorage) turadi.
 function showLock(msg) {
+  const lg = ls.get("opus_admin_login", ""); if (lg && !$("#lockLogin").value) $("#lockLogin").value = lg;
   $("#app").hidden = true;
   $("#lock").hidden = false;
   const err = $("#lockError");
@@ -1274,12 +1289,15 @@ $("#lockForm").addEventListener("submit", async (e) => {
   const err = $("#lockError"), btn = $("#lockBtn"), input = $("#lockInput");
   btn.disabled = true; btn.textContent = "Tekshirilmoqda…"; err.hidden = true;
   try {
-    const r = await api("POST", "/api/admin/login", { password: input.value });
+    const login = $("#lockLogin").value.trim().toLowerCase();
+    const r = await api("POST", "/api/admin/login", { login, password: input.value });
     S.token = r.token; ss.set("opus_admin_api", r.token);
+    ls.set("opus_admin_login", login);
+    S.me = r.me || null;
     input.value = "";
     unlocked();
   } catch (ex) {
-    err.textContent = ex.status === 401 ? "Parol noto'g'ri." : apiError(ex);
+    err.textContent = ex.status === 401 ? ($("#lockLogin").value.trim() ? "Login yoki parol noto'g'ri." : "Parol noto'g'ri.") : apiError(ex);
     err.hidden = false;
     input.classList.remove("invalid"); void input.offsetWidth; input.classList.add("invalid");
     input.select();
@@ -1644,3 +1662,56 @@ const TIPS = [
 let tipN = 0;
 setInterval(() => { const el = $("#sideTip"); if (el) { tipN = (tipN + 1) % TIPS.length; el.textContent = TIPS[tipN]; } }, 12000);
 setOrderMode(ls.get("opus_admin_omode", "table"));
+
+// ---------- Adminlar (faqat Owner) ----------
+async function loadAdmins() {
+  const box = $("#adminsList");
+  try {
+    const { admins } = await api("GET", "/api/admin/admins");
+    S.admins = admins;
+    const ago = (t) => t ? new Date(t).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "hali kirmagan";
+    box.innerHTML = admins.map((a) => `<div class="ad-admin${a.disabled ? " off" : ""}" data-aid="${a.id}">
+        <i class="ad-ava">${esc((a.name || "?").charAt(0).toUpperCase())}</i>
+        <div><b>${esc(a.name)} <span class="ad-role ${a.role}">${ROLE[a.role] || esc(a.role)}</span>${a.disabled ? ' <span class="ad-role off">O\'chirilgan</span>' : ""}</b>
+          <small class="muted">Login: ${esc(a.login)} · oxirgi kirish: ${ago(a.last_login)}</small></div>
+        ${a.role === "owner" ? "" : `<span class="ad-actions"><button type="button" data-aact="pass">🔑 Parol</button><button type="button" data-aact="toggle">${a.disabled ? "✅ Yoqish" : "⏸ O'chirish"}</button><button type="button" data-aact="del" class="ad-danger">🗑</button></span>`}
+      </div>`).join("");
+    // Akbar uchun forma oldindan to'ldiriladi (hali qo'shilmagan bo'lsa)
+    const f = $("#adminNew");
+    if (!admins.some((a) => a.login === "akbar") && !f.name.value && !f.login.value) { f.name.value = "Akbar"; f.login.value = "akbar"; }
+  } catch (ex) { box.innerHTML = `<p class="ad-empty">${esc(apiError(ex))}</p>`; }
+}
+$("#adminNew").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target, btn = $("button", f);
+  btn.disabled = true;
+  try {
+    const { admin: a } = await api("POST", "/api/admin/admins", { name: f.name.value.trim(), login: f.login.value.trim().toLowerCase(), password: f.password.value });
+    f.reset();
+    toast(`✅ ${a.name} uchun admin akkaunt yaratildi. Login: ${a.login}`, true);
+    loadAdmins();
+  } catch (ex) { toast("❌ " + apiError(ex)); }
+  btn.disabled = false;
+});
+$("#adminsList").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-aact]"); if (!b) return;
+  const id = +b.closest("[data-aid]").dataset.aid, a = (S.admins || []).find((x) => x.id === id); if (!a) return;
+  try {
+    if (b.dataset.aact === "pass") {
+      const p = prompt(`${a.name} uchun yangi parol (kamida 8 belgi):`);
+      if (!p) return;
+      await api("PATCH", "/api/admin/admins/" + id, { password: p });
+      toast(`🔑 ${a.name} paroli o'zgartirildi — u qaytadan kiradi`);
+    }
+    if (b.dataset.aact === "toggle") {
+      await api("PATCH", "/api/admin/admins/" + id, { disabled: !a.disabled });
+      toast(a.disabled ? `✅ ${a.name} akkaunti yoqildi` : `⏸ ${a.name} akkaunti o'chirildi — panelga kira olmaydi`);
+    }
+    if (b.dataset.aact === "del") {
+      if (!confirm(`${a.name} (${a.login}) akkauntini butunlay o'chirasizmi? Buni qaytarib bo'lmaydi.`)) return;
+      await api("DELETE", "/api/admin/admins/" + id);
+      toast(`🗑 ${a.name} akkaunti o'chirildi`);
+    }
+    loadAdmins();
+  } catch (ex) { toast("❌ " + apiError(ex)); }
+});
