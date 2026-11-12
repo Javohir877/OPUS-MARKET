@@ -790,3 +790,19 @@ select.os-sel, .admin select.os-sel { padding-right: 34px !important; background
 .admin input[type="checkbox"]:not(.ad-switch > input):checked { background: var(--grad); border-color: transparent; box-shadow: 0 3px 10px rgba(var(--prgb), .35); }
 .admin input[type="checkbox"]:not(.ad-switch > input):checked::after { opacity: 1; transform: none; }
 .admin input[type="checkbox"]:not(.ad-switch > input):indeterminate { background: var(--grad); border-color: transparent; }
+/* Admin akkauntlari */
+.ad-role { display: inline-flex; align-items: center; margin-left: 6px; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; vertical-align: middle; }
+.ad-role.owner { color: #fff; background: linear-gradient(135deg, #f5b301, #e07b00); box-shadow: 0 3px 10px rgba(240,160,0,.3); }
+.ad-role.admin { color: var(--primary); background: rgba(var(--prgb), .12); border: 1px solid rgba(var(--prgb), .3); }
+.ad-role.off { color: var(--muted); background: var(--bg2); border: 1px solid var(--line); }
+.ad-admins { display: flex; flex-direction: column; gap: 8px; }
+.ad-admin { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: color-mix(in srgb, var(--bg2) 70%, transparent); }
+.ad-admin.off { opacity: .6; }
+.ad-admin > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ad-admin small { font-size: 12px; }
+.ad-admin .ad-ava { flex-shrink: 0; }
+.ad-admin-new { margin-top: 6px; padding-top: 12px; border-top: 1px dashed var(--line); display: flex; flex-direction: column; }
+.ad-admin-new h4 { font-size: 13.5px; margin: 0 0 8px; }
+.ad-grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 760px) { .ad-grid3 { grid-template-columns: 1fr; } .ad-admin { flex-wrap: wrap; } }
+#lockLogin { width: 100%; }
