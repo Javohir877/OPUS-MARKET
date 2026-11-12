@@ -2153,7 +2153,7 @@ const PC_SLOTS = [
 const cpuSock = (n) => /i\d-1[2-4]\d{3}/i.test(n) ? "LGA1700" : /i\d-[89]\d{3}/i.test(n) ? "LGA1151" : /Ryzen \d \d{4}/i.test(n) ? (+n.match(/Ryzen \d (\d)\d{3}/i)[1] >= 7 ? "AM5" : "AM4") : null;
 const mbSock = (n) => /\b[ZBH](3[67]0|390|360)\b/.test(n) ? "LGA1151" : /\b[ZBH](6[69]0|7[69]0)\b/.test(n) ? "LGA1700" : /\b[BX](4[57]0|5[57]0)\b/.test(n) ? "AM4" : /\b[BX](6[57]0|8[57]0)\b/.test(n) ? "AM5" : null;
 const memOf = (n) => (n.match(/DDR(\d)/i) || [])[1];
-const GPU_PSU = [[/5090/, 1000], [/4090/, 850], [/4080/, 750], [/7900 XTX/i, 800], [/7900 XT\b/i, 750], [/6800 XT/i, 750], [/4070 Ti/i, 700], [/4070/, 650], [/4060/, 550], [/3060/, 550]];
+const GPU_PSU = [[/5090/, 1000], [/4090/, 850], [/4080/, 750], [/7900 XTX/i, 800], [/7900 XT\b/i, 750], [/6800 XT/i, 750], [/4070 Ti/i, 700], [/4070/, 650], [/4060/, 550], [/3060/, 550], [/6600 XT/i, 500], [/RX 580/i, 500], [/1660/, 450], [/3050/, 300]];
 function pcCheck(b) {
   const P = (k) => b[k] && byId(b[k]), W = [];
   const cpu = P("cpu"), mb = P("mb"), ram = P("ram"), gpu = P("gpu"), psu = P("psu");
