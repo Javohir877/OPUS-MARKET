@@ -242,8 +242,8 @@ function card(p, o) {
     <div class="pc-b">
       <span class="pc-m">${num(p.price / 12)} so'm/oy</span>
       <p class="pc-n">${esc(p.name)}</p>
-      <span class="pc-r">${rateTxt(p)}</span>
-      ${o && o.deal && !out ? `<span class="dealbar"><i style="--w:${Math.min(100, Math.max(10, (p.stock || 0) * 7))}%"></i><small>${p.stock <= 5 ? `🔥 Faqat ${p.stock} dona qoldi` : `Omborda ${p.stock} dona`}</small></span>` : ""}
+      ${p.reviews ? `<span class="pc-r">${rateTxt(p)}</span>` : ""}
+      ${o && o.deal && !out && p.stock <= 5 ? `<span class="dealbar"><i style="--w:${Math.min(100, Math.max(10, (p.stock || 0) * 7))}%"></i><small>${p.stock <= 5 ? `🔥 Faqat ${p.stock} dona qoldi` : `Omborda ${p.stock} dona`}</small></span>` : ""}
       <div class="pc-p"><div>${d ? `<s>${num(p.old)}</s>` : ""}<b class="${d ? "sale" : ""}">${num(p.price)} <small>so'm</small></b></div>
         <button class="add${q ? " in" : ""}" data-add="${p.id}" ${out ? "disabled" : ""} aria-label="Savatga">${svg(q ? IC.check : IC.cart)}</button></div>
     </div>
@@ -1781,11 +1781,13 @@ function lowRow() {
   const L = S.products.filter((p) => (p.stock || 0) > 0 && p.stock <= 3).sort((a, b) => (b.popular || 0) - (a.popular || 0)).slice(0, 10);
   return L.length ? `<div class="sec"><div class="sec-h"><h2>⏳ Tez tugaydi</h2><small class="muted">ulgurib qoling</small></div><div class="hscroll">${L.map((p) => card(p, { deal: true })).join("")}</div></div>` : "";
 }
+// Sarlavha boshidagi emoji'ni bir xil ramkaga o'raydi (tartibli ko'rinish uchun)
+const secIcons = (html) => html.replace(/<h2>(\p{Extended_Pictographic}\uFE0F?)\s*/gu, '<h2><i class="sh-ic">$1</i>');
 function brandsRow() {
   const cnt = {};
   S.products.forEach((p) => (cnt[p.brand] = (cnt[p.brand] || 0) + 1));
   const B = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 12);
-  return `<div class="sec"><div class="sec-h"><h2>🏷 Brendlar</h2></div><div class="hscroll brands">${B.map(([b, n], i) => `<button class="brand-c" data-brand-q="${esc(b)}" style="--h:${(i * 47) % 360}"><b>${esc(b)}</b><small>${n} ta</small></button>`).join("")}</div></div>`;
+  return `<div class="sec"><div class="sec-h"><h2>🏷 Brendlar</h2></div><div class="hscroll brands">${B.map(([b, n], i) => `<button class="brand-c" data-brand-q="${esc(b)}"><i>${esc(b.replace(/[^A-Za-z0-9]/g, "").slice(0, 2).toUpperCase())}</i><b>${esc(b)}</b><small>${n} ta</small></button>`).join("")}</div></div>`;
 }
 
 // =====================================================================
@@ -2617,3 +2619,7 @@ document.addEventListener("click", (e) => {
   openAI(a.dataset.ai || "");
 });
 refreshRoot("home"); refreshRoot("profile");
+
+// Bosh sahifadagi barcha bo'lim sarlavhalari (keyin qo'shilganlari ham) bir xil belgili
+{ const _h = ROOTS.home; ROOTS.home = () => { const d = _h(); d.html = secIcons(d.html); return d; }; }
+refreshRoot("home");
