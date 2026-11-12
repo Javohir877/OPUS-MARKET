@@ -727,3 +727,52 @@ body.rail-mini .ad-count { position: absolute; top: 4px; right: 6px; margin: 0; 
   .ad-quick::-webkit-scrollbar { display: none; }
   .ad-quick button { flex-shrink: 0; }
 }
+
+/* ================= Ixcham (me'yoriy) o'lchamlar — hamma narsa haddan tashqari katta va zich edi ================= */
+.admin { font-size: 14px; }
+/* Sarlavha va bosh blok */
+.ad-head h2 { font-size: 21px; }
+.ad-head p { font-size: 12.5px; }
+.ad-hero { padding: 16px 20px; gap: 16px; border-radius: 18px; }
+.ad-hero-text { gap: 5px; }
+.ad-hero small { font-size: 12px; }
+.ad-hero h3 { font-size: 19px; }
+.ad-hero p { font-size: 13px; }
+.ad-quick { gap: 6px; margin-top: 4px; }
+.ad-quick button { padding: 6px 11px; font-size: 12.5px; border-radius: 9px; }
+.ad-quick button:hover { transform: translateY(-1px); }
+.ad-goal-ring { width: 104px; height: 104px; }
+.ad-goal-ring b { font-size: 20px; }
+.ad-goal-ring small, .ad-goal-ring em { font-size: 10px; }
+.ad-ring-bg, .ad-ring { stroke-width: 9; }
+/* Asosiy ko'rsatkichlar */
+.ad-kpis { gap: 10px; }
+.ad-kpi { padding: 12px 14px; min-height: 92px; gap: 3px; border-radius: 14px; }
+.ad-kpi small { font-size: 12px; }
+.ad-kpi b { font-size: 19px; }
+.ad-kpi em { font-size: 11.5px; }
+.ad-kpi:hover { transform: translateY(-2px); }
+/* Kichik ko'rsatkichlar */
+.ad-mini { gap: 8px; }
+.ad-mini-i { padding: 7px 10px; gap: 8px; border-radius: 11px; }
+.ad-mini-i > span { width: 28px; height: 28px; font-size: 14px; border-radius: 8px; }
+.ad-mini-i small { font-size: 11px; }
+.ad-mini-i b { font-size: 14px; }
+.ad-mini-i em { font-size: 10.5px; }
+/* Panellar, jadvallar, maydonlar */
+.ad-panel { padding: 14px 16px; gap: 10px; border-radius: 14px; }
+.ad-panel h3 { font-size: 14.5px; }
+.ad-table { font-size: 13px; }
+.ad-table th { padding: 9px 10px; font-size: 11px; }
+.ad-table td { padding: 7px 10px; }
+.ad-actions button { padding: 5px 9px; font-size: 12px; border-radius: 7px; }
+.admin input, .admin select, .admin textarea { padding: 7px 11px; font-size: 13px; border-radius: 9px; }
+select.os-sel, .admin select.os-sel { padding-right: 34px !important; background-position: right 10px center !important; background-size: 16px 16px !important; }
+.ad-toolbar { gap: 8px; }
+/* Tugmalar */
+.admin .btn { padding: 8px 14px; font-size: 13px; border-radius: 10px; gap: 6px; }
+.admin .btn-sm { padding: 6px 12px; font-size: 12.5px; border-radius: 9px; }
+.admin .btn-primary { box-shadow: 0 6px 16px rgba(var(--prgb), .28); }
+/* Yon menyu */
+.ad-nav button { padding: 8px 10px; gap: 10px; font-size: 13.5px; border-radius: 10px; }
+.ad-nav svg { width: 18px; height: 18px; }
