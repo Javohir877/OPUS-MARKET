@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=41" />
+  <link rel="stylesheet" href="styles.css?v=44" />
 </head>
 <body>
   <!-- Loader -->
@@ -227,7 +227,7 @@
           Maks. narx: <b id="priceLabel"></b>
           <input type="range" id="priceRange" min="500000" max="45000000" step="500000" />
         </label>
-        <select id="sortSelect">
+        <select id="sortSelect" aria-label="Saralash">
           <option value="popular">Ommabop</option>
           <option value="cheap">Arzonroq</option>
           <option value="expensive">Qimmatroq</option>
@@ -534,7 +534,7 @@
         <h4>Shaxsiy ma'lumotlar</h4>
         <label>Ism familiya<input name="name" required minlength="2" maxlength="60" autocomplete="name" /></label>
         <label>Email (ixtiyoriy)<input name="email" type="email" maxlength="120" autocomplete="email" /></label>
-        <label>Viloyat<select name="region"></select></label>
+        <label>Viloyat<select name="region" aria-label="Viloyat"></select></label>
         <label>Manzil<input name="address" maxlength="300" autocomplete="street-address" placeholder="Ko'cha, uy, xonadon" /></label>
         <button class="btn btn-primary btn-sm">Saqlash</button>
       </form>
@@ -612,7 +612,7 @@
             <label class="rcard"><input type="radio" name="delivery" value="pickup" /><span><b>🏬 Do'kondan olib ketish</b><small>Bepul, bugunoq</small></span></label>
           </div>
           <label>Viloyat
-            <select name="region">
+            <select name="region" aria-label="Viloyat">
               <option>Toshkent shahri</option><option>Toshkent viloyati</option><option>Samarqand</option><option>Buxoro</option><option>Andijon</option><option>Farg'ona</option><option>Namangan</option><option>Qashqadaryo</option><option>Surxondaryo</option><option>Xorazm</option><option>Navoiy</option><option>Jizzax</option><option>Sirdaryo</option><option>Qoraqalpog'iston</option>
             </select>
           </label>
@@ -702,7 +702,8 @@
       } catch (e) {}
     })();
   </script>
-  <script src="app.js?v=39"></script>
+  <script src="ui-select.js?v=2"></script>
+  <script src="app.js?v=40"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="showcase.js?v=33"></script>
   <script src="scrollfx.js?v=33"></script>
