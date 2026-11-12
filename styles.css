@@ -1505,3 +1505,10 @@ select.os-sel:disabled { opacity: .55; cursor: not-allowed; }
 /* admin.css "background" qisqa yozuvi strelkani buzmasin */
 select.os-sel, .admin select.os-sel { background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27%3E%3Cpath d=%27M6 9l6 6 6-6%27 fill=%27none%27 stroke=%27%239a8a8e%27 stroke-width=%272.4%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E") !important; background-repeat: no-repeat !important; background-position: right 12px center !important; background-size: 18px 18px !important; }
 select.os-sel.os-open, select.os-sel:focus-visible, .admin select.os-sel.os-open { background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27%3E%3Cpath d=%27M6 9l6 6 6-6%27 fill=%27none%27 stroke=%27%23e10f2a%27 stroke-width=%272.4%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E") !important; }
+/* Bosh blokdagi raqamlar: nomlari brendlar lentasi ostida qolib ketardi — joy va aniq ko'rinish */
+.hero { padding-bottom: 140px; }
+.hero-stats { position: relative; z-index: 2; gap: 12px; margin-top: 8px; }
+.hero-stats > div { display: flex; flex-direction: column; gap: 2px; min-width: 120px; padding: 12px 18px; border-radius: 16px; font-size: 24px; line-height: 1.1;
+  background: color-mix(in srgb, var(--card) 70%, transparent); border: 1px solid var(--line); backdrop-filter: blur(8px); }
+.hero-stats small { font-size: 12.5px; }
+@media (max-width: 640px) { .hero { padding-bottom: 110px; } .hero-stats > div { min-width: 0; flex: 1; padding: 10px 12px; font-size: 20px; } }
