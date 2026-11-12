@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=45" />
-  <link rel="stylesheet" href="admin.css?v=32" />
+  <link rel="stylesheet" href="admin.css?v=33" />
 </head>
 <body class="admin">
 
@@ -22,7 +22,9 @@
       <h1>Admin panel himoyalangan</h1>
       <p class="muted">Davom etish uchun admin parolini kiriting.</p>
       <form id="lockForm" autocomplete="off">
-        <label for="lockInput">Parol</label>
+        <label for="lockLogin">Login</label>
+        <input id="lockLogin" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="Owner uchun bo'sh qoldiring" />
+        <label for="lockInput" style="margin-top:10px">Parol</label>
         <div class="ad-pass">
           <input id="lockInput" type="password" autocomplete="current-password" required />
           <button type="button" class="ad-eye" id="lockEye" aria-label="Parolni ko'rsatish">👁</button>
@@ -333,6 +335,20 @@
           </div>
           <button class="btn btn-ghost btn-sm" style="margin-top:12px;align-self:flex-start">Parolni o'zgartirish</button>
         </form>
+        <div class="ad-panel" id="adminsPanel" hidden>
+          <div class="ad-panel-head"><h3>👥 Adminlar</h3><small class="muted">Faqat Owner ko'radi va boshqaradi</small></div>
+          <div class="ad-admins" id="adminsList"></div>
+          <form class="ad-form ad-admin-new" id="adminNew" autocomplete="off">
+            <h4>Yangi admin qo'shish</h4>
+            <div class="ad-grid3">
+              <div><label for="anName">Ism</label><input id="anName" name="name" maxlength="40" required /></div>
+              <div><label for="anLogin">Login</label><input id="anLogin" name="login" maxlength="30" pattern="[a-z0-9_.\-]{3,30}" autocapitalize="off" spellcheck="false" required /></div>
+              <div><label for="anPass">Parol (kamida 8 belgi)</label><input id="anPass" name="password" type="password" minlength="8" autocomplete="new-password" required /></div>
+            </div>
+            <p class="muted" style="font-size:12px;margin:6px 0 0">Admin do'kon bilan bog'liq hamma ishni qila oladi (mahsulot, buyurtma, yangilik, sozlamalar), lekin adminlarni boshqara olmaydi.</p>
+            <button class="btn btn-primary btn-sm" style="margin-top:10px;align-self:flex-start">+ Admin qo'shish</button>
+          </form>
+        </div>
      </section>
     </main>
 
@@ -486,7 +502,7 @@
   <script src="sfx.js?v=30"></script>
   <script src="assets.js?v=30"></script>
   <script src="ui-select.js?v=2"></script>
-  <script src="admin.js?v=31"></script>
+  <script src="admin.js?v=32"></script>
   <script src="admin-bg.js?v=29"></script>
 </body>
 </html>
