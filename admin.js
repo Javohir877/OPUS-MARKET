@@ -285,7 +285,7 @@ function renderChart() {
   if (!s.length) { box.innerHTML = `<p class="ad-empty">Ma'lumot yo'q</p>`; return; }
   const max = Math.max(...s.map((d) => d.revenue), 1), total = s.reduce((a, d) => a + d.revenue, 0);
   $("#chartTotal").textContent = `Jami: ${fmt(total)} · ${s.reduce((a, d) => a + d.orders, 0)} ta buyurtma`;
-  const W = 560, H = 190, pad = 22, bw = (W - pad) / s.length;
+  const W = 900, H = 170, pad = 22, bw = (W - pad) / s.length; // keng va pastroq — panelda ixcham turadi
   const short = (n) => n >= 1e9 ? (n / 1e9).toFixed(1) + " mlrd" : n >= 1e6 ? Math.round(n / 1e6) + " mln" : n >= 1e3 ? Math.round(n / 1e3) + " ming" : String(n);
   box.innerHTML = `<svg viewBox="0 0 ${W} ${H + 26}" role="img" aria-label="Kunlik savdo grafigi">
     <defs><linearGradient id="barG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff2a40"/><stop offset="1" stop-color="#a8081d"/></linearGradient></defs>
@@ -321,7 +321,7 @@ function renderLow() {
       <td><img class="ad-thumb" src="${esc(srcOf(p.img))}" alt="" /></td>
       <td class="ad-pname"><b>${esc(p.name)}</b><small>${esc(catName(p.cat))}</small></td>
       <td>${stockChip(p.stock)}</td>
-      <td class="num"><span class="ad-restock"><input class="cell sm" type="number" min="0" data-field="stock" value="${p.stock}" aria-label="Ombor" /><button type="button" data-add="5">+5</button><button type="button" data-add="10">+10</button></span></td>
+      <td class="num"><span class="ad-restock"><input class="cell sm" type="number" min="0" max="99999" data-field="stock" value="${p.stock}" aria-label="Ombor" /><button type="button" data-add="5">+5</button><button type="button" data-add="10">+10</button></span></td>
     </tr>`).join("")}</table>` : `<p class="ad-empty">✓ Barcha mahsulotlar yetarli</p>`;
 }
 
@@ -373,7 +373,7 @@ function renderProducts() {
       <td class="c-cat">${esc(catName(p.cat))}</td>
       <td class="num c-price" data-label="Narx"><input class="cell" type="number" inputmode="numeric" min="0" step="1000" data-field="price" value="${p.price}" aria-label="Narx" /></td>
       <td class="num c-old" data-label="Eski narx"><input class="cell" type="number" inputmode="numeric" min="0" step="1000" data-field="old" value="${p.old || ""}" placeholder="—" aria-label="Eski narx" /></td>
-      <td class="num c-stock" data-label="Ombor"><input class="cell sm" type="number" inputmode="numeric" min="0" data-field="stock" value="${p.stock}" aria-label="Ombor" /></td>
+      <td class="num c-stock" data-label="Ombor"><input class="cell sm" type="number" inputmode="numeric" min="0" max="99999" data-field="stock" value="${p.stock}" aria-label="Ombor" /></td>
       <td class="c-status">${stockChip(p.stock)}${p.old && p.old > p.price ? ` <span class="chip sale">−${Math.round((1 - p.price / p.old) * 100)}%</span>` : ""}</td>
       <td class="c-badge" data-label="Belgi"><select class="ad-status-select" data-field="badge" aria-label="Belgi">${["", "Yangi", "Xit"].map((b) => `<option value="${b}" ${(p.badge || "") === b ? "selected" : ""}>${b || "—"}</option>`).join("")}</select></td>
       <td class="c-orig" data-label="Original"><label class="ad-switch" title="Original belgisi"><input type="checkbox" data-field="original" ${p.original !== false ? "checked" : ""} aria-label="Original" /><span></span></label></td>
@@ -430,7 +430,7 @@ $("#bulkApply").addEventListener("click", () => {
       else { p.old = base; p.price = round1000(base * (1 - x / 100)); }
     }
     if (a === "price") { p.price = round1000(p.price * (1 + x / 100)); if (p.old && p.old <= p.price) p.old = null; }
-    if (a === "stock") p.stock = Math.max(0, Math.round(x));
+    if (a === "stock") p.stock = Math.min(MAX_STOCK, Math.max(0, Math.round(x)));
     if (a === "badge") { if ($("#bulkBadge").value) p.badge = $("#bulkBadge").value; else delete p.badge; }
     if (a === "orig1") p.original = true;
     if (a === "orig0") p.original = false;
@@ -488,7 +488,7 @@ $("#csvImport").addEventListener("change", async (e) => {
     if ("cat" in v && S.data.CATEGORIES.some((c) => c.id === v.cat)) p.cat = v.cat;
     if ("price" in v && v.price) p.price = numF(v.price);
     if ("old" in v) p.old = numF(v.old) > p.price ? numF(v.old) : null;
-    if ("stock" in v && v.stock !== "") p.stock = Math.max(0, Math.round(numF(v.stock)));
+    if ("stock" in v && v.stock !== "") p.stock = Math.min(MAX_STOCK, Math.max(0, Math.round(numF(v.stock))));
     if ("badge" in v) { if (["Yangi", "Xit"].includes(v.badge)) p.badge = v.badge; else delete p.badge; }
     if ("original" in v && v.original !== "") p.original = !["0", "yo'q", "no", "false"].includes(v.original.toLowerCase());
     ok++;
@@ -498,6 +498,9 @@ $("#csvImport").addEventListener("change", async (e) => {
 });
 ["#pSearch", "#pCat", "#pStock"].forEach((s) => $(s).addEventListener("input", renderProducts));
 
+// Ombor soni chegarasi: tasodifan qo'shimcha nollar yozilib ketmasin
+const MAX_STOCK = 99999;
+const stockWarn = () => toast(`⚠️ Ombor soni ${MAX_STOCK.toLocaleString("ru-RU")} donadan oshmasligi kerak — raqamni tekshiring`);
 // Jadvaldagi tezkor tahrir (narx, eski narx, ombor, belgi)
 function onCellChange(e) {
   const f = e.target.dataset.field;
@@ -508,7 +511,10 @@ function onCellChange(e) {
   if (f === "badge") { if (e.target.value) p.badge = e.target.value; else delete p.badge; }
   else if (f === "original") p.original = e.target.checked;
   else if (f === "old") p.old = +e.target.value > 0 ? +e.target.value : null;
-  else p[f] = Math.max(0, +e.target.value || 0);
+  else {
+    if (f === "stock" && +e.target.value > MAX_STOCK) { stockWarn(); e.target.value = p.stock; return; }
+    p[f] = Math.max(0, +e.target.value || 0);
+  }
   row.classList.add("changed");
   renderKpis(); markDirty();
   if (f === "stock" && S.view === "dash") renderLow();
@@ -624,6 +630,7 @@ form.addEventListener("submit", (e) => {
     const [k, v] = $$("input", r).map((i) => i.value.trim());
     if (k && v) specs[k] = v;
   });
+  if (+f.stock.value > MAX_STOCK) { stockWarn(); f.stock.focus(); return; }
   const val = {
     cat: f.cat.value, brand: f.brand.value.trim(), name: f.name.value.trim(),
     price: Math.max(0, +f.price.value || 0), old: +f.old.value > 0 ? +f.old.value : null,
