@@ -1387,7 +1387,7 @@ function onboarding() {
   const promo = S.settings.promos && S.settings.promos.YANGI5 ? "YANGI5" : null;
   const slides = [
     { e: "🛒", t: "OPUS MARKET'ga xush kelibsiz!", p: "Noutbuk, kompyuter, monitor va aksessuarlar — original va kafolat bilan." },
-    { e: "💜", t: "0% bo'lib to'lash", p: "Uzum Nasiya orqali 24 oygacha ortiqcha foizsiz. Click, Payme, karta yoki naqd — qanday qulay bo'lsa." },
+    { e: "💜", t: "0% bo'lib to'lash", p: "Uzum Nasiya orqali 24 oygacha ortiqcha foizsiz. Click, Payme yoki karta orqali to'lang." },
     { e: "✈️", t: "Telegram orqali tasdiqlash", p: `Buyurtmani 6 xonali kod bilan tasdiqlaysiz, chek Telegram'ga keladi.${promo ? ` Birinchi xarid uchun ${promo} promo-kodi!` : ""}` },
   ];
   const o = document.createElement("div");

@@ -23,7 +23,7 @@ const ITER = 100000;                       // Cloudflare Workers'dagi PBKDF2 mak
 const USER_SESSION_DAYS = 30;
 const ADMIN_SESSION_HOURS = 12;
 const STATUSES = ["Yangi", "Tasdiqlandi", "Yig'ilmoqda", "Yo'lda", "Yetkazildi", "Bekor qilindi"];
-const PAYMENTS = ["click", "payme", "uzcard", "humo", "visa", "mastercard", "uzum", "cash"];
+const PAYMENTS = ["click", "payme", "uzcard", "humo", "visa", "mastercard", "uzum"];
 const enc = new TextEncoder();
 
 class HttpError extends Error { constructor(status, message) { super(message); this.status = status; } }

@@ -35,7 +35,6 @@ const PAYMENTS = [
   { id: "visa", name: "Visa", note: "Xalqaro karta", svg: `<svg viewBox="0 0 120 40"><text x="60" y="30" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-style="italic" font-weight="900" font-size="28" fill="#1A1F71">VISA</text></svg>` },
   { id: "mastercard", name: "Mastercard", note: "Xalqaro karta", svg: `<svg viewBox="0 0 120 40"><circle cx="48" cy="20" r="14" fill="#EB001B"/><circle cx="72" cy="20" r="14" fill="#F79E1B"/><path d="M60 9.2a14 14 0 010 21.6 14 14 0 010-21.6z" fill="#FF5F00"/></svg>` },
   { id: "uzum", name: "Uzum Nasiya", note: "Bo'lib to'lash 0%", svg: `<svg viewBox="0 0 120 40"><rect x="4" y="6" width="28" height="28" rx="8" fill="#7000FF"/><path d="M11 15v6a7 7 0 0014 0v-6" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/><text x="38" y="27" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="20" fill="#7000FF">uzum</text></svg>` },
-  { id: "cash", name: "Naqd pul", note: "Qabul qilganda", svg: `<svg viewBox="0 0 120 40"><rect x="22" y="9" width="46" height="24" rx="4" fill="#16a34a"/><circle cx="45" cy="21" r="6" fill="none" stroke="#fff" stroke-width="2.5"/><text x="74" y="27" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="16" fill="#16a34a">so'm</text></svg>` },
 ];
 
 const ICONS = {
