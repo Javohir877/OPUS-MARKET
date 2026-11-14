@@ -915,6 +915,10 @@ QOIDALAR:
 - Buyurtma bera olmaysan va foydalanuvchining buyurtmalarini ko'ra olmaysan: buning uchun ilovadagi Savat va "Kabinet → Buyurtmalarim" bo'limlarini ko'rsat.
 - Texnik maslahatni (qaysi protsessor, qancha RAM, moslik) umumiy bilimingdan berishing mumkin, lekin ishonching komil bo'lmasa, shuni ayt.
 - Do'konga aloqasi yo'q mavzularda muloyimlik bilan suhbatni texnika va xaridga qaytar.
+- Taqqoslash so'ralsa, har bir mahsulot uchun 2–4 ta asosiy farqni "•" bilan qisqa yoz va oxirida kimga qaysi biri mosligini bir jumlada ayt.
+- Quyida "FOYDALANUVCHI HOLATI" bo'lsa (savat, ko'rilganlar, buyurtmalar), undan foydalan: masalan "savatimdagiga nima mos?" yoki "buyurtmam qayerda?" savollariga aniq javob ber. Buyurtma holatini faqat shu ma'lumotdan ayt, o'ylab topma.
+- Rasm yuborilsa: rasmda nima borligini qisqa ayt va katalogdan eng o'xshash yoki mos mahsulotlarni tavsiya qil.
+- Har javobning ENG OXIRIDA alohida qatorda 2–3 ta qisqa keyingi savol taklif qil, aynan shu formatda: [[q:birinchi savol|ikkinchi savol|uchinchi savol]] — foydalanuvchi tilida, har biri 2–6 so'z.
 
 DO'KON MA'LUMOTLARI:
 - Yetkazish: Toshkent bo'ylab 24 soat ichida, viloyatlarga 2–4 ish kuni. ${fmtN(s.freeShipFrom || 1000000)} so'mdan yuqori xaridda bepul, aks holda ${fmtN(s.shipPrice || 50000)} so'm. Do'kondan olib ketish ham mumkin.
@@ -927,17 +931,54 @@ DO'KON MA'LUMOTLARI:
 KATALOG (teg | nomi | brend | bo'lim | narx | ombor | xususiyatlar):
 ${lines}`;
 }
+// AI uchun foydalanuvchi holati: savat, saralangan, ko'rilganlar (mijoz yuboradi) va buyurtmalar (seans bo'lsa — serverdan)
+async function aiUserState(req, env, ctx, cat) {
+  const byId = new Map((cat.PRODUCTS || []).map((p) => [p.id, p]));
+  const fmtN = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  const name = (id) => { const p = byId.get(+id); return p ? `${p.name} [[p:${p.id}]] (${fmtN(p.price)} so'm)` : null; };
+  const ids = (a, n) => (Array.isArray(a) ? a : []).slice(0, n).map((x) => name(x && typeof x === "object" ? x.id : x)).filter(Boolean);
+  const out = [];
+  const cart = (Array.isArray(ctx.cart) ? ctx.cart : []).slice(0, 15).map((x) => { const nm = name(x && x.id); return nm ? `${nm} × ${+x.qty || 1}` : null; }).filter(Boolean);
+  if (cart.length) out.push("Savatda: " + cart.join("; "));
+  if (ctx.viewing && name(ctx.viewing)) out.push("Hozir ko'rib turgan mahsuloti: " + name(ctx.viewing));
+  const fav = ids(ctx.fav, 10); if (fav.length) out.push("Saralanganlar: " + fav.join("; "));
+  const rec = ids(ctx.recent, 8); if (rec.length) out.push("Oxirgi ko'rganlari: " + rec.join("; "));
+  try {
+    const t = bearer(req);
+    if (t) {
+      const ss = await env.DB.prepare("SELECT * FROM sessions WHERE token_hash = ?").bind(await sha256(t)).first();
+      if (ss && ss.role === "user" && ss.expires_at > Date.now()) {
+        const u = await env.DB.prepare("SELECT name FROM users WHERE id = ?").bind(ss.user_id).first();
+        if (u) out.push("Ismi: " + u.name);
+        const r = await env.DB.prepare("SELECT id, status, total, created_at, items_json, confirmed FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 5").bind(ss.user_id).all();
+        const os = (r.results || []).map((o) => {
+          const items = JSON.parse(o.items_json || "[]").map((i) => (byId.get(i.id) || i).name + " × " + i.qty).join(", ");
+          return `#${o.id} — holati: ${o.status}${o.confirmed ? "" : " (Telegram kodi bilan tasdiqlanmagan)"}, jami ${fmtN(o.total)} so'm, ${new Date(o.created_at).toISOString().slice(0, 10)}: ${items}`;
+        });
+        out.push(os.length ? "Buyurtmalari (eng yangisi birinchi):\n" + os.join("\n") : "Buyurtmalari: hali yo'q");
+      }
+    }
+  } catch {}
+  return out.length ? "\n\nFOYDALANUVCHI HOLATI:\n" + out.join("\n") : "";
+}
 route("POST", "/api/ai", async (req, env) => {
   if (!env.GEMINI_KEY) fail(503, "OPUS AI hozircha sozlanmagan");
   const key = "ai:" + ip(req);
   await checkLimit(env, key, 25, 15 * 60 * 1000);
-  const b = await body(req, 40000);
+  const b = await body(req, 1500000);
   const contents = (Array.isArray(b.messages) ? b.messages : []).slice(-12)
     .map((m) => ({ role: m && m.role === "ai" ? "model" : "user", parts: [{ text: str(m && m.text, 1500) }] }))
     .filter((m) => m.parts[0].text);
   if (!contents.length || contents[contents.length - 1].role !== "user") fail(400, "Savol bo'sh");
   while (contents.length && contents[0].role !== "user") contents.shift();
-  const sys = aiSystem(await getCatalog(env));
+  // Rasm (ixtiyoriy): oxirgi savolga qo'shiladi — faqat JPEG/PNG/WebP, ~1 MB gacha
+  if (b.image && typeof b.image.data === "string") {
+    const mime = String(b.image.mime || "");
+    if (!/^image\/(jpeg|png|webp)$/.test(mime) || b.image.data.length > 1400000 || !/^[A-Za-z0-9+/=]+$/.test(b.image.data.slice(0, 200))) fail(400, "Rasm formati noto'g'ri yoki juda katta");
+    contents[contents.length - 1].parts.push({ inline_data: { mime_type: mime, data: b.image.data } });
+  }
+  const cat = await getCatalog(env);
+  const sys = aiSystem(cat) + await aiUserState(req, env, b.ctx && typeof b.ctx === "object" ? b.ctx : {}, cat);
   let up = null;
   for (const [model, think] of AI_MODELS) {
     const gc = { maxOutputTokens: 1000, temperature: 0.5 };
