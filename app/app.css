@@ -1146,3 +1146,26 @@ select.os-sel.os-open, select.os-sel:focus-visible { background-image: url("data
 /* Pastki panel yashirilganda o'rtadagi AI tugmasi va uning nuri ekran chetidan ko'rinib qolmasin */
 body.no-tab .tabbar { transform: translateY(calc(100% + 60px)); }
 body.no-tab .tb-ai > i { opacity: 0; animation: none; }
+
+/* =================== Tezlik: qotmasligi uchun =================== */
+/* Doim ishlab turadigan bezak animatsiyalari o'chirildi (ekranni to'xtovsiz qayta chizib, protsessorni band qilardi) */
+.bn img, .bn::after, .reel-bg img, .reel::after, .nf-img img, .nf-hero::after, .home-hdr .brand, .story-b .ring, .story-b .ring img, .story-b .ring em,
+.ai-ask::after, .ai-ban::after, .empty .em, .onb-art, .tb-ai > i, .ai-logo.lg { animation: none !important; }
+.reel-prog::after { animation: none !important; width: 35%; }
+.tb-ai > i { filter: blur(6px); opacity: .35; }
+.tb-ai.active > i { opacity: .55; }
+/* Ekrandan tashqaridagi bo'limlar yaqinlashguncha chizilmaydi */
+.sb > .sec { content-visibility: auto; contain-intrinsic-size: auto 320px; }
+.screen { contain: layout paint; }
+/* Yengil rejim — zaif telefonlar: xiralashtirish, og'ir soyalar va kirish animatsiyalarisiz */
+html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+html.lite .tabbar, html.lite .ai-bar, html.lite .bbar, html.lite .buybar, html.lite .os-pop { background: var(--bg2) !important; }
+html.lite .hdr.clear .ib { background: var(--bg2); }
+html.lite .pc, html.lite .tool, html.lite .slot, html.lite .wn-it, html.lite .ai-sug button, html.lite .ai-m, html.lite .ai-pc, html.lite .os-opt, html.lite .dk-b, html.lite .cat .ci { animation: none !important; }
+html.lite .pc, html.lite .tool, html.lite .dk, html.lite .brand-c i, html.lite .bn, html.lite .t-build { box-shadow: none !important; }
+html.lite .st-orbs, html.lite .tb-ai > i { display: none; }
+html.lite .screen.enter, html.lite .screen.back-in, html.lite .screen.under { animation-duration: .2s !important; }
+/* Rasm skeleti harakatsiz: yuklanmagan (ekrandan tashqaridagi) rasmlar uchun o'nlab cheksiz animatsiya ishlamasin */
+.pc-img::before, .rc-img::before, .t10-i::before, .ci-row .thumb::before, .pc-img::after, .skel { animation: none !important; }
+.pc-img::before, .rc-img::before, .t10-i::before, .ci-row .thumb::before { background: linear-gradient(135deg, #f4f0f1, #fbf9f9) !important; }
+.pc-img::after { display: none; }
