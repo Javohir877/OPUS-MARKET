@@ -1512,3 +1512,6 @@ select.os-sel.os-open, select.os-sel:focus-visible, .admin select.os-sel.os-open
   background: color-mix(in srgb, var(--card) 70%, transparent); border: 1px solid var(--line); backdrop-filter: blur(8px); }
 .hero-stats small { font-size: 12.5px; }
 @media (max-width: 640px) { .hero { padding-bottom: 110px; } .hero-stats > div { min-width: 0; flex: 1; padding: 10px 12px; font-size: 20px; } }
+.oa-follow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.oa-follow button { padding: 6px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; color: var(--primary); background: rgba(var(--prgb), .08); border: 1px solid rgba(var(--prgb), .3); cursor: pointer; text-align: left; }
+.oa-follow button:hover { background: rgba(var(--prgb), .16); }
