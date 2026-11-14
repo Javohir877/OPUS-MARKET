@@ -1195,3 +1195,5 @@ html.lite .screen.enter, html.lite .screen.back-in, html.lite .screen.under { an
 .lan { height: 286px; }
 /* Statistikadagi raqamlar: Orbitron'dagi chiziqli "0" ⊘ ga o'xshab ko'rinardi */
 .stats b { font: 800 19px "Inter", system-ui, sans-serif; }
+/* Avatar: harflar doira markazida (".prof div" umumiy qoidasi ularni tepaga surib qo'yardi) */
+.prof .ava { display: flex; flex-direction: row; align-items: center; justify-content: center; flex: 0 0 58px; width: 58px; height: 58px; line-height: 1; padding: 0; text-align: center; letter-spacing: .5px; }
