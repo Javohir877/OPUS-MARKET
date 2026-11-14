@@ -1893,9 +1893,13 @@ document.addEventListener("click", (e) => {
 
 const cmpVer = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
 const CHANGELOG = {
-  ver: "2.4", build: "2026-11-14", date: "14-noyabr, 2026",
+  ver: "2.5", build: "2026-11-14b", date: "14-noyabr, 2026",
   groups: [
-    { t: "Ilova 2.4 — yangi", e: "🚀", items: [
+    { t: "Ilova 2.5 — yangi", e: "🚀", items: [
+      ["⏱", "Bildirishnomalar tezroq", "Yetkazilmagan buyurtmangiz bo'lsa, ilova uning holatini ~3 daqiqada bir tekshiradi. Admin \"Yetkazildi\" ni bosgach, telefoningizga \"🎉 Buyurtmangiz keldi!\" xabari keladi — ilova yopiq bo'lsa ham. Buyurtma yetkazilgach tez-tez tekshirish o'zi to'xtaydi (batareya tejaladi)."],
+      ["🎨", "Kabinet va pastki panel", "Menyuda bir xil uslubdagi aniq ikonkalar, OPUS AI tugmasi boshqa tugmalar qatorida, a'zolik kartasi joyida turadi va hech narsani to'smaydi."],
+    ] },
+    { t: "Ilova 2.4", e: "🔔", items: [
       ["🔔", "Bildirishnomalar — ilova yopiq bo'lsa ham", "Buyurtma bergach, uning holati o'zgarganda (tasdiqlandi, yig'ilmoqda, yo'lda, yetkazildi) telefoningizga bildirishnoma keladi — ilova yopiq bo'lsa ham, telefon qayta yoqilgandan keyin ham. Bildirishnomani bossangiz, ilova to'g'ridan-to'g'ri \"Buyurtmalarim\" sahifasida ochiladi. Kabinet → Bildirishnomalar orqali holatini ko'rasiz."],
       ["⚡", "Tezroq va qotmaydigan", "Doim ishlab turgan bezak animatsiyalari o'chirildi, ekrandan tashqaridagi bo'limlar faqat kerak bo'lganda chiziladi, rasmlar ilovani to'xtatmasdan yuklanadi. Zaif telefonlarda ilova avtomatik ravishda \"yengil rejim\"ga o'tadi."],
       ["💸", "Arzon kompyuterlar va videokartalar", "Taxminan 200$ va 300$ lik tayyor kompyuterlar (OPUS Start), shuningdek GT 1030, RX 580, GTX 1660 Ti, RTX 3050, RX 6600 XT va RTX 3060 videokartalari hamda Ryzen 5 5600G protsessori."],
@@ -1929,6 +1933,7 @@ const CHANGELOG = {
       ["✨", "Mayda effektlar", "Rasm yuklanayotganda yaltiroq skelet, savatga qo'shganda uchqunlar, bosilgan joydan yorug'lik va asosiy tugmalarda yaltiroq nur."],
     ] },
     { t: "Tuzatilgan xatolar", e: "🛠", items: [
+      ["🐞", "Buyurtma holati sahifasi", "Buyurtma sahifasidagi holatlar ro'yxati (Yangi → Yetkazildi) har bir bosqichni ekranning chorak qismigacha cho'zib yuborardi, yuqoridagi shkalada esa \"Yetkazildi\" chetga chiqib ketardi. Endi ixcham va to'g'ri."],
       ["🐞", "OPUS AI suhbati", "Uzoq suhbatdan keyin savollar \"So'rov juda katta\" xatosi bilan qaytarilardi; javob kutilayotganda yangi savol jim yo'qolardi; yozish paneli oxirgi javobni yopib qo'yardi. Tuzatildi."],
       ["🐞", "AI tugmalari", "Boshqa sahifadan AI'ga savol yuborilganda ba'zan suhbat o'rniga eski mahsulot sahifasi ochilardi. Tuzatildi."],
       ["🐞", "Vidjetdan ochilganda qotish", "\"Buyurtmam qayerda\" vidjeti yoki \"Buyurtmalarim\" yorlig'i bosilganda ilova kirish ekranida qotib qolardi. Endi to'g'ri ochiladi."],
@@ -2317,7 +2322,7 @@ function initLanyard(root) {
   if (window.ResizeObserver) { const ro = new ResizeObserver(() => { if (!box.isConnected) return ro.disconnect(); measure(); draw(); }); ro.observe(box); }
   // Ochilganda tepadan tushib keladi
   if (reduceMotion) { draw(); return; }
-  x = 26; y = 8; draw(); setTimeout(kick, 120);
+  x = 0; y = REST; vx = 160; draw(); setTimeout(kick, 120);
 }
 {
   const _prof = ROOTS.profile;
@@ -2434,7 +2439,7 @@ function openUpdate(u) {
       <div class="up-ic"><img src="../icons/icon-192.png" alt="" /><i>v${esc(u.version)}</i></div>
       <h3>Yangi versiya tayyor!</h3>
       <p class="muted">Sizda v${esc(VERSION)} o'rnatilgan. v${esc(u.version)} ga yangilang${u.sizeMB ? ` — atigi ${esc(u.sizeMB)} MB` : ""}.</p>
-      <ul class="up-l"><li>🔔 Ilova yopiq bo'lsa ham buyurtma bildirishnomalari</li><li>⚡ Tezroq va qotmaydigan ilova</li><li>✨ OPUS AI — sun'iy intellekt yordamchi</li><li>🔍 Aqlli qidiruv — kirillcha, xatolar va narx bilan</li><li>🛠 Kompyuter yig'ish va 💰 byudjetga mos tanlash</li><li>📌 Ikonkani bosib turganda tezkor yorliqlar</li><li>🔁 Qayta buyurtma, 📡 oflayn rejim va boshqalar</li></ul>
+      <ul class="up-l"><li>🔔 "Buyurtmangiz keldi!" — ilova yopiq bo'lsa ham</li><li>⚡ Tezroq va qotmaydigan ilova</li><li>✨ OPUS AI — sun'iy intellekt yordamchi</li><li>🔍 Aqlli qidiruv — kirillcha, xatolar va narx bilan</li><li>🛠 Kompyuter yig'ish va 💰 byudjetga mos tanlash</li><li>📌 Ikonkani bosib turganda tezkor yorliqlar</li><li>🔁 Qayta buyurtma, 📡 oflayn rejim va boshqalar</li></ul>
       <div class="up-steps" id="upSteps" hidden><p><b>1.</b> Yuklab olingan faylni oching</p><p><b>2.</b> <b>"O'rnatish"</b> ni bosing (ma'lumotlaringiz saqlanadi)</p><p><b>3.</b> <b>"Ochish"</b> ni bosing — yangiliklar ro'yxati chiqadi</p></div>
       <button class="btn block" id="upGo">⬇️ Yangilash</button>
       <button class="btn ghost block" id="upLater" style="margin-top:8px">Keyinroq</button>
@@ -2652,10 +2657,50 @@ document.addEventListener("click", (e) => {
   const _pr = ROOTS.profile;
   ROOTS.profile = () => {
     const d = _pr();
-    if (auth.user) d.html = d.html.replace(`<button class="mi" data-m="edit">`, () => `<button class="mi" data-m="notif"><span class="ri">🔔</span><span>Bildirishnomalar</span><small>${VERSION === "web" ? "ilovada" : notifOn() ? "yoqilgan" : "o'chiq — yoqish"}</small></button>
+    if (auth.user) d.html = d.html.replace(`<button class="mi" data-m="edit">`, () => `<button class="mi" data-m="notif"><span class="ri">📲</span><span>Telefonga xabarlar</span><small>${VERSION === "web" ? "ilovada" : notifOn() ? "yoqilgan" : "o'chiq — yoqish"}</small></button>
         <button class="mi" data-m="edit">`);
     return d;
   };
 }
 document.addEventListener("visibilitychange", () => { if (!document.hidden && tab === "profile" && stacks.profile.length === 1) refreshRoot("profile"); });
 refreshRoot("profile");
+
+// =====================================================================
+// ---------- Menyu belgilari: emoji o'rniga bir xil uslubdagi chiziqli ikonkalar ----------
+// =====================================================================
+const MI = {
+  "📦": "M21 8l-9-5-9 5v8l9 5 9-5V8z M3 8l9 5 9-5 M12 13v8",
+  "🔔": "M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9 M10.3 21a1.94 1.94 0 003.4 0",
+  "📲": "M7 2h10a1 1 0 011 1v18a1 1 0 01-1 1H7a1 1 0 01-1-1V3a1 1 0 011-1z M11 18h2 M21 8a4 4 0 00-2-3.5",
+  "👤": "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2 M12 11a4 4 0 100-8 4 4 0 000 8z",
+  "🔒": "M5 11h14v10H5z M8 11V7a4 4 0 118 0v4",
+  "🌓": "M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z",
+  "🔠": "M4 20l5-14 5 14 M6 15h6 M15 20l3-8 3 8 M16 17h4",
+  "✈️": "M22 2L11 13 M22 2l-7 20-4-9-9-4 20-7z",
+  "📞": "M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8 9.8a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.5c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z",
+  "ℹ️": "M12 22a10 10 0 100-20 10 10 0 000 20z M12 16v-4 M12 8h.01",
+  "💬": "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z",
+  "🆕": "M12 3l1.9 4.6 4.6 1.9-4.6 1.9L12 16l-1.9-4.6-4.6-1.9 4.6-1.9z M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z",
+  "🚪": "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4 M16 17l5-5-5-5 M21 12H9",
+  "👀": "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z M12 15a3 3 0 100-6 3 3 0 000 6z",
+  "⚖️": "M12 3v18 M7 21h10 M5 7h14 M5 7l-3 7a3 3 0 006 0z M19 7l-3 7a3 3 0 006 0z",
+  "📰": "M4 4h13v16H6a2 2 0 01-2-2V4z M17 8h3v10a2 2 0 01-2 2 M8 8h5 M8 12h5 M8 16h3",
+  "🔊": "M11 5L6 9H2v6h4l5 4V5z M15.5 8.5a5 5 0 010 7 M19 5a10 10 0 010 14",
+  "📳": "M8 3h8a1 1 0 011 1v16a1 1 0 01-1 1H8a1 1 0 01-1-1V4a1 1 0 011-1z M3 8v8 M21 8v8",
+  "🛡": "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
+  "🚚": "M1 4h14v12H1z M15 9h4l3 3v4h-7 M5.5 19a1.5 1.5 0 100-3 1.5 1.5 0 000 3z M18.5 19a1.5 1.5 0 100-3 1.5 1.5 0 000 3z",
+  "🏬": "M3 9l1.5-5h15L21 9 M3 9h18v11H3z M9 20v-6h6v6",
+  "💳": "M2 5h20v14H2z M2 10h20 M6 15h4",
+  "✅": "M22 11.1V12a10 10 0 11-5.9-9.1 M22 4L12 14l-3-3",
+  "↩️": "M9 14L4 9l5-5 M4 9h11a5 5 0 010 10h-3",
+  "🏷": "M20.6 13.4l-7.2 7.2a2 2 0 01-2.8 0L2 12V2h10l8.6 8.6a2 2 0 010 2.8z M7 7h.01",
+};
+const miSvg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+function lineIcons(root) {
+  root.querySelectorAll(".ri:not(.ic)").forEach((r) => {
+    const e = r.textContent.trim(), d = MI[e] || MI[e.replace(/\uFE0F/g, "")];
+    if (d) { r.classList.add("ic"); r.innerHTML = miSvg(d); }
+  });
+}
+lineIcons(document);
+new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n.nodeType === 1) lineIcons(n); }))).observe(document.body, { childList: true, subtree: true });
