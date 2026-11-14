@@ -275,7 +275,7 @@ textarea.inp { height: auto; padding: 12px 14px; resize: none; }
 .steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 14px; }
 
 /* Muvaffaqiyat */
-.done { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 50px 24px 20px; }
+.sb > .done { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 50px 24px 20px; }
 .done svg { width: 120px; height: 120px; fill: none; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 18px rgba(22,163,74,.55)); }
 .done circle { stroke: var(--ok); stroke-width: 3; stroke-dasharray: 145; stroke-dashoffset: 145; animation: draw .5s ease-out .1s forwards; }
 .done path { stroke: var(--ok); stroke-width: 4.5; stroke-dasharray: 34; stroke-dashoffset: 34; animation: draw .35s ease-out .55s forwards; }
@@ -1169,3 +1169,29 @@ html.lite .screen.enter, html.lite .screen.back-in, html.lite .screen.under { an
 .pc-img::before, .rc-img::before, .t10-i::before, .ci-row .thumb::before, .pc-img::after, .skel { animation: none !important; }
 .pc-img::before, .rc-img::before, .t10-i::before, .ci-row .thumb::before { background: linear-gradient(135deg, #f4f0f1, #fbf9f9) !important; }
 .pc-img::after { display: none; }
+/* Buyurtma holatlari chizig'i: muvaffaqiyat ekranining umumiy ".done" uslubi bosqichlarga ham tushib, ularni ulkan qilib yuborardi */
+.tl div.done { flex-direction: row; align-items: flex-start; text-align: left; gap: 12px; padding: 0 0 16px; }
+.tl div.done:last-child { padding-bottom: 0; }
+
+/* =================== Sayqal: menyu, AI tugmasi, a'zolik kartasi =================== */
+/* Menyu: bir xil chiziqli ikonkalar, toza qatorlar */
+.menu { border-radius: 16px; }
+.mi { padding: 12px 14px; gap: 13px; font-size: 14.5px; font-weight: 500; }
+.mi .ri { width: 34px; height: 34px; border-radius: 10px; }
+.mi .ri.ic { color: var(--red2); background: linear-gradient(135deg, rgba(var(--prgb), .16), rgba(var(--prgb), .06)); border: 1px solid rgba(var(--prgb), .18); }
+.mi .ri.ic svg { width: 18px; height: 18px; }
+.mi small { font-size: 12.5px; }
+.mi::after { font-size: 20px; opacity: .6; }
+.mi.danger .ri.ic { color: var(--red2); background: rgba(var(--prgb), .1); }
+.row .ri.ic, .box .ri.ic { color: var(--red2); }
+.ri.ic svg { width: 18px; height: 18px; }
+/* AI tugmasi boshqa tablar bilan bir qatorda — paneldan tashqariga chiqmaydi */
+.tb-ai > i { display: none !important; }
+.tb-ai img { width: 28px; height: 28px; margin: 0; border-radius: 9px; box-shadow: none; transition: transform .25s cubic-bezier(.2,1.6,.4,1), box-shadow .25s; }
+.tb-ai::after { content: "OPUS AI"; font-size: 9.8px; font-weight: 600; color: var(--muted); }
+.tb-ai.active img { transform: translateY(-2px) scale(1.08); box-shadow: 0 0 0 2px var(--bg2), 0 0 0 4px rgba(var(--prgb), .7); }
+.tb-ai.active::after { color: var(--red2); }
+/* A'zolik kartasi pastdagi statistikaga chiqib ketmasin */
+.lan { height: 286px; }
+/* Statistikadagi raqamlar: Orbitron'dagi chiziqli "0" ⊘ ga o'xshab ko'rinardi */
+.stats b { font: 800 19px "Inter", system-ui, sans-serif; }
