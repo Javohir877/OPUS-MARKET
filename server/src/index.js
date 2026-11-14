@@ -775,7 +775,11 @@ route("PATCH", "/api/admin/orders/:id", async (req, env, p) => {
   if (b.status !== o.status) {
     const u = o.user_id && await env.DB.prepare("SELECT tg_chat_id FROM users WHERE id = ?").bind(o.user_id).first();
     const icon = { "Tasdiqlandi": "✅", "Yig'ilmoqda": "📦", "Yo'lda": "🚚", "Yetkazildi": "🎉", "Bekor qilindi": "❌" }[b.status] || "ℹ️";
-    if (u && u.tg_chat_id) await tgSend(env, u.tg_chat_id, `${icon} Buyurtma <b>#${o.id}</b> holati: <b>${b.status}</b>${b.status === "Yetkazildi" ? "\n\nXaridingiz uchun rahmat! Mahsulot haqida saytda sharh qoldirsangiz, xursand bo'lamiz ⭐" : ""}`);
+    if (u && u.tg_chat_id && b.status === "Yetkazildi") await tgSend(env, u.tg_chat_id, `🎉 <b>Buyurtmangiz keldi!</b>
+
+Buyurtma <b>#${o.id}</b> yetkazildi. Xaridingiz uchun rahmat! ❤️
+Mahsulot haqida ilovada yoki saytda sharh qoldirsangiz, boshqa xaridorlarga yordam berasiz ⭐`);
+    else if (u && u.tg_chat_id) await tgSend(env, u.tg_chat_id, `${icon} Buyurtma <b>#${o.id}</b> holati: <b>${b.status}</b>${b.status === "Yetkazildi" ? "\n\nXaridingiz uchun rahmat! Mahsulot haqida saytda sharh qoldirsangiz, xursand bo'lamiz ⭐" : ""}`);
   }
   return json({ ok: true });
 });
