@@ -1893,9 +1893,12 @@ document.addEventListener("click", (e) => {
 
 const cmpVer = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
 const CHANGELOG = {
-  ver: "2.6", build: "2026-11-14c", date: "14-noyabr, 2026",
+  ver: "2.7", build: "2026-11-14d", date: "14-noyabr, 2026",
   groups: [
-    { t: "Ilova 2.6 — yangi", e: "🚀", items: [
+    { t: "Ilova 2.7", e: "✅", items: [
+      ["⬇️", "Ilova ichida yangilandi!", "Bu versiya brauzerga chiqmasdan, to'g'ridan-to'g'ri ilovaning o'zida yuklab olindi va o'rnatildi. Keyingi yangilanishlar ham xuddi shunday — bitta tugma bilan."],
+    ] },
+    { t: "Ilova 2.6", e: "🚀", items: [
       ["⬇️", "Ilovaning o'zida yangilash", "Endi \"Yangilash\" tugmasi brauzerni ochmaydi: yangi versiya ilovaning o'zida yuklanadi (foizi ko'rinib turadi) va darhol Android'ning o'rnatish oynasi chiqadi. Birinchi marta telefon \"Bu manbadan o'rnatishga ruxsat\" so'raydi — bir marta yoqasiz."],
       ["🧠", "OPUS AI yanada aqlli", "AI endi savatingiz, saralanganlar va ko'rgan mahsulotlaringizni hisobga oladi; akkauntga kirgan bo'lsangiz buyurtmalaringiz holatini ham biladi (\"Buyurtmam qayerda?\"). Rasm yuborsangiz — tanib, o'xshash mahsulot topadi. Har javobdan keyin tayyor keyingi savollar, \"Hammasini savatga\", \"Taqqoslash\", \"Qayta\", \"Nusxa\" va javobni to'xtatish tugmasi bor."],
     ] },
@@ -2443,7 +2446,7 @@ function openUpdate(u) {
       <div class="up-ic"><img src="../icons/icon-192.png" alt="" /><i>v${esc(u.version)}</i></div>
       <h3>Yangi versiya tayyor!</h3>
       <p class="muted">Sizda v${esc(VERSION)} o'rnatilgan. v${esc(u.version)} ga yangilang${u.sizeMB ? ` — atigi ${esc(u.sizeMB)} MB` : ""}.</p>
-      <ul class="up-l"><li>⬇️ Endi yangilanish ilovaning o'zida yuklanadi</li><li>🧠 Yanada aqlli OPUS AI: rasm, savat va buyurtmalaringiz bilan</li><li>🔔 "Buyurtmangiz keldi!" — ilova yopiq bo'lsa ham</li><li>⚡ Tezroq va qotmaydigan ilova</li><li>✨ OPUS AI — sun'iy intellekt yordamchi</li><li>🔍 Aqlli qidiruv — kirillcha, xatolar va narx bilan</li><li>🛠 Kompyuter yig'ish va 💰 byudjetga mos tanlash</li><li>📌 Ikonkani bosib turganda tezkor yorliqlar</li><li>🔁 Qayta buyurtma, 📡 oflayn rejim va boshqalar</li></ul>
+      <ul class="up-l"><li>⬇️ Yangilanish ilovaning o'zida yuklanadi — brauzer ochilmaydi</li><li>🧠 Yanada aqlli OPUS AI: rasm, savat va buyurtmalaringiz bilan</li><li>🔔 "Buyurtmangiz keldi!" — ilova yopiq bo'lsa ham</li><li>⚡ Tezroq va qotmaydigan ilova</li><li>✨ OPUS AI — sun'iy intellekt yordamchi</li><li>🔍 Aqlli qidiruv — kirillcha, xatolar va narx bilan</li><li>🛠 Kompyuter yig'ish va 💰 byudjetga mos tanlash</li><li>📌 Ikonkani bosib turganda tezkor yorliqlar</li><li>🔁 Qayta buyurtma, 📡 oflayn rejim va boshqalar</li></ul>
       <div class="up-steps" id="upSteps" hidden><p><b>1.</b> Yuklab olingan faylni oching (bildirishnomalar yoki "Yuklanmalar"dan)</p><p><b>2.</b> <b>"O'rnatish"</b> ni bosing (ma'lumotlaringiz saqlanadi)</p><p><b>3.</b> <b>"Ochish"</b> ni bosing — yangiliklar ro'yxati chiqadi</p></div>
       <button class="btn block" id="upGo">⬇️ Yangilash</button>
       <button class="btn ghost block" id="upLater" style="margin-top:8px">Keyinroq</button>
