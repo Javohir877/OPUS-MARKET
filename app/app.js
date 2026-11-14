@@ -595,7 +595,7 @@ function openProduct(id) {
   const together = complementary(p, 10);
   const freeFrom = S.settings.freeShipFrom || 1000000;
   push({
-    noTab: true, anim: S.hero ? "hero-in" : "enter",
+    noTab: true, anim: S.hero ? "hero-in" : "enter", pid: p.id,
     html: `<header class="hdr clear phdr" id="ph"><button class="ib" data-back aria-label="Orqaga">${svg(IC.back)}</button><div class="ph-t"><b>${esc(p.name)}</b><small>${fmt(p.price)}</small></div><button class="ib" data-share aria-label="Ulashish">${svg(IC.share)}</button><button class="ib${S.fav.includes(p.id) ? " on" : ""}" data-pfav aria-label="Saralangan">${svg(IC.heart)}</button></header>
       <div class="sb pad-bar" id="psb">
         <div class="gal-wrap"><div class="gal" id="gal">${imgs.map((s, i) => `<img src="${esc(hi(s, 960))}" alt="" data-gi="${i}" onerror="imgErr(this)" />`).join("")}</div>
@@ -1893,9 +1893,13 @@ document.addEventListener("click", (e) => {
 
 const cmpVer = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
 const CHANGELOG = {
-  ver: "2.5", build: "2026-11-14b", date: "14-noyabr, 2026",
+  ver: "2.6", build: "2026-11-14c", date: "14-noyabr, 2026",
   groups: [
-    { t: "Ilova 2.5 — yangi", e: "🚀", items: [
+    { t: "Ilova 2.6 — yangi", e: "🚀", items: [
+      ["⬇️", "Ilovaning o'zida yangilash", "Endi \"Yangilash\" tugmasi brauzerni ochmaydi: yangi versiya ilovaning o'zida yuklanadi (foizi ko'rinib turadi) va darhol Android'ning o'rnatish oynasi chiqadi. Birinchi marta telefon \"Bu manbadan o'rnatishga ruxsat\" so'raydi — bir marta yoqasiz."],
+      ["🧠", "OPUS AI yanada aqlli", "AI endi savatingiz, saralanganlar va ko'rgan mahsulotlaringizni hisobga oladi; akkauntga kirgan bo'lsangiz buyurtmalaringiz holatini ham biladi (\"Buyurtmam qayerda?\"). Rasm yuborsangiz — tanib, o'xshash mahsulot topadi. Har javobdan keyin tayyor keyingi savollar, \"Hammasini savatga\", \"Taqqoslash\", \"Qayta\", \"Nusxa\" va javobni to'xtatish tugmasi bor."],
+    ] },
+    { t: "Ilova 2.5", e: "⏱", items: [
       ["⏱", "Bildirishnomalar tezroq", "Yetkazilmagan buyurtmangiz bo'lsa, ilova uning holatini ~3 daqiqada bir tekshiradi. Admin \"Yetkazildi\" ni bosgach, telefoningizga \"🎉 Buyurtmangiz keldi!\" xabari keladi — ilova yopiq bo'lsa ham. Buyurtma yetkazilgach tez-tez tekshirish o'zi to'xtaydi (batareya tejaladi)."],
       ["🎨", "Kabinet va pastki panel", "Menyuda bir xil uslubdagi aniq ikonkalar, OPUS AI tugmasi boshqa tugmalar qatorida, a'zolik kartasi joyida turadi va hech narsani to'smaydi."],
     ] },
@@ -2439,13 +2443,29 @@ function openUpdate(u) {
       <div class="up-ic"><img src="../icons/icon-192.png" alt="" /><i>v${esc(u.version)}</i></div>
       <h3>Yangi versiya tayyor!</h3>
       <p class="muted">Sizda v${esc(VERSION)} o'rnatilgan. v${esc(u.version)} ga yangilang${u.sizeMB ? ` — atigi ${esc(u.sizeMB)} MB` : ""}.</p>
-      <ul class="up-l"><li>🔔 "Buyurtmangiz keldi!" — ilova yopiq bo'lsa ham</li><li>⚡ Tezroq va qotmaydigan ilova</li><li>✨ OPUS AI — sun'iy intellekt yordamchi</li><li>🔍 Aqlli qidiruv — kirillcha, xatolar va narx bilan</li><li>🛠 Kompyuter yig'ish va 💰 byudjetga mos tanlash</li><li>📌 Ikonkani bosib turganda tezkor yorliqlar</li><li>🔁 Qayta buyurtma, 📡 oflayn rejim va boshqalar</li></ul>
-      <div class="up-steps" id="upSteps" hidden><p><b>1.</b> Yuklab olingan faylni oching</p><p><b>2.</b> <b>"O'rnatish"</b> ni bosing (ma'lumotlaringiz saqlanadi)</p><p><b>3.</b> <b>"Ochish"</b> ni bosing — yangiliklar ro'yxati chiqadi</p></div>
+      <ul class="up-l"><li>⬇️ Endi yangilanish ilovaning o'zida yuklanadi</li><li>🧠 Yanada aqlli OPUS AI: rasm, savat va buyurtmalaringiz bilan</li><li>🔔 "Buyurtmangiz keldi!" — ilova yopiq bo'lsa ham</li><li>⚡ Tezroq va qotmaydigan ilova</li><li>✨ OPUS AI — sun'iy intellekt yordamchi</li><li>🔍 Aqlli qidiruv — kirillcha, xatolar va narx bilan</li><li>🛠 Kompyuter yig'ish va 💰 byudjetga mos tanlash</li><li>📌 Ikonkani bosib turganda tezkor yorliqlar</li><li>🔁 Qayta buyurtma, 📡 oflayn rejim va boshqalar</li></ul>
+      <div class="up-steps" id="upSteps" hidden><p><b>1.</b> Yuklab olingan faylni oching (bildirishnomalar yoki "Yuklanmalar"dan)</p><p><b>2.</b> <b>"O'rnatish"</b> ni bosing (ma'lumotlaringiz saqlanadi)</p><p><b>3.</b> <b>"Ochish"</b> ni bosing — yangiliklar ro'yxati chiqadi</p></div>
       <button class="btn block" id="upGo">⬇️ Yangilash</button>
       <button class="btn ghost block" id="upLater" style="margin-top:8px">Keyinroq</button>
     </div>`, (b) => {
     $("#upGo", b).onclick = () => {
-      haptic(10); location.href = u.url;
+      haptic(10);
+      // Ilova 2.6+: brauzerga chiqmasdan, ilovaning o'zida yuklab olinadi va o'rnatish oynasi ochiladi
+      if (window.OPUSApp && OPUSApp.update) {
+        const go = $("#upGo", b);
+        go.disabled = true; go.innerHTML = `<span class="up-bar"><i style="width:0%"></i></span><span>Tayyorlanmoqda…</span>`;
+        window.__opusUpd = (st) => {
+          const bar = $(".up-bar i", go), lbl = go.lastElementChild;
+          if (!bar) return;
+          if (st.state === "perm") { lbl.textContent = "Ruxsat bering: \"Bu manbadan o'rnatish\" ni yoqing"; }
+          if (st.state === "progress") { bar.style.width = st.p + "%"; lbl.textContent = st.p >= 100 ? "Yuklandi ✓" : `Yuklanmoqda… ${st.p}%`; }
+          if (st.state === "install") { bar.style.width = "100%"; lbl.textContent = "O'rnatish oynasida \"Yangilash\" ni bosing"; }
+          if (st.state === "denied" || st.state === "fail") { go.disabled = false; go.textContent = "↻ Qayta urinish"; toast("⚠️ " + (st.msg || "Ruxsat berilmadi — yangilash uchun \"Noma'lum manbalar\"ga ruxsat kerak")); }
+        };
+        OPUSApp.update(u.url);
+        return;
+      }
+      location.href = u.url;
       $("#upSteps", b).hidden = false; $("#upGo", b).textContent = "⬇️ Qayta yuklash"; $("#upLater", b).textContent = "Yopish";
       toast("⬇️ Yuklab olinmoqda… Tugagach faylni oching");
     };
@@ -2547,65 +2567,137 @@ document.addEventListener("click", (e) => {
 // =====================================================================
 S.ai = store.get("app_ai", []).slice(-30);
 const AI_SUGGEST = ["🎮 10 mln gacha o'yin noutbuki", "🖥 Ofis uchun arzon monitor", "⚖️ RTX 4070 yoki RX 6800 XT?", "🛠 30 mln ga kompyuter yig'ib ber", "🎧 Shovqinni yutadigan quloqchin", "🚚 Yetkazish qancha turadi?"];
-// Xavfsiz chizish: avval hammasi ekranlanadi, keyin **qalin**, ro'yxat va mahsulot teglari qo'llanadi
-function aiHtml(t, live) {
+// AI javobini xavfsiz chizish: avval hammasi ekranlanadi, keyin **qalin**, ro'yxat, mahsulot teglari [[p:ID]] va keyingi savollar [[q:a|b|c]]
+function aiParse(t) {
   const ids = [];
-  let h = esc(t).replace(/\[{1,2}p:(\d+)\]{1,2}/g, (_, id) => { if (byId(+id) && !ids.includes(+id)) ids.push(+id); return ""; })
-    .replace(/\[{1,2}p?:?\d*$/, "")
-    .replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>").replace(/(^|\n)\s*[*•-]\s+/g, "$1• ").replace(/\n{3,}/g, "\n\n").replace(/\n/g, "<br>");
+  let follow = [];
+  let s = String(t).replace(/\[\[q:([^\]]*)\]\]\s*$/s, (_, q) => { follow = q.split("|").map((x) => x.trim()).filter(Boolean).slice(0, 3); return ""; })
+    .replace(/\[\[q:[^\]]*$/s, "");
+  s = s.replace(/\[{1,2}p:(\d+)\]{1,2}/g, (_, id) => { if (byId(+id) && !ids.includes(+id)) ids.push(+id); return "\u0000"; });
+  return { s, ids, follow };
+}
+function aiHtml(t, live, last) {
+  const { s, ids, follow } = aiParse(t);
+  let h = esc(s).replace(/\u0000/g, "").replace(/\[{1,2}p?:?\d*$/, "")
+    .replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>").replace(/(^|\n)\s*[*•-]\s+/g, "$1• ").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim().replace(/\n/g, "<br>");
   if (live) h += `<i class="ai-caret"></i>`;
-  const cards = ids.slice(0, 4).map((id) => { const p = byId(id), out = (p.stock || 0) <= 0, d = disc(p); return `<div class="ai-pc rc" data-pid="${p.id}"><img src="${esc(hi(p.img, 330))}" alt="" onerror="imgErr(this)" /><div><b>${esc(p.name)}</b><span>${d ? `<s>${num(p.old)}</s> ` : ""}${fmt(p.price)}</span><small>${out ? "Tugagan" : `${num(p.price / 12)} so'm/oydan`}</small></div><button class="add${inCart(p.id) ? " in" : ""}" data-add="${p.id}" ${out ? "disabled" : ""} aria-label="Savatga">${svg(inCart(p.id) ? IC.check : IC.cart)}</button></div>`; }).join("");
-  return h + (cards ? `<div class="ai-cards">${cards}</div>` : "");
+  const P = ids.slice(0, 4).map(byId);
+  const cards = P.map((p) => { const out = (p.stock || 0) <= 0, d = disc(p); return `<div class="ai-pc rc" data-pid="${p.id}"><img src="${esc(hi(p.img, 330))}" alt="" loading="lazy" decoding="async" onerror="imgErr(this)" /><div><b>${esc(p.name)}</b><span>${d ? `<s>${num(p.old)}</s> ` : ""}${fmt(p.price)}</span><small>${out ? "Tugagan" : `${num(p.price / 12)} so'm/oydan`}</small></div><button class="add${inCart(p.id) ? " in" : ""}" data-add="${p.id}" ${out ? "disabled" : ""} aria-label="Savatga">${svg(inCart(p.id) ? IC.check : IC.cart)}</button></div>`; }).join("");
+  let acts = "";
+  if (!live && P.length >= 2) {
+    const inStock = P.filter((p) => (p.stock || 0) > 0);
+    const sameCat = P.every((p) => p.cat === P[0].cat);
+    acts = `<div class="ai-acts">${inStock.length >= 2 ? `<button data-aiall="${inStock.map((p) => p.id).join(",")}">🛒 Hammasini savatga</button>` : ""}${sameCat ? `<button data-aicmp="${P.map((p) => p.id).join(",")}">⚖️ Taqqoslash</button>` : ""}</div>`;
+  }
+  const tools = !live && last ? `<div class="ai-tools"><button data-airegen title="Qayta yozish">↻ Qayta</button><button data-aicopy title="Nusxalash">📋 Nusxa</button></div>` : "";
+  const fu = !live && last && follow.length ? `<div class="ai-follow">${follow.map((q) => `<button data-aiq="${esc(q)}">${esc(q)}</button>`).join("")}</div>` : "";
+  return h + (cards ? `<div class="ai-cards">${cards}</div>` : "") + acts + tools + fu;
 }
 const aiSave = () => store.set("app_ai", S.ai.slice(-30));
+// AI uchun kontekst: savat, saralangan, ko'rilganlar, hozir ochiq mahsulot
+function aiCtx() {
+  let viewing = null;
+  for (const t of TABS) { const top = stacks[t][stacks[t].length - 1]; if (top && top._def && top._def.pid) viewing = top._def.pid; }
+  return { cart: S.cart.slice(0, 15), fav: S.fav.slice(0, 10), recent: S.recent.slice(0, 8), viewing };
+}
+// Rasmni kichraytirib JPEG ga o'giradi (~1024 px) — tez yuboriladi
+function aiShrink(file) {
+  return new Promise((ok, no) => {
+    const fr = new FileReader();
+    fr.onerror = () => no(new Error("Rasmni o'qib bo'lmadi"));
+    fr.onload = () => {
+      const im = new Image();
+      im.onerror = () => no(new Error("Rasm formati qo'llab-quvvatlanmaydi"));
+      im.onload = () => {
+        const k = Math.min(1, 1024 / Math.max(im.width, im.height)), c = document.createElement("canvas");
+        c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+        c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+        const url = c.toDataURL("image/jpeg", .82);
+        ok({ mime: "image/jpeg", data: url.split(",")[1], url });
+      };
+      im.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
 function aiScreen() {
-  let busy = false;
+  let busy = false, ctrl = null, pic = null;
   return {
-    html: `<div class="home-hdr ai-hdr"><div class="home-top"><span class="ai-title"><img src="../icons/opus-ai.svg" alt="" /><span><b>OPUS AI</b><small>Aqlli yordamchi · katalog narxlari bilan</small></span></span><button class="ib" data-aiclr aria-label="Suhbatni tozalash">${svg(IC.trash)}</button></div></div><div class="sb ai-sb" id="aiSb"><div id="aiList"></div></div>
-      <form class="ai-bar" id="aiForm"><textarea id="aiIn" rows="1" maxlength="1000" placeholder="Savolingizni yozing…" enterkeyhint="send"></textarea><button class="ai-send" aria-label="Yuborish"><svg viewBox="0 0 24 24"><path d="M3 20.5V14l9-2-9-2V3.5L22 12z"/></svg></button></form>`,
+    html: `<div class="home-hdr ai-hdr"><div class="home-top"><span class="ai-title"><img src="../icons/opus-ai.svg" alt="" /><span><b>OPUS AI</b><small>Aqlli yordamchi · savatingiz va buyurtmalaringizni biladi</small></span></span><button class="ib" data-aiclr aria-label="Suhbatni tozalash">${svg(IC.trash)}</button></div></div><div class="sb ai-sb" id="aiSb"><div id="aiList"></div></div>
+      <form class="ai-bar" id="aiForm"><div class="ai-pic" id="aiPic" hidden><img alt="" /><button type="button" data-aipicx aria-label="Rasmni olib tashlash">✕</button></div>
+        <label class="ai-cam" aria-label="Rasm yuborish"><input type="file" accept="image/*" id="aiFile" hidden /><svg viewBox="0 0 24 24"><path d="M9 4.5L7.6 6.5H5a2 2 0 00-2 2v8.5a2 2 0 002 2h14a2 2 0 002-2V8.5a2 2 0 00-2-2h-2.6L15 4.5zM12 9a3.8 3.8 0 110 7.6A3.8 3.8 0 0112 9z"/></svg></label>
+        <textarea id="aiIn" rows="1" maxlength="1000" placeholder="Savolingizni yozing…" enterkeyhint="send"></textarea>
+        <button class="ai-send" aria-label="Yuborish"><svg class="i-send" viewBox="0 0 24 24"><path d="M3 20.5V14l9-2-9-2V3.5L22 12z"/></svg><svg class="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg></button></form>`,
     mount(el) {
-      const list = $("#aiList", el), sb = $("#aiSb", el), inp = $("#aiIn", el), form = $("#aiForm", el);
+      const list = $("#aiList", el), sb = $("#aiSb", el), inp = $("#aiIn", el), form = $("#aiForm", el), picBox = $("#aiPic", el);
       const bottom = () => requestAnimationFrame(() => { sb.scrollTop = sb.scrollHeight; });
-      const bubble = (m) => `<div class="ai-m ${m.role}">${m.role === "ai" ? `<img class="ai-av" src="../icons/opus-ai.svg" alt="" />` : ""}<div class="ai-b">${m.role === "ai" ? aiHtml(m.text) : esc(m.text).replace(/\n/g, "<br>")}</div></div>`;
+      const bubble = (m, i, all) => `<div class="ai-m ${m.role}">${m.role === "ai" ? `<img class="ai-av" src="../icons/opus-ai.svg" alt="" />` : ""}<div class="ai-b">${m.role === "ai" ? aiHtml(m.text, false, i === all.length - 1) : (m.pic ? `<span class="ai-upic">📷 Rasm</span>` : "") + esc(m.text).replace(/\n/g, "<br>")}</div></div>`;
       const draw = () => {
         list.innerHTML = S.ai.length ? S.ai.map(bubble).join("") : `<div class="ai-hero"><img class="ai-logo lg" src="../icons/opus-ai.svg" alt="" /><h2>OPUS AI</h2>
-          <p class="muted">Texnika tanlash, solishtirish, kompyuter yig'ish va do'kon haqidagi savollarga javob beraman — faqat katalogimizdagi haqiqiy narxlar bilan.</p></div>
-          <div class="ai-sug">${AI_SUGGEST.map((s) => `<button data-aiq="${esc(s.replace(/^\S+\s/, ""))}">${esc(s)}</button>`).join("")}</div>`;
+          <p class="muted">Texnika tanlash, solishtirish, kompyuter yig'ish va do'kon haqidagi savollarga javob beraman — faqat katalogimizdagi haqiqiy narxlar bilan. Savatingiz va buyurtmalaringizni ham bilaman, rasm yuborsangiz — tanib, o'xshashini topaman.</p></div>
+          <div class="ai-sug">${[...AI_SUGGEST.slice(0, 4), "📦 Buyurtmam qayerda?", "🛒 Savatimga nima mos keladi?", "📷 Rasm bo'yicha topib ber"].map((s) => `<button data-aiq="${esc(s.replace(/^\S+\s/, ""))}">${esc(s)}</button>`).join("")}</div>`;
         bottom();
       };
       const fit = () => { inp.style.height = "auto"; inp.style.height = Math.min(120, inp.scrollHeight) + "px"; };
-      async function ask(q) {
-        q = q.trim(); if (!q) return;
+      const setPic = (p) => { pic = p; picBox.hidden = !p; if (p) $("img", picBox).src = p.url; };
+      async function ask(q, opts = {}) {
+        q = (q || "").trim();
+        if (!q && pic) q = "Bu rasmda nima bor? Do'konimizda shunga o'xshash yoki mos mahsulot bormi?";
+        if (!q) return;
+        if (q === "Rasm bo'yicha topib ber" && !pic) { $("#aiFile", el).click(); return; }
         if (busy) { inp.value = q; fit(); toast("⏳ Avvalgi javob tugashini kuting — savolingiz yozib qo'yildi"); return; }
         if (!navigator.onLine) { toast("📡 Internet yo'q"); return; }
         busy = true; form.classList.add("busy"); haptic(8); window.sfx && sfx("tick");
-        S.ai.push({ role: "user", text: q.slice(0, 1000) }); aiSave(); inp.value = ""; fit(); draw();
+        const image = pic; setPic(null);
+        if (!opts.regen) S.ai.push({ role: "user", text: q.slice(0, 1000), pic: !!image });
+        aiSave(); inp.value = ""; fit(); draw();
         list.insertAdjacentHTML("beforeend", `<div class="ai-m ai live"><img class="ai-av" src="../icons/opus-ai.svg" alt="" /><div class="ai-b"><span class="ai-dots"><i></i><i></i><i></i></span></div></div>`);
         const b = $(".ai-m.live .ai-b", list); bottom();
         let text = "";
+        ctrl = new AbortController();
         try {
-          const res = await fetch(API_BASE + "/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: S.ai.slice(-12).map((m) => ({ role: m.role, text: m.text.slice(0, 1500) })) }) });
+          const res = await fetch(API_BASE + "/api/ai", {
+            method: "POST", signal: ctrl.signal,
+            headers: { "Content-Type": "application/json", ...(auth.token ? { Authorization: "Bearer " + auth.token } : {}) },
+            body: JSON.stringify({ messages: S.ai.slice(-12).map((m) => ({ role: m.role, text: m.text.slice(0, 1500) })), ctx: aiCtx(), image: image ? { mime: image.mime, data: image.data } : undefined }),
+          });
           if (!res.ok) { let e = {}; try { e = await res.json(); } catch {} throw new Error(e.error || "Xatolik (" + res.status + ")"); }
           const rd = res.body && res.body.getReader ? res.body.getReader() : null, dec = new TextDecoder();
           if (rd) { for (;;) { const { done, value } = await rd.read(); if (done) break; text += dec.decode(value, { stream: true }); b.innerHTML = aiHtml(text, true); if (sb.scrollHeight - sb.scrollTop - sb.clientHeight < 160) bottom(); } }
           else text = await res.text();
           if (!text.trim()) throw new Error("Javob kelmadi. Qayta urinib ko'ring.");
           S.ai.push({ role: "ai", text }); aiSave();
-          b.innerHTML = aiHtml(text); b.parentElement.classList.remove("live"); haptic(6);
+          b.parentElement.classList.remove("live"); haptic(6);
+          draw();
         } catch (ex) {
-          b.parentElement.classList.remove("live"); b.parentElement.classList.add("err");
-          b.innerHTML = `⚠️ ${esc(ex.message === "Failed to fetch" ? "Internet aloqasi yo'q" : ex.message)}<button class="ai-retry" data-airetry>↻ Qayta so'rash</button>`;
-          S.ai.pop(); aiSave(); b.dataset.q = q;
+          const stopped = ex.name === "AbortError";
+          if (stopped && text.trim()) { S.ai.push({ role: "ai", text: aiParse(text).s.trim() + "\n\n(to'xtatildi)" }); aiSave(); draw(); }
+          else {
+            b.parentElement.classList.remove("live"); b.parentElement.classList.add("err");
+            b.innerHTML = stopped ? "⏹ To'xtatildi" : `⚠️ ${esc(ex.message === "Failed to fetch" ? "Internet aloqasi yo'q" : ex.message)}<button class="ai-retry" data-airetry>↻ Qayta so'rash</button>`;
+            if (!opts.regen && !stopped) { S.ai.pop(); aiSave(); }
+            b.dataset.q = q;
+          }
         }
-        busy = false; form.classList.remove("busy"); bottom();
+        busy = false; ctrl = null; form.classList.remove("busy"); bottom();
       }
-      form.addEventListener("submit", (e) => { e.preventDefault(); ask(inp.value); });
+      form.addEventListener("submit", (e) => { e.preventDefault(); if (busy && ctrl) { ctrl.abort(); return; } ask(inp.value); });
       inp.addEventListener("input", fit);
       inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !matchMedia("(pointer: coarse)").matches) { e.preventDefault(); ask(inp.value); } });
+      $("#aiFile", el).addEventListener("change", async (e) => {
+        const f = e.target.files && e.target.files[0]; e.target.value = "";
+        if (!f) return;
+        try { setPic(await aiShrink(f)); inp.focus(); toast("📷 Rasm qo'shildi — savol yozing yoki darhol yuboring"); } catch (ex) { toast("⚠️ " + ex.message); }
+      });
       el.addEventListener("click", (e) => {
         const s = e.target.closest("[data-aiq]"); if (s) { ask(s.dataset.aiq); return; }
-        const r = e.target.closest("[data-airetry]"); if (r) { const q = r.closest(".ai-b").dataset.q; const m = r.closest(".ai-m"); if (m.previousElementSibling) m.previousElementSibling.remove(); m.remove(); ask(q); return; }
-        if (e.target.closest("[data-aiclr]")) { if (busy) return; S.ai = []; aiSave(); draw(); toast("🧹 Suhbat tozalandi"); }
+        if (e.target.closest("[data-aipicx]")) { setPic(null); return; }
+        const r = e.target.closest("[data-airetry]"); if (r) { const q = r.closest(".ai-b").dataset.q; const m = r.closest(".ai-m"); if (m.previousElementSibling && m.previousElementSibling.classList.contains("user")) m.previousElementSibling.remove(); m.remove(); ask(q); return; }
+        if (e.target.closest("[data-airegen]")) { if (busy) return; if (S.ai.length && S.ai[S.ai.length - 1].role === "ai") { S.ai.pop(); aiSave(); } const lastQ = [...S.ai].reverse().find((m) => m.role === "user"); if (lastQ) ask(lastQ.text, { regen: true }); return; }
+        if (e.target.closest("[data-aicopy]")) { const m = [...S.ai].reverse().find((x) => x.role === "ai"); if (!m) return; const t = aiParse(m.text).s.replace(/\u0000/g, "").replace(/\*\*/g, "").trim(); try { navigator.clipboard.writeText(t); toast("📋 Javob nusxalandi"); } catch (er) { toast("⚠️ Nusxalab bo'lmadi"); } return; }
+        const all = e.target.closest("[data-aiall]"); if (all) { let ok = 0; all.dataset.aiall.split(",").forEach((id) => { if (!inCart(+id) && addToCart(+id, 1, true)) ok++; }); refreshCards(); badges(); toast(ok ? `🛒 ${ok} ta mahsulot savatga qo'shildi` : "✓ Hammasi allaqachon savatda", { t: "Savat", fn: () => switchTab("cart") }); return; }
+        const cmp = e.target.closest("[data-aicmp]"); if (cmp) { S.compare = cmp.dataset.aicmp.split(",").map(Number).slice(0, 4); store.set("compare", S.compare); openCompare(); return; }
+        if (e.target.closest("[data-aiclr]")) { if (busy) return; S.ai = []; aiSave(); setPic(null); draw(); toast("🧹 Suhbat tozalandi"); }
       });
       // Klaviatura ochilganda tab paneli yashiriladi (yozish joyi kattaroq)
       inp.addEventListener("focus", () => document.body.classList.add("no-tab"));
