@@ -235,7 +235,7 @@ const fallbackIcon = (p) => `<span class="fb"><svg viewBox="0 0 24 24">${ICONS[c
 function card(p, o) {
   const d = disc(p), q = inCart(p.id), out = (p.stock || 0) <= 0, drop = S.drops && S.drops[p.id] > p.price;
   return `<article class="pc${out ? " out" : ""}" data-pid="${p.id}">
-    <div class="pc-img">${fallbackIcon(p)}<img src="${esc(hi(p.img, 330))}" alt="" loading="lazy" onload="this.classList.add('ld')" onerror="imgErr(this)" />
+    <div class="pc-img">${fallbackIcon(p)}<img src="${esc(hi(p.img, 330))}" alt="" loading="lazy" decoding="async" onload="this.classList.add('ld')" onerror="imgErr(this)" />
       <button class="fav${S.fav.includes(p.id) ? " on" : ""}" data-fav="${p.id}" aria-label="Saralanganga">${heartSvg}</button>
       <div class="tags">${d ? `<span class="tag">−${d}%</span>` : ""}${drop ? `<span class="tag drop">📉 Arzonladi</span>` : ""}${p.badge === "Yangi" ? `<span class="tag new">Yangi</span>` : p.badge === "Xit" ? `<span class="tag hit">Xit</span>` : ""}</div>
     </div>
@@ -368,7 +368,7 @@ function homeScreen() {
       // Qidiruv qatoridagi matn almashib turadi
       const ph = ["Mahsulot va brendlarni qidirish", "Masalan: RTX 4070", "Masalan: MacBook", "Masalan: o'yin sichqonchasi", "Masalan: 27\" monitor"];
       let pi = 0;
-      el._ph = setInterval(() => { const t = $("#phTxt", el); if (!t) return; pi = (pi + 1) % ph.length; t.classList.remove("swap"); void t.offsetWidth; t.classList.add("swap"); t.textContent = ph[pi]; }, 3500);
+      el._ph = setInterval(() => { const t = $("#phTxt", el); if (!t || document.hidden || el.hasAttribute("inert")) return; pi = (pi + 1) % ph.length; t.classList.remove("swap"); void t.offsetWidth; t.classList.add("swap"); t.textContent = ph[pi]; }, 3500);
       // Bannerlar: avtomatik aylanish va nuqtalar
       const bn = $("#banners", el), dots = $$("#bnDots i", el);
       let idx = 0;
@@ -384,7 +384,7 @@ function homeScreen() {
       });
       // Kun takliflari taymeri (yarim tungacha)
       const tick = () => { const t = $("#dealTimer", el); if (!t) return; const d = new Date(), end = new Date(d); end.setHours(24, 0, 0, 0); const s = Math.floor((end - d) / 1000); t.textContent = [s / 3600, (s % 3600) / 60, s % 60].map((x) => String(Math.floor(x)).padStart(2, "0")).join(":"); };
-      tick(); el._timer = setInterval(tick, 1000);
+      tick(); el._timer = setInterval(() => { if (!document.hidden && !el.hasAttribute("inert")) tick(); }, 1000);
       // Cheksiz lenta
       let shown = 20;
       const more = $("#feedMore", el);
@@ -817,6 +817,7 @@ function openCheckout() {
               payment: o.payment, months: o.payment === "uzum" ? o.months : null, promo: S.promo,
             });
             S.cart = []; saveCart(); S.promo = null; store.set("app_promo", null); S.orders = null; refreshRoot("cart");
+            setTimeout(() => { try { window.OPUSApp && OPUSApp.askNotify && OPUSApp.askNotify(); } catch (e) {} }, 1200);
             if (auth.user && o.delivery === "courier") { auth.user.region = o.region; auth.user.address = o.address; store.set("user", auth.user); }
             loadCatalog().catch(() => {});
             haptic(25);
@@ -1892,8 +1893,13 @@ document.addEventListener("click", (e) => {
 
 const cmpVer = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
 const CHANGELOG = {
-  ver: "2.3", build: "2026-11-09", date: "9-noyabr, 2026",
+  ver: "2.4", build: "2026-11-14", date: "14-noyabr, 2026",
   groups: [
+    { t: "Ilova 2.4 — yangi", e: "🚀", items: [
+      ["🔔", "Bildirishnomalar — ilova yopiq bo'lsa ham", "Buyurtma bergach, uning holati o'zgarganda (tasdiqlandi, yig'ilmoqda, yo'lda, yetkazildi) telefoningizga bildirishnoma keladi — ilova yopiq bo'lsa ham, telefon qayta yoqilgandan keyin ham. Bildirishnomani bossangiz, ilova to'g'ridan-to'g'ri \"Buyurtmalarim\" sahifasida ochiladi. Kabinet → Bildirishnomalar orqali holatini ko'rasiz."],
+      ["⚡", "Tezroq va qotmaydigan", "Doim ishlab turgan bezak animatsiyalari o'chirildi, ekrandan tashqaridagi bo'limlar faqat kerak bo'lganda chiziladi, rasmlar ilovani to'xtatmasdan yuklanadi. Zaif telefonlarda ilova avtomatik ravishda \"yengil rejim\"ga o'tadi."],
+      ["💸", "Arzon kompyuterlar va videokartalar", "Taxminan 200$ va 300$ lik tayyor kompyuterlar (OPUS Start), shuningdek GT 1030, RX 580, GTX 1660 Ti, RTX 3050, RX 6600 XT va RTX 3060 videokartalari hamda Ryzen 5 5600G protsessori."],
+    ] },
     { t: "Eng so'nggi qo'shilganlar", e: "🔥", items: [
       ["🧠", "OPUS AI hamma joyda", "Mahsulot sahifasida \"OPUS AI'dan so'rash\" (kimga mos, afzallik va kamchiliklari), taqqoslashda \"OPUS AI xulosasi\" va kompyuter yig'ishda \"AI bilan tekshirish\" tugmalari."],
       ["📰", "Yangiliklar", "Yangiliklar bo'limida OPUS AI va so'nggi yangilanishlar haqida batafsil maqolalar."],
@@ -2428,7 +2434,7 @@ function openUpdate(u) {
       <div class="up-ic"><img src="../icons/icon-192.png" alt="" /><i>v${esc(u.version)}</i></div>
       <h3>Yangi versiya tayyor!</h3>
       <p class="muted">Sizda v${esc(VERSION)} o'rnatilgan. v${esc(u.version)} ga yangilang${u.sizeMB ? ` — atigi ${esc(u.sizeMB)} MB` : ""}.</p>
-      <ul class="up-l"><li>✨ OPUS AI — sun'iy intellekt yordamchi</li><li>🔍 Aqlli qidiruv — kirillcha, xatolar va narx bilan</li><li>🛠 Kompyuter yig'ish va 💰 byudjetga mos tanlash</li><li>📌 Ikonkani bosib turganda tezkor yorliqlar</li><li>🔁 Qayta buyurtma, 📡 oflayn rejim va boshqalar</li></ul>
+      <ul class="up-l"><li>🔔 Ilova yopiq bo'lsa ham buyurtma bildirishnomalari</li><li>⚡ Tezroq va qotmaydigan ilova</li><li>✨ OPUS AI — sun'iy intellekt yordamchi</li><li>🔍 Aqlli qidiruv — kirillcha, xatolar va narx bilan</li><li>🛠 Kompyuter yig'ish va 💰 byudjetga mos tanlash</li><li>📌 Ikonkani bosib turganda tezkor yorliqlar</li><li>🔁 Qayta buyurtma, 📡 oflayn rejim va boshqalar</li></ul>
       <div class="up-steps" id="upSteps" hidden><p><b>1.</b> Yuklab olingan faylni oching</p><p><b>2.</b> <b>"O'rnatish"</b> ni bosing (ma'lumotlaringiz saqlanadi)</p><p><b>3.</b> <b>"Ochish"</b> ni bosing — yangiliklar ro'yxati chiqadi</p></div>
       <button class="btn block" id="upGo">⬇️ Yangilash</button>
       <button class="btn ghost block" id="upLater" style="margin-top:8px">Keyinroq</button>
@@ -2623,3 +2629,33 @@ refreshRoot("home"); refreshRoot("profile");
 // Bosh sahifadagi barcha bo'lim sarlavhalari (keyin qo'shilganlari ham) bir xil belgili
 { const _h = ROOTS.home; ROOTS.home = () => { const d = _h(); d.html = secIcons(d.html); return d; }; }
 refreshRoot("home");
+
+// =====================================================================
+// ---------- v3.1: tezlik (yengil rejim) va bildirishnomalar ----------
+// =====================================================================
+// Zaif telefonlarda (xotira ≤3 GB, ≤4 yadro yoki trafik tejash) qimmat effektlar o'chiriladi
+(function lite() {
+  try {
+    const n = navigator, weak = (n.deviceMemory && n.deviceMemory <= 3) || (n.hardwareConcurrency && n.hardwareConcurrency <= 4) || (n.connection && n.connection.saveData);
+    if (weak || store.get("app_lite", false)) document.documentElement.classList.add("lite");
+  } catch (e) {}
+})();
+const notifOn = () => { try { return !!(window.OPUSApp && OPUSApp.notifyOn && OPUSApp.notifyOn()); } catch (e) { return false; } };
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-m='notif']"); if (!b) return;
+  if (VERSION === "web") { infoSheet("🔔 Bildirishnomalar", "Buyurtma holati haqidagi bildirishnomalar OPUS Android ilovasida ishlaydi — ilova yopiq bo'lsa ham. Ilovani saytdagi \"Ilova\" bo'limidan yuklab oling."); return; }
+  if (notifOn()) { toast("🔔 Bildirishnomalar yoqilgan — buyurtma holati o'zgarsa xabar beramiz"); return; }
+  try { OPUSApp.askNotify(); } catch (er) {}
+  setTimeout(() => refreshRoot("profile"), 2500);
+});
+{
+  const _pr = ROOTS.profile;
+  ROOTS.profile = () => {
+    const d = _pr();
+    if (auth.user) d.html = d.html.replace(`<button class="mi" data-m="edit">`, () => `<button class="mi" data-m="notif"><span class="ri">🔔</span><span>Bildirishnomalar</span><small>${VERSION === "web" ? "ilovada" : notifOn() ? "yoqilgan" : "o'chiq — yoqish"}</small></button>
+        <button class="mi" data-m="edit">`);
+    return d;
+  };
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && tab === "profile" && stacks.profile.length === 1) refreshRoot("profile"); });
+refreshRoot("profile");
