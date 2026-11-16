@@ -806,3 +806,10 @@ select.os-sel, .admin select.os-sel { padding-right: 34px !important; background
 .ad-grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 @media (max-width: 760px) { .ad-grid3 { grid-template-columns: 1fr; } .ad-admin { flex-wrap: wrap; } }
 #lockLogin { width: 100%; }
+
+/* ===== Kuzatuvlar va sharh tekshiruvi ===== */
+.chip.wait { background: rgba(255,176,32,.14); color: #c27a00; border-color: rgba(255,176,32,.35); white-space: nowrap; }
+[data-theme="dark"] .chip.wait, .dark .chip.wait { color: #ffc14d; }
+.chip.warn { background: rgba(255,176,32,.16); color: #c27a00; }
+.ad-review.pending-rv { border-color: rgba(255,176,32,.55) !important; box-shadow: inset 3px 0 0 #ffb020; }
+.ad-actions .ad-ok { background: #16a34a !important; color: #fff !important; border-color: #16a34a !important; font-weight: 700; }
