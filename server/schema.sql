@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   reply       TEXT,
   verified    INTEGER NOT NULL DEFAULT 0,       -- shu mahsulotni sotib olgan
   hidden      INTEGER NOT NULL DEFAULT 0,
+  pending     INTEGER NOT NULL DEFAULT 0,       -- admin tasdig'ini kutmoqda
   created_at  INTEGER NOT NULL,
   UNIQUE (product_id, user_id)
 );
@@ -115,3 +116,24 @@ CREATE TABLE IF NOT EXISTS admins (
 -- Mavjud admin paroli Owner akkauntiga ko'chiriladi (parol o'zgarmaydi)
 INSERT OR IGNORE INTO admins (id, login, name, role, pass_hash, pass_salt, iter, created_at)
   SELECT 1, 'owner', 'Owner', 'owner', pass_hash, pass_salt, iter, CAST(strftime('%s','now') AS INTEGER) * 1000 FROM admin WHERE id = 1;
+CREATE TABLE IF NOT EXISTS alerts (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER NOT NULL,
+  product_id  INTEGER NOT NULL,
+  kind        TEXT    NOT NULL,              -- 'stock' | 'price'
+  base_price  INTEGER NOT NULL,              -- obuna paytidagi narx
+  created_at  INTEGER NOT NULL,
+  UNIQUE (user_id, product_id, kind)
+);
+CREATE INDEX IF NOT EXISTS idx_alerts_product ON alerts (product_id);
+-- Mijozga ilova/sayt ichidagi xabarlar (ilova yopiq bo'lsa ham telefon bildirishnomasi bo'lib chiqadi)
+CREATE TABLE IF NOT EXISTS notices (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER NOT NULL,
+  kind        TEXT    NOT NULL,
+  product_id  INTEGER,
+  title       TEXT    NOT NULL,
+  body        TEXT    NOT NULL,
+  created_at  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_notices_user ON notices (user_id, created_at);
