@@ -598,11 +598,12 @@ function openProduct(id) {
     noTab: true, anim: S.hero ? "hero-in" : "enter", pid: p.id,
     html: `<header class="hdr clear phdr" id="ph"><button class="ib" data-back aria-label="Orqaga">${svg(IC.back)}</button><div class="ph-t"><b>${esc(p.name)}</b><small>${fmt(p.price)}</small></div><button class="ib" data-share aria-label="Ulashish">${svg(IC.share)}</button><button class="ib${S.fav.includes(p.id) ? " on" : ""}" data-pfav aria-label="Saralangan">${svg(IC.heart)}</button></header>
       <div class="sb pad-bar" id="psb">
-        <div class="gal-wrap"><div class="gal" id="gal">${imgs.map((s, i) => `<img src="${esc(hi(s, 960))}" alt="" data-gi="${i}" onerror="imgErr(this)" />`).join("")}</div>
+        <div class="gal-wrap"><div class="gal" id="gal">${imgs.map((s, i) => `<div class="gs" data-gi="${i}"><i></i><img src="${esc(hi(s, 960))}" alt="" onload="this.previousElementSibling.style.backgroundImage='url(&quot;'+this.currentSrc+'&quot;)'" onerror="imgErr(this)" /></div>`).join("")}</div>
           ${imgs.length > 1 ? `<div class="dots" id="gd">${imgs.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}<span class="gal-hint">🔍 Kattalashtirish uchun bosing</span></div>
         <div class="pd">
           <div class="pd-price"><b class="${d ? "sale" : ""}">${fmt(p.price)}</b>${d ? `<s>${fmt(p.old)}</s><span class="tag">−${d}%</span>` : ""}</div>
           ${d ? `<div class="save">💰 Tejaysiz: <b>${fmt(p.old - p.price)}</b></div>` : ""}
+          ${stock > 0 ? `<button class="pd-watch" data-pwatch></button>` : ""}
           <h2 class="pd-name">${esc(p.name)}</h2>
           <div class="pd-meta"><button data-torv>${p.reviews ? `<b>★ ${p.rating}</b> · ${p.reviews} sharh` : "☆ Hali baho yo'q — birinchi bo'ling"}</button><button data-brand-go>${esc(p.brand)} ›</button>${p.original !== false ? `<span>🛡 Original</span>` : ""}<button class="cmp-btn${S.compare.includes(p.id) ? " on" : ""}" data-cmp="${p.id}">⚖️ Taqqoslash</button></div>
           <button class="ai-ask" data-ai="${esc(p.name + " haqida: kimga mos, afzalliklari va kamchiliklari qanday? Shu narxdagi muqobillari bormi?")}"><img src="../icons/opus-ai.svg" alt="" /><span><b>OPUS AI'dan so'rash</b><small>Kimga mos, afzallik va kamchiliklari</small></span><em>›</em></button>
@@ -637,7 +638,7 @@ function openProduct(id) {
       });
       const drawBuy = () => {
         const q = inCart(p.id);
-        $("#buy", el).innerHTML = stock <= 0 ? `<button class="btn ghost flex" data-notify-me>🔔 Kelganda xabar berish</button>`
+        $("#buy", el).innerHTML = stock <= 0 ? (hasAlert(p.id, "stock") ? `<button class="btn ghost flex watch-on" data-notify-me>✓ Kelishi bilan xabar beramiz</button>` : `<button class="btn flex" data-notify-me>🔔 Kelganda xabar berish</button>`)
           : q ? `<div class="stepper"><button data-q="-1">−</button><span>${q}</span><button data-q="1">+</button></div><button class="btn green flex" data-gocart>Savatga o'tish</button>`
           : `<div><small>${d ? `<s>${num(p.old)}</s>` : `${num(p.price / 12)} so'm/oy`}</small><b>${fmt(p.price)}</b></div><button class="btn flex" data-buy>${svg(IC.cart)} Savatga</button>`;
       };
@@ -648,8 +649,13 @@ function openProduct(id) {
         }
         const s = e.target.closest("[data-q]"); if (s) { setQty(p.id, inCart(p.id) + +s.dataset.q); drawBuy(); refreshCards(); }
         if (e.target.closest("[data-gocart]")) switchTab("cart");
-        if (e.target.closest("[data-notify-me]")) { const w = store.get("app_wait", []); if (!w.includes(p.id)) store.set("app_wait", [...w, p.id]); toast("🔔 Mahsulot kelganda xabar beramiz"); }
+        if (e.target.closest("[data-notify-me]")) toggleAlert(p.id, "stock").then(drawBuy);
       });
+      const pw = $("[data-pwatch]", el);
+      const drawWatch = () => { if (!pw) return; const on = hasAlert(p.id, "price"); pw.classList.toggle("on", on); pw.innerHTML = on ? `<span>✓</span><div><b>Narx kuzatilmoqda</b><small>${fmt(alertOf(p.id, "price").base_price)} dan arzonlashsa — darhol xabar beramiz</small></div><em>Bekor</em>` : `<span>📉</span><div><b>Narxi tushsa xabar berish</b><small>Arzonlashgan zahoti telefoningizga bildirishnoma keladi</small></div><em>Kuzatish</em>`; };
+      drawWatch();
+      if (pw) pw.onclick = () => toggleAlert(p.id, "price").then(drawWatch);
+      if (auth.token && !S.alerts) loadAlerts().then(() => { drawWatch(); drawBuy(); }).catch(() => {});
       $("[data-pfav]", el).onclick = (e) => toggleFav(p.id, e.currentTarget);
       $("[data-torv]", el).onclick = () => sb.scrollTo({ top: $("#rvBox", el).offsetTop - 70, behavior: "smooth" });
       $("[data-brand-go]", el).onclick = () => openList({ title: p.brand, brand: p.brand });
@@ -684,12 +690,27 @@ async function loadReviews(p, el) {
     const cnt = [5, 4, 3, 2, 1].map((k) => r.reviews.filter((v) => v.rating === k).length);
     $(".rv-sum", box).insertAdjacentHTML("beforeend", `<div class="rv-bars">${cnt.map((c, i) => `<span><small>${5 - i}★</small><i style="--w:${(c / r.count) * 100}%"></i><small>${c}</small></span>`).join("")}</div>`);
   }
-  $("[data-write]", box).onclick = () => requireAuth(() => writeReview(p, el), "Sharh yozish uchun akkauntingizga kiring");
+  $("[data-write]", box).onclick = () => requireAuth(async () => {
+    let m; try { m = await loadMine(true); } catch (ex) { toast("⚠️ " + ex.message); return; }
+    if (!m.bought.includes(p.id)) return infoSheet("✍️ Sharhlar faqat xaridorlardan", "Sharhni faqat shu mahsulotni OPUS MARKET'dan sotib olib, qabul qilib olgan mijozlar yoza oladi — shunda har bir baho haqiqiy bo'ladi.\n\nBuyurtmangiz \"Yetkazildi\" bo'lgach, shu yerda yoki Kabinet → Xaridlarimni baholash bo'limida baho bera olasiz.");
+    writeReview(p, el, m.reviews.find((x) => x.product_id === p.id));
+  }, "Sharh yozish uchun akkauntingizga kiring");
+  if (auth.token) loadMine().then((m) => {
+    const own = m && m.reviews.find((x) => x.product_id === p.id), w = $("[data-write]", box);
+    if (own && own.pending) box.insertAdjacentHTML("beforeend", `<p class="rv-pend">⏳ Sharhingiz tekshiruvda — tasdiqlangach shu yerda chiqadi</p>`);
+    if (w && m && m.bought.includes(p.id)) w.textContent = own ? "✏️ Tahrirlash" : "⭐ Baho berish";
+  }).catch(() => {});
 }
-function writeReview(p, el) {
-  let rating = 5;
-  openSheet(`<h3>✍️ Fikringiz</h3><p class="muted" style="margin-bottom:10px">${esc(p.name)}</p><div class="stars-in" id="stars">${[1, 2, 3, 4, 5].map((i) => `<button data-r="${i}" class="on">★</button>`).join("")}</div>
-    <textarea class="inp" id="rvText" rows="4" maxlength="1000" placeholder="Mahsulot sizga yoqdimi? Sifati, yetkazish…" style="margin-top:12px"></textarea>
+async function loadMine(force) {
+  if (!auth.token) return (S.mine = null);
+  if (S.mine && !force) return S.mine;
+  return (S.mine = await api("GET", "/api/reviews/mine"));
+}
+function writeReview(p, el, own, done) {
+  let rating = own ? own.rating : 5;
+  openSheet(`<h3>✍️ Fikringiz</h3><p class="muted" style="margin-bottom:10px">${esc(p.name)}</p><div class="stars-in" id="stars">${[1, 2, 3, 4, 5].map((i) => `<button data-r="${i}" class="${i <= rating ? "on" : ""}">★</button>`).join("")}</div>
+    <textarea class="inp" id="rvText" rows="4" maxlength="1000" placeholder="Mahsulot sizga yoqdimi? Sifati, yetkazish…" style="margin-top:12px">${own ? esc(own.text) : ""}</textarea>
+    <p class="muted" style="font-size:12px;margin-top:8px">✓ Sharhingiz "Xarid qilgan" belgisi bilan, do'kon tekshiruvidan so'ng chiqadi.</p>
     <p class="err-t" id="rvErr" hidden></p><button class="btn block" style="margin-top:12px" id="rvSend">Yuborish</button>`, (box) => {
     box.addEventListener("click", async (e) => {
       const s = e.target.closest("[data-r]");
@@ -698,7 +719,7 @@ function writeReview(p, el) {
         const b = $("#rvSend", box); b.disabled = true;
         try {
           await api("POST", `/api/products/${p.id}/reviews`, { rating, text: $("#rvText", box).value });
-          closeSheet(); toast("🙏 Rahmat! Sharhingiz qo'shildi"); loadReviews(p, el); loadRv().then(() => refreshRoot("home")).catch(() => {});
+          closeSheet(); sfx("success"); toast("🙏 Rahmat! Sharhingiz tekshiruvdan so'ng chiqadi"); S.mine = null; if (el) loadReviews(p, el); if (done) done();
         } catch (ex) { $("#rvErr", box).textContent = ex.message; $("#rvErr", box).hidden = false; b.disabled = false; }
       }
     });
@@ -947,6 +968,8 @@ function profileScreen() {
       <div class="stats"><button data-m="orders"><b>${S.orders ? O.length : "…"}</b><small>Buyurtmalar</small></button><button data-m="active"><b>${S.orders ? active : "…"}</b><small>Faol</small></button><button data-gofav><b>${S.fav.length}</b><small>Saralangan</small></button></div>
       <div class="menu">
         <button class="mi" data-m="orders"><span class="ri">📦</span><span>Buyurtmalarim</span></button>
+        <button class="mi" data-m="watch"><span class="ri">🔔</span><span>Kuzatuvlarim</span><small id="watchN">${S.alerts && S.alerts.length ? S.alerts.length + " ta" : "narx va ombor"}</small></button>
+        <button class="mi" data-m="rate"><span class="ri">⭐</span><span>Xaridlarimni baholash</span><small id="rateN"></small></button>
         <button class="mi" data-m="edit"><span class="ri">👤</span><span>Shaxsiy ma'lumotlar</span></button>
         <button class="mi" data-m="pass"><span class="ri">🔒</span><span>Parolni o'zgartirish</span></button>
       </div>${common}
@@ -956,6 +979,8 @@ function profileScreen() {
       bindMenu(el);
       $("[data-gofav]", el).onclick = () => switchTab("fav");
       if (!S.orders) loadOrders().then(() => { if (tab === "profile" && stacks.profile.length === 1) refreshRoot("profile"); }).catch(() => {});
+      loadMine().then((m) => { const n = m ? m.bought.filter((id) => byId(id) && !m.reviews.some((r) => r.product_id === id)).length : 0, x = $("#rateN", el); if (x) { x.textContent = n ? n + " ta kutmoqda" : ""; x.classList.toggle("hot", !!n); } }).catch(() => {});
+      if (!S.alerts) loadAlerts().then(() => { const x = $("#watchN", el); if (x && S.alerts.length) x.textContent = S.alerts.length + " ta"; }).catch(() => {});
     },
   };
 }
@@ -969,6 +994,8 @@ function bindMenu(el) {
     const m = e.target.closest("[data-m]"); if (!m) return;
     const k = m.dataset.m;
     if (k === "orders") openOrders();
+    if (k === "watch") openWatch();
+    if (k === "rate") openRate();
     if (k === "active") openOrders("active");
     if (k === "edit") openEditProfile();
     if (k === "pass") openPassword();
@@ -980,7 +1007,7 @@ function bindMenu(el) {
     if (k === "about") openSheet(`<div class="tg-hero"><i style="background:var(--grad);box-shadow:0 12px 30px rgba(var(--prgb),.4)"><img src="../icons/icon-192.png" alt="" style="width:76px;border-radius:24px" /></i><h2 style="font-size:20px">OPUS MARKET</h2><p class="muted">Versiya ${esc(VERSION)}<br>Kompyuterlar va aksessuarlar do'koni</p></div><button class="btn block" id="ab">Yopish</button>`, (b) => ($("#ab", b).onclick = closeSheet));
     if (k === "logout") openSheet(`<h3>Akkauntdan chiqasizmi?</h3><p class="muted" style="margin-bottom:14px">Savat va saralanganlar saqlanib qoladi.</p><div style="display:flex;gap:10px"><button class="btn ghost flex" id="no">Yo'q</button><button class="btn flex" id="yes">Chiqish</button></div>`, (b) => {
       $("#no", b).onclick = closeSheet;
-      $("#yes", b).onclick = async () => { closeSheet(); api("POST", "/api/auth/logout").catch(() => {}); setAuth(null); refreshRoot("profile"); refreshRoot("home"); toast("👋 Akkauntdan chiqdingiz"); };
+      $("#yes", b).onclick = async () => { closeSheet(); api("POST", "/api/auth/logout").catch(() => {}); setAuth(null); S.alerts = null; S.mine = null; store.set("app_ntc_since", 0); refreshRoot("profile"); refreshRoot("home"); toast("👋 Akkauntdan chiqdingiz"); };
     });
   });
 }
@@ -1316,6 +1343,7 @@ async function runNotif(a) {
   if (a.pid) openProduct(a.pid);
   else if (a.order) { if (!S.orders) await loadOrders().catch(() => {}); const o = (S.orders || []).find((x) => x.id === a.order); if (o) { switchTab("profile"); setTimeout(() => openOrder(o), 60); } }
   else if (a.tab) switchTab(a.tab);
+  else if (a.rate) { switchTab("profile"); setTimeout(openRate, 60); }
 }
 function openNotifs() {
   push({
@@ -1344,12 +1372,14 @@ function ago(t) {
 const ST_ICON = { "Tasdiqlandi": "✅", "Yig'ilmoqda": "📦", "Yo'lda": "🚚", "Yetkazildi": "🎉", "Bekor qilindi": "✕", "Yangi": "🆕" };
 async function syncOrders() {
   if (!auth.token) return;
+  syncNotices().catch(() => {});
   const prev = store.get("app_order_st", {}), first = !Object.keys(prev).length;
   const L = await loadOrders(), next = {};
   L.forEach((o) => {
     const k = o.status + (o.confirmed ? "" : "*");
     next[o.id] = k;
-    if (!first && prev[o.id] && prev[o.id] !== k) addNotif({ key: o.id + k, icon: ST_ICON[o.status] || "📦", title: `Buyurtma #${o.id}: ${o.status}`, text: o.status === "Yo'lda" ? "Kuryer yo'lga chiqdi — telefoningiz yoqiq tursin" : o.status === "Yetkazildi" ? "Xaridingiz uchun rahmat! Mahsulotga sharh qoldiring ⭐" : `Jami: ${fmt(o.total)}`, act: { order: o.id } });
+    if (!first && prev[o.id] && prev[o.id] !== k) addNotif({ key: o.id + k, icon: ST_ICON[o.status] || "📦", title: `Buyurtma #${o.id}: ${o.status}`, text: o.status === "Yo'lda" ? "Kuryer yo'lga chiqdi — telefoningiz yoqiq tursin" : o.status === "Yetkazildi" ? "Xaridingiz uchun rahmat! Bosing va xaridingizni baholang ⭐" : `Jami: ${fmt(o.total)}`, act: o.status === "Yetkazildi" ? { rate: 1 } : { order: o.id } });
+    if (!first && prev[o.id] && prev[o.id] !== k && o.status === "Yetkazildi") S.mine = null;
   });
   store.set("app_order_st", next);
 }
@@ -1893,8 +1923,14 @@ document.addEventListener("click", (e) => {
 
 const cmpVer = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
 const CHANGELOG = {
-  ver: "2.7", build: "2026-11-14d", date: "14-noyabr, 2026",
+  ver: "2.8", build: "2026-11-16a", date: "16-noyabr, 2026",
   groups: [
+    { t: "Ilova 2.8", e: "🔔", items: [
+      ["📉", "Narxi tushsa — xabar beramiz", "Mahsulot sahifasida \"Narxi tushsa xabar berish\" tugmasini bosing. Narx tushgan zahoti telefoningizga bildirishnoma (ilova yopiq bo'lsa ham) va Telegram xabari keladi, eski va yangi narx foizi bilan."],
+      ["📦", "Omborga kelsa — xabar beramiz", "Tugagan mahsulotda \"Kelganda xabar berish\" ni bosing — omborga qaytishi bilan birinchilardan bo'lib bilasiz. Endi bu kuzatuv serverda saqlanadi, telefon almashsa ham yo'qolmaydi."],
+      ["🔔", "Kuzatuvlarim", "Kabinet → Kuzatuvlarim: kutayotgan va narxini kuzatayotgan barcha mahsulotlar bir joyda; keraksizini bir bosishda o'chirasiz."],
+      ["⭐", "Haqiqiy sharhlar", "Sharhni endi faqat mahsulotni sotib olib, qabul qilgan mijozlar yozadi va har biri \"✓ Xarid qilgan\" belgisi bilan, do'kon tekshiruvidan so'ng chiqadi. Kabinet → Xaridlarimni baholash — baholanmagan xaridlaringiz ro'yxati."],
+    ] },
     { t: "Ilova 2.7", e: "✅", items: [
       ["⬇️", "Ilova ichida yangilandi!", "Bu versiya brauzerga chiqmasdan, to'g'ridan-to'g'ri ilovaning o'zida yuklab olindi va o'rnatildi. Keyingi yangilanishlar ham xuddi shunday — bitta tugma bilan."],
     ] },
@@ -2032,6 +2068,9 @@ syncOrders().catch(() => {});
 // Vidjetdan ochilgan bo'lsa — to'g'ridan-to'g'ri "Buyurtmalarim"
 function openFromHash() {
   const h = location.hash.slice(1);
+  const pm = h.match(/^p-(\d+)$/);
+  if (pm) { history.replaceState(history.state, "", location.pathname + location.search); return setTimeout(() => byId(+pm[1]) && openProduct(+pm[1]), 80); }
+  if (h === "watch") { history.replaceState(history.state, "", location.pathname + location.search); switchTab("profile"); return setTimeout(() => auth.token && openWatch(), 60); }
   if (!/^(orders|search|cart|build|ai)$/.test(h)) return;
   if (h === "ai") { history.replaceState(history.state, "", location.pathname + location.search); return setTimeout(() => switchTab("ai"), 50); }
   history.replaceState(history.state, "", location.pathname + location.search);
@@ -2789,6 +2828,7 @@ const MI = {
   "✅": "M22 11.1V12a10 10 0 11-5.9-9.1 M22 4L12 14l-3-3",
   "↩️": "M9 14L4 9l5-5 M4 9h11a5 5 0 010 10h-3",
   "🏷": "M20.6 13.4l-7.2 7.2a2 2 0 01-2.8 0L2 12V2h10l8.6 8.6a2 2 0 010 2.8z M7 7h.01",
+  "⭐": "M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z",
 };
 const miSvg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
 function lineIcons(root) {
@@ -2799,3 +2839,106 @@ function lineIcons(root) {
 }
 lineIcons(document);
 new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n.nodeType === 1) lineIcons(n); }))).observe(document.body, { childList: true, subtree: true });
+
+// =====================================================================
+// ---------- v3.0 Kuzatuvlar ("Kelganda / arzonlashganda xabar ber") va baholash ----------
+// =====================================================================
+S.alerts = null; S.mine = null;
+async function loadAlerts() {
+  if (!auth.token) return (S.alerts = []);
+  const r = await api("GET", "/api/alerts");
+  S.alerts = r.alerts;
+  // Eski versiyadagi faqat telefonda saqlangan "kelganda xabar ber" ro'yxatini serverga ko'chiramiz
+  const old = store.get("app_wait", []);
+  if (old.length) {
+    store.set("app_wait", []);
+    for (const id of old) { const p = byId(id); if (p && (p.stock ?? 0) <= 0 && !hasAlert(id, "stock")) try { S.alerts.unshift((await api("POST", "/api/alerts", { product_id: id, kind: "stock" })).alert); } catch (e) {} }
+  }
+  return S.alerts;
+}
+const alertOf = (pid, kind) => (S.alerts || []).find((a) => a.product_id === pid && a.kind === kind);
+const hasAlert = (pid, kind) => !!alertOf(pid, kind);
+function toggleAlert(pid, kind) {
+  return new Promise((res) => requireAuth(async () => {
+    try {
+      if (!S.alerts) await loadAlerts();
+      if (hasAlert(pid, kind)) {
+        await api("DELETE", `/api/alerts/${pid}/${kind}`);
+        S.alerts = S.alerts.filter((a) => !(a.product_id === pid && a.kind === kind));
+        toast("🔕 Kuzatuv bekor qilindi");
+      } else {
+        const r = await api("POST", "/api/alerts", { product_id: pid, kind });
+        S.alerts.unshift(r.alert); haptic(12); sfx("success");
+        toast(kind === "stock" ? "🔔 Omborga kelishi bilan xabar beramiz" : "📉 Narxi tushishi bilan xabar beramiz");
+        // Telefonda bildirishnoma ruxsati bo'lmasa — so'raymiz (ilova yopiq bo'lsa ham xabar kelishi uchun)
+        if (VERSION !== "web" && !notifOn()) setTimeout(() => { try { OPUSApp.askNotify && OPUSApp.askNotify(); } catch (e) {} }, 900);
+      }
+      res(true);
+    } catch (e) { toast("⚠️ " + e.message); res(false); }
+  }, "Kuzatish uchun akkauntingizga kiring"));
+}
+// Serverdagi xabarlar (omborga keldi, narx tushdi, sharh chop etildi) → ilova ichidagi bildirishnomalar
+async function syncNotices() {
+  if (!auth.token) return;
+  const since = store.get("app_ntc_since", 0);
+  const r = await api("GET", "/api/notices?since=" + since);
+  const L = (r.notices || []).slice().reverse();
+  L.forEach((n) => {
+    const m = String(n.title).match(/^(\S+)\s+(.*)$/);
+    addNotif({ key: "n" + n.id, icon: m ? m[1] : "🔔", title: m ? m[2] : n.title, text: n.body, act: n.product_id ? { pid: n.product_id } : null }, !since);
+  });
+  store.set("app_ntc_since", r.now || Date.now());
+  if (L.some((n) => n.kind !== "review")) loadAlerts().catch(() => {});
+  if (L.some((n) => n.kind === "review")) { S.mine = null; loadRv().catch(() => {}); }
+}
+setInterval(() => { if (!document.hidden && auth.token) syncNotices().catch(() => {}); }, 150e3);
+
+function openWatch() {
+  push({
+    html: hdr("Kuzatuvlarim") + `<div class="sb"><div class="sec"><p class="muted wt-intro">Mahsulot omborga kelsa yoki arzonlashsa — telefoningizga darhol xabar keladi (ilova yopiq bo'lsa ham). Xabar kelgach kuzatuv o'zi tugaydi.</p><div id="wl"><div class="skel" style="height:72px"></div></div></div></div>`,
+    mount(el) {
+      const draw = () => {
+        const L = (S.alerts || []).map((a) => ({ a, p: byId(a.product_id) })).filter((x) => x.p);
+        $("#wl", el).innerHTML = L.length ? L.map(({ a, p }) => {
+          const diff = p.price < a.base_price;
+          return `<div class="wt" data-pid="${p.id}"><img src="${esc(hi(p.img, 200))}" alt="" onerror="imgErr(this)" /><div><b>${esc(p.name)}</b>
+            <small>${a.kind === "stock" ? ((p.stock ?? 0) > 0 ? "✅ Omborda bor!" : "🔔 Omborga kelishini kutyapsiz") : `📉 ${fmt(a.base_price)} dan arzonlashsa`}</small>
+            <em>${fmt(p.price)}${diff ? ` <i class="wt-d">−${Math.round((1 - p.price / a.base_price) * 100)}%</i>` : ""}</em></div>
+            <button class="wt-x" data-del="${p.id}:${a.kind}" aria-label="O'chirish">✕</button></div>`;
+        }).join("") : emptyBox("🔔", "Kuzatuv yo'q", "Tugagan mahsulot sahifasida «Kelganda xabar berish», boshqa mahsulotlarda «Narxi tushsa xabar berish» tugmasini bosing", `<button class="btn" data-gocat>Katalogni ochish</button>`);
+      };
+      el.addEventListener("click", async (e) => {
+        const d = e.target.closest("[data-del]");
+        if (d) { const [pid, kind] = d.dataset.del.split(":"); await toggleAlert(+pid, kind); return draw(); }
+        if (e.target.closest("[data-gocat]")) return switchTab("catalog");
+        const r = e.target.closest("[data-pid]"); if (r) openProduct(+r.dataset.pid);
+      });
+      if (S.alerts) draw();
+      loadAlerts().then(draw).catch((ex) => { $("#wl", el).innerHTML = `<p class="muted">${esc(ex.message)}</p>`; });
+    },
+  });
+}
+
+function openRate() {
+  push({
+    html: hdr("Xaridlarimni baholash") + `<div class="sb"><div class="sec"><p class="muted wt-intro">Sotib olgan mahsulotlaringizga baho bering — bu boshqa xaridorlarga to'g'ri tanlov qilishga yordam beradi. Sharhlar "✓ Xarid qilgan" belgisi bilan chiqadi.</p><div id="rl"><div class="skel" style="height:72px"></div></div></div></div>`,
+    mount(el) {
+      const draw = (m) => {
+        const L = (m ? m.bought : []).map((id) => ({ p: byId(id), r: m.reviews.find((x) => x.product_id === id) })).filter((x) => x.p)
+          .sort((a, b) => (a.r ? 1 : 0) - (b.r ? 1 : 0));
+        $("#rl", el).innerHTML = L.length ? L.map(({ p, r }) => `<div class="wt" data-pid="${p.id}"><img src="${esc(hi(p.img, 200))}" alt="" onerror="imgErr(this)" /><div><b>${esc(p.name)}</b>
+          <small>${!r ? "Hali baho bermagansiz" : r.pending ? "⏳ Tekshiruvda" : r.hidden ? "🙈 Do'kon tomonidan yashirilgan" : "✓ Chop etilgan"}</small>
+          ${r ? `<em class="wt-st">${"★".repeat(r.rating)}<i>${"★".repeat(5 - r.rating)}</i></em>` : ""}</div>
+          <button class="btn sm${r ? " ghost" : ""}" data-rate="${p.id}">${r ? "Tahrirlash" : "⭐ Baholash"}</button></div>`).join("")
+          : emptyBox("⭐", "Baholanadigan xarid yo'q", "Buyurtmangiz \"Yetkazildi\" bo'lgach, mahsulotlar shu yerda chiqadi");
+      };
+      const load = () => loadMine(true).then(draw).catch((ex) => { $("#rl", el).innerHTML = `<p class="muted">${esc(ex.message)}</p>`; });
+      el.addEventListener("click", (e) => {
+        const b = e.target.closest("[data-rate]");
+        if (b) { const p = byId(+b.dataset.rate); return writeReview(p, null, S.mine && S.mine.reviews.find((x) => x.product_id === p.id), load); }
+        const r = e.target.closest("[data-pid]"); if (r) openProduct(+r.dataset.pid);
+      });
+      load();
+    },
+  });
+}
