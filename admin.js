@@ -115,8 +115,10 @@ async function loadData() {
   $("#syncInfo").textContent = `Ma'lumotlar yuklandi: ${new Date().toLocaleTimeString("ru-RU")}`;
 }
 async function loadServer() {
-  const [st, o, u, r] = await Promise.all([api("GET", "/api/admin/stats"), api("GET", "/api/admin/orders"), api("GET", "/api/admin/users"), api("GET", "/api/admin/reviews")]);
+  const [st, o, u, r, al] = await Promise.all([api("GET", "/api/admin/stats"), api("GET", "/api/admin/orders"), api("GET", "/api/admin/users"), api("GET", "/api/admin/reviews"), api("GET", "/api/admin/alerts").catch(() => ({ alerts: [] }))]);
   S.stats = st; S.orders = o.orders; S.users = u.users; S.reviews = r.reviews;
+  S.waits = {}; // { [mahsulot id]: { stock: n, price: n } } — "xabar bering" deb kutayotgan mijozlar
+  for (const x of al.alerts || []) (S.waits[x.product_id] ||= { stock: 0, price: 0 })[x.kind] = x.c;
   S.lastOrderAt = Math.max(S.lastOrderAt || 0, st.lastOrderAt || 0);
 }
 
@@ -247,7 +249,7 @@ function renderAll() {
   $("#navOrders").textContent = S.stats ? (S.stats.byStatus || {})["Yangi"] || "" : "";
   $("#navUsers").textContent = S.stats ? S.stats.users : "";
   $("#navNews").textContent = (S.data.NEWS || []).length;
-  $("#navReviews").textContent = S.reviews.filter((r) => !r.reply && !r.hidden).length || "";
+  $("#navReviews").textContent = S.reviews.filter((r) => r.pending).length || S.reviews.filter((r) => !r.reply && !r.hidden).length || "";
   renderKpis(); renderChart(); renderTop(); renderLow(); renderRecentOrders(); renderCats();
   renderHero(); renderTasks(); renderPay(); renderStatusBars(); renderBoard();
   renderProducts(); renderOrders(); renderUsers(); renderReviews(); renderPromos(); renderSettings();
@@ -328,13 +330,18 @@ function renderTop() {
   }).join("")}</ol>` : `<p class="ad-empty">Oxirgi 30 kunda sotuv yo'q</p>`;
 }
 
+const waitChip = (id) => {
+  const w = (S.waits || {})[id]; if (!w) return "";
+  return (w.stock ? ` <span class="chip wait" title="Omborga kelganda xabar kutayotgan mijozlar">🔔 ${w.stock} kutmoqda</span>` : "") + (w.price ? ` <span class="chip wait" title="Narxi tushishini kuzatayotgan mijozlar">📉 ${w.price}</span>` : "");
+};
 function renderLow() {
-  const low = S.data.PRODUCTS.filter((p) => p.stock <= 5).sort((a, b) => a.stock - b.stock);
+  const wst = (p) => ((S.waits || {})[p.id] || {}).stock || 0;
+  const low = S.data.PRODUCTS.filter((p) => p.stock <= 5).sort((a, b) => wst(b) - wst(a) || a.stock - b.stock);
   $("#lowStock").innerHTML = low.length ? `<table class="ad-table" style="min-width:0">${low.map((p) => `
     <tr data-id="${p.id}">
       <td><img class="ad-thumb" src="${esc(srcOf(p.img))}" alt="" /></td>
       <td class="ad-pname"><b>${esc(p.name)}</b><small>${esc(catName(p.cat))}</small></td>
-      <td>${stockChip(p.stock)}</td>
+      <td>${stockChip(p.stock)}${waitChip(p.id)}</td>
       <td class="num"><span class="ad-restock"><input class="cell sm" type="number" min="0" max="99999" data-field="stock" value="${p.stock}" aria-label="Ombor" /><button type="button" data-add="5">+5</button><button type="button" data-add="10">+10</button></span></td>
     </tr>`).join("")}</table>` : `<p class="ad-empty">✓ Barcha mahsulotlar yetarli</p>`;
 }
@@ -388,7 +395,7 @@ function renderProducts() {
       <td class="num c-price" data-label="Narx"><input class="cell" type="number" inputmode="numeric" min="0" step="1000" data-field="price" value="${p.price}" aria-label="Narx" /></td>
       <td class="num c-old" data-label="Eski narx"><input class="cell" type="number" inputmode="numeric" min="0" step="1000" data-field="old" value="${p.old || ""}" placeholder="—" aria-label="Eski narx" /></td>
       <td class="num c-stock" data-label="Ombor"><input class="cell sm" type="number" inputmode="numeric" min="0" max="99999" data-field="stock" value="${p.stock}" aria-label="Ombor" /></td>
-      <td class="c-status">${stockChip(p.stock)}${p.old && p.old > p.price ? ` <span class="chip sale">−${Math.round((1 - p.price / p.old) * 100)}%</span>` : ""}</td>
+      <td class="c-status">${stockChip(p.stock)}${waitChip(p.id)}${p.old && p.old > p.price ? ` <span class="chip sale">−${Math.round((1 - p.price / p.old) * 100)}%</span>` : ""}</td>
       <td class="c-badge" data-label="Belgi"><select class="ad-status-select" data-field="badge" aria-label="Belgi">${["", "Yangi", "Xit"].map((b) => `<option value="${b}" ${(p.badge || "") === b ? "selected" : ""}>${b || "—"}</option>`).join("")}</select></td>
       <td class="c-orig" data-label="Original"><label class="ad-switch" title="Original belgisi"><input type="checkbox" data-field="original" ${p.original !== false ? "checked" : ""} aria-label="Original" /><span></span></label></td>
       <td class="c-act"><div class="ad-actions"><button data-act="edit">Tahrirlash</button><button data-act="dup" title="Nusxa olish" aria-label="Nusxa olish">⧉</button></div></td>
@@ -1041,14 +1048,14 @@ function renderReviews() {
   const q = ($("#rSearch").value || "").trim().toLowerCase(), f = $("#rFilter").value;
   const pname = (id) => (S.data.PRODUCTS.find((p) => p.id === id) || {}).name || "ID " + id;
   const R = S.reviews.filter((r) =>
-    (!f || (f === "noreply" && !r.reply && !r.hidden) || (f === "low" && r.rating <= 2) || (f === "hidden" && r.hidden)) &&
+    (!f || (f === "pending" && r.pending) || (f === "noreply" && !r.reply && !r.hidden) || (f === "low" && r.rating <= 2) || (f === "hidden" && r.hidden)) &&
     (!q || [pname(r.product_id), r.user_name, r.text].join(" ").toLowerCase().includes(q)));
   $("#reviewList").innerHTML = R.length ? R.map((r) => {
     const p = S.data.PRODUCTS.find((x) => x.id === r.product_id);
-    return `<article class="ad-review${r.hidden ? " hidden-rv" : ""}" data-rid="${r.id}">
+    return `<article class="ad-review${r.hidden ? " hidden-rv" : ""}${r.pending ? " pending-rv" : ""}" data-rid="${r.id}">
       <header>
         ${p ? `<img class="ad-thumb" src="${esc(srcOf(p.img))}" alt="" />` : ""}
-        <div><b>${esc(pname(r.product_id))}</b><small>${r.user_id ? `<button class="ad-link" data-user="${r.user_id}">${esc(r.user_name || "—")}</button>` : "o'chirilgan mijoz"} · ${dt(r.created_at)}${r.verified ? ` · <span class="chip ok">✓ Xarid qilgan</span>` : ""}${r.hidden ? ` · <span class="chip bad">Yashirilgan</span>` : ""}</small></div>
+        <div><b>${esc(pname(r.product_id))}</b><small>${r.user_id ? `<button class="ad-link" data-user="${r.user_id}">${esc(r.user_name || "—")}</button>` : "o'chirilgan mijoz"} · ${dt(r.created_at)}${r.verified ? ` · <span class="chip ok">✓ Xarid qilgan</span>` : ""}${r.hidden ? ` · <span class="chip bad">Yashirilgan</span>` : ""}${r.pending ? ` · <span class="chip warn">⏳ Tekshiruvda</span>` : ""}</small></div>
         <span class="ad-rv-stars">${"★".repeat(r.rating)}<i>${"★".repeat(5 - r.rating)}</i></span>
       </header>
       <p>${esc(r.text)}</p>
@@ -1057,6 +1064,7 @@ function renderReviews() {
         <button class="btn btn-primary btn-sm">${r.reply ? "Javobni yangilash" : "Javob berish"}</button>
       </form>
       <div class="ad-actions">
+        ${r.pending ? `<button data-rv-ok class="ad-ok">✓ Tasdiqlash va chop etish</button>` : ""}
         <button data-rv-hide>${r.hidden ? "👁 Ko'rsatish" : "🙈 Yashirish"}</button>
         <button data-rv-del class="ad-danger">O'chirish</button>
       </div>
@@ -1081,7 +1089,11 @@ $("#reviewList").addEventListener("click", async (e) => {
   const id = +card.dataset.rid, r = S.reviews.find((x) => x.id === id);
   const del = e.target.closest("[data-rv-del]");
   try {
-    if (e.target.closest("[data-rv-hide]")) {
+    if (e.target.closest("[data-rv-ok]")) {
+      await api("PATCH", "/api/admin/reviews/" + id, { approve: true });
+      r.pending = false; renderAll();
+      toast("✓ Sharh saytda chop etildi — mijozga xabar yuborildi");
+    } else if (e.target.closest("[data-rv-hide]")) {
       await api("PATCH", "/api/admin/reviews/" + id, { hidden: !r.hidden });
       r.hidden = !r.hidden; renderAll();
       toast(r.hidden ? "🙈 Sharh saytdan yashirildi" : "👁 Sharh saytda ko'rinadi");
@@ -1367,12 +1379,16 @@ function tasks() {
   const P = S.data.PRODUCTS;
   const fresh = S.orders.filter((o) => o.status === "Yangi" && o.confirmed !== 0).length;
   const pend = S.orders.filter(isPending).length;
-  const noReply = S.reviews.filter((r) => !r.reply && !r.hidden).length;
+  const noReply = S.reviews.filter((r) => !r.reply && !r.hidden && !r.pending).length;
+  const pendRv = S.reviews.filter((r) => r.pending).length;
+  const waitOut = P.filter((p) => p.stock <= 0 && ((S.waits || {})[p.id] || {}).stock), waitN = waitOut.reduce((a, p) => a + S.waits[p.id].stock, 0);
   const out = P.filter((p) => p.stock <= 0).length, low = P.filter((p) => p.stock > 0 && p.stock <= 5).length;
   const dirty = diff().n;
   return [
     fresh && { i: "📦", t: `${fresh} ta yangi buyurtma ishlov kutmoqda`, s: "Mijoz bilan bog'lanib, holatini o'zgartiring", go: "orders", f: "Yangi", lvl: "hot" },
     pend && { i: "⏳", t: `${pend} ta buyurtma Telegram kodini kutmoqda`, s: "2 soatda tasdiqlanmasa avtomatik bekor bo'ladi", go: "orders", f: "__pending" },
+    pendRv && { i: "⭐", t: `${pendRv} ta yangi sharh tekshiruvni kutmoqda`, s: "Tasdiqlangach saytda \"✓ Xarid qilgan\" belgisi bilan chiqadi", go: "reviews", rf: "pending", lvl: "hot" },
+    waitN && { i: "🔔", t: `${waitN} ta mijoz ${waitOut.length} ta tugagan mahsulotni kutmoqda`, s: "Omborga qo'shsangiz — ularga avtomatik xabar boradi", go: "products", ps: "out" },
     noReply && { i: "💬", t: `${noReply} ta sharhga javob berilmagan`, s: "Javob mijozlar ishonchini oshiradi", go: "reviews", rf: "noreply" },
     out && { i: "⛔", t: `${out} ta mahsulot tugagan`, s: "Saytda \"Tugagan\" bo'lib turibdi", go: "products", ps: "out", lvl: "hot" },
     low && { i: "⚠️", t: `${low} ta mahsulot kam qolgan`, s: "5 donadan kam", go: "products", ps: "low" },
