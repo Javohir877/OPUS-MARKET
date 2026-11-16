@@ -131,8 +131,8 @@ async function getCatalog(env) {
 }
 async function saveCatalog(env, c, versionNote) {
   const { updated_at, ...data } = c;
+  const prev = await env.DB.prepare("SELECT json FROM catalog WHERE id = 1").first();
   if (versionNote !== undefined) {
-    const prev = await env.DB.prepare("SELECT json FROM catalog WHERE id = 1").first();
     if (prev) {
       await env.DB.prepare("INSERT INTO catalog_versions (json, saved_at, note) VALUES (?, ?, ?)").bind(prev.json, Date.now(), versionNote).run();
       await env.DB.prepare("DELETE FROM catalog_versions WHERE id NOT IN (SELECT id FROM catalog_versions ORDER BY id DESC LIMIT 30)").run();
@@ -140,6 +140,40 @@ async function saveCatalog(env, c, versionNote) {
   }
   await env.DB.prepare("INSERT INTO catalog (id, json, updated_at) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at")
     .bind(JSON.stringify(data), Date.now()).run();
+  if (prev) await fireAlerts(env, prev.json, data);
+}
+
+// Mahsulot omborga qaytsa yoki arzonlashsa — obuna bo'lgan mijozlarga xabar (ilova + Telegram). Obuna bir martalik.
+async function fireAlerts(env, prevJson, data) {
+  try {
+    const old = new Map((JSON.parse(prevJson).PRODUCTS || []).map((p) => [p.id, p]));
+    const changed = (data.PRODUCTS || []).filter((p) => {
+      const o = old.get(p.id);
+      return o && (((p.stock ?? 0) > 0 && (o.stock ?? 0) <= 0) || p.price < o.price);
+    });
+    if (!changed.length) return;
+    const byId = new Map(changed.map((p) => [p.id, p]));
+    const ids = [...byId.keys()].slice(0, 90);
+    const r = await env.DB.prepare(`SELECT a.*, u.tg_chat_id FROM alerts a LEFT JOIN users u ON u.id = a.user_id
+      WHERE a.product_id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all();
+    const now = Date.now(), done = [], ins = [], tgs = [];
+    for (const a of r.results) {
+      const p = byId.get(a.product_id), o = old.get(a.product_id);
+      let title, text;
+      if (a.kind === "stock" && (p.stock ?? 0) > 0 && (o.stock ?? 0) <= 0) {
+        title = "📦 Omborga keldi!"; text = `${p.name} yana sotuvda — ${som(p.price)}. Tez tugab qolishi mumkin.`;
+      } else if (a.kind === "price" && p.price < a.base_price) {
+        title = "📉 Narxi tushdi!"; text = `${p.name}: ${som(a.base_price)} → ${som(p.price)} (−${Math.max(1, Math.round((1 - p.price / a.base_price) * 100))}%)`;
+      } else continue;
+      done.push(a.id);
+      ins.push(env.DB.prepare("INSERT INTO notices (user_id, kind, product_id, title, body, created_at) VALUES (?, ?, ?, ?, ?, ?)").bind(a.user_id, a.kind, p.id, title, text, now));
+      if (a.tg_chat_id) tgs.push([a.tg_chat_id, `<b>${title}</b>\n\n${hh(text)}`, p.id]);
+    }
+    if (!done.length) return;
+    ins.push(env.DB.prepare(`DELETE FROM alerts WHERE id IN (${done.map(() => "?").join(",")})`).bind(...done));
+    await env.DB.batch(ins);
+    for (const [chat, text, pid] of tgs.slice(0, 40)) await tgSend(env, chat, text, env.SHOP_URL ? { reply_markup: { inline_keyboard: [[{ text: "🛒 Ko'rish", url: env.SHOP_URL + "app/#p-" + pid }]] } } : {});
+  } catch (e) { console.error("alerts", e && e.stack || e); }
 }
 
 // Buyurtma mahsulotlarini omborga qaytarish (sign = 1) yoki qayta ayirish (sign = -1)
@@ -739,6 +773,8 @@ route("DELETE", "/api/admin/users/:id", async (req, env, p) => {
   await admin(req, env);
   await env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND role = 'user'").bind(+p.id).run();
   await env.DB.prepare("UPDATE orders SET user_id = NULL WHERE user_id = ?").bind(+p.id).run();
+  await env.DB.prepare("DELETE FROM alerts WHERE user_id = ?").bind(+p.id).run();
+  await env.DB.prepare("DELETE FROM notices WHERE user_id = ?").bind(+p.id).run();
   await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(+p.id).run();
   return json({ ok: true });
 });
@@ -789,7 +825,7 @@ const reviewOut = (r) => ({ id: r.id, product_id: r.product_id, rating: r.rating
   created_at: r.created_at, author: String(r.user_name || "Mijoz").split(/\s+/)[0] });
 route("GET", "/api/products/:id/reviews", async (req, env, p) => {
   const r = await env.DB.prepare(`SELECT r.*, u.name AS user_name FROM reviews r LEFT JOIN users u ON u.id = r.user_id
-    WHERE r.product_id = ? AND r.hidden = 0 ORDER BY r.created_at DESC LIMIT 100`).bind(+p.id).all();
+    WHERE r.product_id = ? AND r.hidden = 0 AND r.pending = 0 ORDER BY r.created_at DESC LIMIT 100`).bind(+p.id).all();
   const list = r.results.map(reviewOut);
   const avg = list.length ? Math.round(list.reduce((s, x) => s + x.rating, 0) / list.length * 10) / 10 : 0;
   return json({ reviews: list, count: list.length, avg }, 200, { "Cache-Control": "public, max-age=20" });
@@ -797,12 +833,25 @@ route("GET", "/api/products/:id/reviews", async (req, env, p) => {
 // Bosh sahifa uchun: eng so'nggi yaxshi baholangan (4–5★) ochiq sharhlar
 // Har bir mahsulotning haqiqiy sharhlar soni va o'rtacha bahosi: { s: { [id]: [soni, o'rtacha] } }
 route("GET", "/api/reviews/summary", async (req, env) => {
-  const r = await env.DB.prepare("SELECT product_id, COUNT(*) AS c, AVG(rating) AS a FROM reviews WHERE hidden = 0 GROUP BY product_id").all();
+  const r = await env.DB.prepare("SELECT product_id, COUNT(*) AS c, AVG(rating) AS a FROM reviews WHERE hidden = 0 AND pending = 0 GROUP BY product_id").all();
   return json({ s: Object.fromEntries(r.results.map((x) => [x.product_id, [x.c, Math.round(x.a * 10) / 10]])) }, 200, { "Cache-Control": "public, max-age=30" });
+});
+// Mijozning yetkazib berilgan mahsulotlari (sharh yozish mumkin bo'lganlar)
+async function boughtIds(env, uid) {
+  const own = await env.DB.prepare("SELECT items_json FROM orders WHERE user_id = ? AND status = 'Yetkazildi' AND confirmed = 1").bind(uid).all();
+  const set = new Set();
+  for (const o of own.results) for (const i of JSON.parse(o.items_json)) set.add(i.id);
+  return set;
+}
+// "Baholang" ro'yxati: sotib olingan mahsulotlar va ularga yozilgan sharhlar holati
+route("GET", "/api/reviews/mine", async (req, env) => {
+  const u = await currentUser(req, env);
+  const r = await env.DB.prepare("SELECT product_id, rating, text, pending, hidden, reply FROM reviews WHERE user_id = ?").bind(u.id).all();
+  return json({ bought: [...(await boughtIds(env, u.id))], reviews: r.results.map((x) => ({ ...x, pending: !!x.pending, hidden: !!x.hidden })) });
 });
 route("GET", "/api/reviews/latest", async (req, env) => {
   const r = await env.DB.prepare(`SELECT r.*, u.name AS user_name FROM reviews r LEFT JOIN users u ON u.id = r.user_id
-    WHERE r.hidden = 0 AND r.rating >= 4 AND LENGTH(r.text) >= 12 ORDER BY r.verified DESC, r.created_at DESC LIMIT 12`).all();
+    WHERE r.hidden = 0 AND r.pending = 0 AND r.rating >= 4 AND LENGTH(r.text) >= 12 ORDER BY r.verified DESC, r.created_at DESC LIMIT 12`).all();
   return json({ reviews: r.results.map(reviewOut) }, 200, { "Cache-Control": "public, max-age=60" });
 });
 route("POST", "/api/products/:id/reviews", async (req, env, p) => {
@@ -811,13 +860,17 @@ route("POST", "/api/products/:id/reviews", async (req, env, p) => {
   if (!(await getCatalog(env)).PRODUCTS.some((x) => x.id === pid)) fail(404, "Mahsulot topilmadi");
   if (!(rating >= 1 && rating <= 5)) fail(400, "Bahoni tanlang (1–5 yulduz)");
   if (text.length < 3) fail(400, "Fikringizni bir necha so'z bilan yozing");
-  // Shu mahsulotni sotib olgan (bekor qilinmagan buyurtmasi bor) mijozga "Xarid qilgan" belgisi
-  const own = await env.DB.prepare("SELECT items_json FROM orders WHERE user_id = ? AND status != 'Bekor qilindi' AND confirmed = 1").bind(u.id).all();
-  const verified = own.results.some((o) => JSON.parse(o.items_json).some((i) => i.id === pid)) ? 1 : 0;
-  await env.DB.prepare(`INSERT INTO reviews (product_id, user_id, rating, text, verified, hidden, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)
-    ON CONFLICT(product_id, user_id) DO UPDATE SET rating = excluded.rating, text = excluded.text, verified = excluded.verified, created_at = excluded.created_at`)
-    .bind(pid, u.id, rating, text, verified, Date.now()).run();
-  return json({ ok: true }, 201);
+  // Faqat shu mahsulot yetkazib berilgan xaridorlar sharh yoza oladi — soxta sharhlar bo'lmaydi
+  if (!(await boughtIds(env, u.id)).has(pid)) fail(403, "Sharhni faqat shu mahsulotni sotib olgan va qabul qilgan mijozlar qoldira oladi");
+  await env.DB.prepare(`INSERT INTO reviews (product_id, user_id, rating, text, verified, hidden, pending, created_at) VALUES (?, ?, ?, ?, 1, 0, 1, ?)
+    ON CONFLICT(product_id, user_id) DO UPDATE SET rating = excluded.rating, text = excluded.text, verified = 1, pending = 1, created_at = excluded.created_at`)
+    .bind(pid, u.id, rating, text, Date.now()).run();
+  const chat = await adminChat(env);
+  if (chat) {
+    const prod = (await getCatalog(env)).PRODUCTS.find((x) => x.id === pid);
+    await tgSend(env, chat, `⭐ <b>Yangi sharh tekshiruvni kutmoqda</b>\n\n📦 ${hh(prod ? prod.name : "#" + pid)}\n👤 ${hh(u.name)} · ${"★".repeat(rating)}${"☆".repeat(5 - rating)}\n\n${hh(text)}\n\nAdmin panel → Sharhlar bo'limida tasdiqlang.`);
+  }
+  return json({ ok: true, pending: true }, 201);
 });
 
 // Mijoz o'z buyurtmasini faqat "Yangi" holatida bekor qila oladi
@@ -835,21 +888,64 @@ route("GET", "/api/admin/reviews", async (req, env) => {
   await admin(req, env);
   const r = await env.DB.prepare(`SELECT r.*, u.name AS user_name, u.phone AS user_phone FROM reviews r LEFT JOIN users u ON u.id = r.user_id
     ORDER BY r.created_at DESC LIMIT 500`).all();
-  return json({ reviews: r.results.map((x) => ({ ...reviewOut(x), hidden: !!x.hidden, user_id: x.user_id, user_name: x.user_name, user_phone: x.user_phone })) });
+  return json({ reviews: r.results.map((x) => ({ ...reviewOut(x), hidden: !!x.hidden, pending: !!x.pending, user_id: x.user_id, user_name: x.user_name, user_phone: x.user_phone })) });
 });
 route("PATCH", "/api/admin/reviews/:id", async (req, env, p) => {
   await admin(req, env);
   const b = await body(req);
   const r = await env.DB.prepare("SELECT * FROM reviews WHERE id = ?").bind(+p.id).first();
   if (!r) fail(404, "Sharh topilmadi");
-  await env.DB.prepare("UPDATE reviews SET hidden = ?, reply = ? WHERE id = ?")
-    .bind(b.hidden !== undefined ? (b.hidden ? 1 : 0) : r.hidden, b.reply !== undefined ? (str(b.reply, 1000) || null) : r.reply, r.id).run();
+  const approve = b.approve === true && r.pending;
+  await env.DB.prepare("UPDATE reviews SET hidden = ?, reply = ?, pending = ? WHERE id = ?")
+    .bind(b.hidden !== undefined ? (b.hidden ? 1 : 0) : r.hidden, b.reply !== undefined ? (str(b.reply, 1000) || null) : r.reply, approve ? 0 : r.pending, r.id).run();
+  if (approve && r.user_id) {
+    const prod = (await getCatalog(env)).PRODUCTS.find((x) => x.id === r.product_id);
+    await env.DB.prepare("INSERT INTO notices (user_id, kind, product_id, title, body, created_at) VALUES (?, 'review', ?, ?, ?, ?)")
+      .bind(r.user_id, r.product_id, "⭐ Sharhingiz chop etildi", `${prod ? prod.name : "Mahsulot"} haqidagi fikringiz uchun rahmat! Endi uni boshqa xaridorlar ham ko'radi.`, Date.now()).run();
+  }
   return json({ ok: true });
 });
 route("DELETE", "/api/admin/reviews/:id", async (req, env, p) => {
   await admin(req, env);
   await env.DB.prepare("DELETE FROM reviews WHERE id = ?").bind(+p.id).run();
   return json({ ok: true });
+});
+
+// ---------- Kuzatuvlar: "Kelganda xabar ber" va "Narxi tushsa xabar ber" ----------
+route("GET", "/api/alerts", async (req, env) => {
+  const u = await currentUser(req, env);
+  const r = await env.DB.prepare("SELECT product_id, kind, base_price, created_at FROM alerts WHERE user_id = ? ORDER BY created_at DESC").bind(u.id).all();
+  return json({ alerts: r.results });
+});
+route("POST", "/api/alerts", async (req, env) => {
+  const u = await currentUser(req, env), b = await body(req);
+  const kind = b.kind === "stock" || b.kind === "price" ? b.kind : fail(400, "Noma'lum kuzatuv turi");
+  const p = (await getCatalog(env)).PRODUCTS.find((x) => x.id === +b.product_id);
+  if (!p) fail(404, "Mahsulot topilmadi");
+  if (kind === "stock" && (p.stock ?? 0) > 0) fail(409, "Bu mahsulot hozir omborda bor");
+  const n = await env.DB.prepare("SELECT COUNT(*) AS c FROM alerts WHERE user_id = ?").bind(u.id).first();
+  if (n.c >= 60) fail(429, "Kuzatuvlar ko'payib ketdi — keraksizlarini Kabinet → Kuzatuvlarim'dan o'chiring");
+  const now = Date.now();
+  await env.DB.prepare(`INSERT INTO alerts (user_id, product_id, kind, base_price, created_at) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(user_id, product_id, kind) DO UPDATE SET base_price = excluded.base_price, created_at = excluded.created_at`).bind(u.id, p.id, kind, p.price, now).run();
+  return json({ alert: { product_id: p.id, kind, base_price: p.price, created_at: now } }, 201);
+});
+route("DELETE", "/api/alerts/:pid/:kind", async (req, env, p) => {
+  const u = await currentUser(req, env);
+  await env.DB.prepare("DELETE FROM alerts WHERE user_id = ? AND product_id = ? AND kind = ?").bind(u.id, +p.pid, p.kind).run();
+  return json({ ok: true });
+});
+// Ilova/sayt ichidagi xabarlar (since — oxirgi ko'rilgan vaqt)
+route("GET", "/api/notices", async (req, env) => {
+  const u = await currentUser(req, env);
+  const since = Math.max(+new URL(req.url).searchParams.get("since") || 0, Date.now() - 30 * 864e5);
+  const r = await env.DB.prepare("SELECT id, kind, product_id, title, body, created_at FROM notices WHERE user_id = ? AND created_at > ? ORDER BY created_at DESC LIMIT 30").bind(u.id, since).all();
+  return json({ notices: r.results, now: Date.now() });
+});
+route("GET", "/api/admin/alerts", async (req, env) => {
+  await admin(req, env);
+  const r = await env.DB.prepare("SELECT product_id, kind, COUNT(*) AS c FROM alerts GROUP BY product_id, kind ORDER BY c DESC LIMIT 200").all();
+  return json({ alerts: r.results });
 });
 
 route("PUT", "/api/admin/catalog", async (req, env) => {
@@ -1030,6 +1126,7 @@ export default {
     await pollUpdates(env); await expireUnconfirmed(env); await setupMenuButton(env);
     // Eski urinish yozuvlarini vaqti-vaqti bilan tozalash (eng uzun oyna — 1 soat)
     if (Math.random() < 0.1) await env.DB.prepare("DELETE FROM attempts WHERE ts < ?").bind(Date.now() - 2 * 3600 * 1000).run();
+    if (Math.random() < 0.02) await env.DB.prepare("DELETE FROM notices WHERE created_at < ?").bind(Date.now() - 60 * 864e5).run();
   },
   async fetch(req, env) {
     const cors = corsHeaders(req, env);
