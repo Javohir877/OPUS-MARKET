@@ -639,7 +639,9 @@ function openProduct(id) {
         Bo'lib to'lash (Uzum Nasiya, 0%): <b class="big" id="pmMonthly"></b>
         <div class="months" id="pmMonths">${MONTHS.map((m) => `<button data-m="${m}" class="${m === months ? "active" : ""}">${m} oy</button>`).join("")}</div>
       </div>
-      <div class="stock">✔ Omborda: ${p.stock} dona · 🛡 Rasmiy kafolat</div>
+      ${p.stock > 0 ? `<button type="button" class="pm-watch" id="pmWatch"></button>` : ""}
+      <div class="stock${p.stock > 0 ? "" : " out"}">${p.stock > 0 ? `✔ Omborda: ${p.stock} dona` : "✖ Hozircha tugagan"} · 🛡 Rasmiy kafolat</div>
+      ${p.stock > 0 ? "" : `<button type="button" class="btn btn-primary pm-back" id="pmBack"></button>`}
       ${p.original !== false ? `<div class="orig-box">
         <span class="orig-seal">${ORIG_ICON}</span>
         <div><b>100% original mahsulot — soxta emas</b>
@@ -684,6 +686,16 @@ function openProduct(id) {
     if (im) im.style.transformOrigin = `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`;
   });
   $("#pmAdd").addEventListener("click", (e) => addToCart(id, qty, e.currentTarget));
+  if (p.stock <= 0) { $("#pmAdd").disabled = true; $("#pmBuy").disabled = true; }
+  // "Narxi tushsa" / "Kelganda" xabar berish
+  const drawW = () => {
+    const w = $("#pmWatch"), b = $("#pmBack");
+    if (w) { const al = alertOf(id, "price"); w.classList.toggle("on", !!al); w.innerHTML = al ? `<span>✓</span><div><b>Narx kuzatilmoqda</b><small>${fmt(al.base_price)} dan arzonlashsa — Telegram va ilovaga xabar beramiz</small></div><em>Bekor qilish</em>` : `<span>📉</span><div><b>Narxi tushsa xabar berish</b><small>Arzonlashgan zahoti Telegram va ilovaga xabar keladi</small></div><em>Kuzatish</em>`; }
+    if (b) { const on = !!alertOf(id, "stock"); b.classList.toggle("on", on); b.textContent = on ? "✓ Kelishi bilan xabar beramiz" : "🔔 Kelganda xabar berish"; }
+  };
+  drawW();
+  [$("#pmWatch"), $("#pmBack")].forEach((x) => x && x.addEventListener("click", () => toggleAlert(id, x.id === "pmBack" ? "stock" : "price").then(drawW)));
+  if (auth.token && !siteAlerts) loadAlerts().then(drawW).catch(() => {});
   $("#pmCmp").addEventListener("click", (e) => {
     toggleCompare(id);
     e.currentTarget.lastChild.textContent = state.compare.includes(id) ? " Solishtirishda ✓" : " Solishtirish";
@@ -1667,6 +1679,7 @@ function openAccount() {
   f.region.value = u.region || "Toshkent shahri";
   $("#passForm").reset();
   openLayer($("#accDrawer"));
+  renderAccWatch();
   // Ma'lumotlar boshqa qurilmada o'zgargan bo'lishi mumkin — yangilab qo'yamiz
   api("GET", "/api/me").then((r) => setAuth(auth.token, r.user), (e) => { if (e.status === 401) { closeAll(); toast("Seans tugagan — qayta kiring"); } });
 }
@@ -1726,7 +1739,7 @@ async function loadReviews(p, fresh) {
     <form class="rv-form" id="rvForm" hidden>
       <div class="rv-pick" role="radiogroup" aria-label="Baho">${[1, 2, 3, 4, 5].map((i) => `<button type="button" data-star="${i}" aria-label="${i} yulduz">★</button>`).join("")}<span id="rvPickLabel">Baho bering</span></div>
       <textarea name="text" rows="3" maxlength="1000" placeholder="Mahsulot haqida fikringiz: sifati, ishlashi, yetkazib berish…"></textarea>
-      <div class="rv-form-foot"><small class="muted">Sharhingiz ismingiz bilan ko'rsatiladi</small><button class="btn btn-primary btn-sm">Yuborish</button></div>
+      <div class="rv-form-foot"><small class="muted">✓ "Xarid qilgan" belgisi bilan, do'kon tekshiruvidan so'ng chiqadi</small><button class="btn btn-primary btn-sm">Yuborish</button></div>
     </form>
     <div class="rv-list">${data.reviews.length ? data.reviews.map((r) => `
       <article class="rv-item">
@@ -1742,12 +1755,21 @@ async function loadReviews(p, fresh) {
     b.addEventListener("mouseleave", () => paint(rating));
     b.addEventListener("click", () => { rating = +b.dataset.star; paint(rating); $("#rvPickLabel").textContent = labels[rating]; });
   });
-  $("#rvWrite").addEventListener("click", () => {
+  $("#rvWrite").addEventListener("click", async () => {
     if (!auth.user) return requireLogin("Sharh yozish uchun akkauntingizga kiring", () => { openProduct(p.id); setTimeout(() => $("#rvWrite")?.click(), 900); });
-    const f = $("#rvForm");
+    let m; try { m = await loadMine(true); } catch (err) { return toast("⚠️ " + err.message); }
+    if (!m.bought.includes(p.id)) return toast("🛍 Sharhni faqat shu mahsulotni sotib olib, qabul qilgan mijozlar yoza oladi — shunda har bir baho haqiqiy bo'ladi");
+    const f = $("#rvForm"), own = m.reviews.find((x) => x.product_id === p.id);
+    if (own && f.hidden) { rating = own.rating; paint(rating); $("#rvPickLabel").textContent = labels[rating]; f.elements.text.value = own.text; }
     f.hidden = !f.hidden;
     if (!f.hidden) f.elements.text.focus();
   });
+  if (auth.token) loadMine().then((m) => {
+    if (!m || !box.isConnected) return;
+    const own = m.reviews.find((x) => x.product_id === p.id), w = $("#rvWrite");
+    if (own && own.pending) $(".rv-head", box).insertAdjacentHTML("afterend", `<p class="rv-pend">⏳ Sharhingiz tekshiruvda — tasdiqlangach shu yerda chiqadi</p>`);
+    if (w && m.bought.includes(p.id)) w.textContent = own ? "✏️ Sharhni tahrirlash" : "⭐ Baho berish";
+  }).catch(() => {});
   $("#rvForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const text = e.target.elements.text.value.trim();
@@ -1757,8 +1779,8 @@ async function loadReviews(p, fresh) {
     btn.disabled = true;
     try {
       await api("POST", `/api/products/${p.id}/reviews`, { rating, text });
-      toast("🙏 Rahmat! Sharhingiz qo'shildi");
-      loadReviews(p, true);
+      toast("🙏 Rahmat! Sharhingiz tekshiruvdan so'ng chiqadi");
+      siteMine = null; loadReviews(p, true);
       loadReviewStats(); renderTestimonials();
     } catch (err) {
       btn.disabled = false;
@@ -1972,3 +1994,76 @@ if (TG) {
   // Qidiruvdan ham chaqirish mumkin: window.openOpusAI("savol")
   window.openOpusAI = (q) => { open(); if (q) setTimeout(() => ask(q), 200); };
 })();
+
+// ---------- Kuzatuvlar ("Kelganda / arzonlashganda xabar ber") va xaridlarni baholash ----------
+let siteAlerts = null, siteMine = null;
+async function loadAlerts() {
+  if (!auth.token) return (siteAlerts = []);
+  return (siteAlerts = (await api("GET", "/api/alerts")).alerts);
+}
+async function loadMine(force) {
+  if (!auth.token) return (siteMine = null);
+  if (siteMine && !force) return siteMine;
+  return (siteMine = await api("GET", "/api/reviews/mine"));
+}
+const alertOf = (pid, kind) => (siteAlerts || []).find((x) => x.product_id === pid && x.kind === kind);
+function toggleAlert(pid, kind) {
+  return new Promise((res) => {
+    const go = async () => {
+      try {
+        if (!siteAlerts) await loadAlerts();
+        if (alertOf(pid, kind)) {
+          await api("DELETE", `/api/alerts/${pid}/${kind}`);
+          siteAlerts = siteAlerts.filter((x) => !(x.product_id === pid && x.kind === kind));
+          toast("🔕 Kuzatuv bekor qilindi");
+        } else {
+          const r = await api("POST", "/api/alerts", { product_id: pid, kind });
+          siteAlerts.unshift(r.alert);
+          window.sfx && sfx("success");
+          toast(kind === "stock" ? "🔔 Omborga kelishi bilan xabar beramiz (Telegram va ilovaga)" : "📉 Narxi tushishi bilan xabar beramiz (Telegram va ilovaga)");
+        }
+      } catch (e) { toast("⚠️ " + e.message); }
+      res();
+    };
+    if (auth.user) go(); else requireLogin("Kuzatish uchun akkauntingizga kiring", () => { openProduct(pid); go().then(() => openProduct(pid)); });
+  });
+}
+async function renderAccWatch() {
+  const box = $("#accWatch"); if (!box) return;
+  box.innerHTML = `<div class="rv-wait">Yuklanmoqda…</div>`;
+  let al = [], m = null;
+  try { [al, m] = await Promise.all([loadAlerts(), loadMine(true)]); } catch { box.innerHTML = ""; return; }
+  const rate = m ? m.bought.map((id) => ({ p: byId(id), r: m.reviews.find((x) => x.product_id === id) })).filter((x) => x.p && (!x.r || x.r.pending)) : [];
+  const watch = al.map((x) => ({ a: x, p: byId(x.product_id) })).filter((x) => x.p);
+  const row = (p, sub, btn) => `<div class="aw-row" data-open="${p.id}"><img src="${IMG(p.img, 120)}" alt="" onerror="this.style.visibility='hidden'" /><div><b>${esc(p.name)}</b><small>${sub}</small></div>${btn}</div>`;
+  box.innerHTML = `
+    <h4>⭐ Xaridlarimni baholash</h4>
+    ${rate.length ? rate.map(({ p, r }) => row(p, r ? "⏳ Sharhingiz tekshiruvda" : "Hali baho bermagansiz", r ? "" : `<button type="button" class="btn btn-primary btn-sm" data-rate="${p.id}">Baholash</button>`)).join("")
+      : `<p class="muted aw-empty">${m && m.bought.length ? "Barcha xaridlaringizga baho bergansiz — rahmat! 🙏" : "Buyurtmangiz yetkazilgach, mahsulotlar shu yerda chiqadi."}</p>`}
+    <h4>🔔 Kuzatuvlarim</h4>
+    ${watch.length ? watch.map(({ a, p }) => row(p, a.kind === "stock" ? (p.stock > 0 ? "✅ Omborda bor!" : "Omborga kelishini kutyapsiz") : `${fmt(a.base_price)} dan arzonlashsa · hozir ${fmt(p.price)}`, `<button type="button" class="aw-x" data-unwatch="${p.id}:${a.kind}" aria-label="O'chirish">✕</button>`)).join("")
+      : `<p class="muted aw-empty">Mahsulot oynasida «Narxi tushsa xabar berish» yoki «Kelganda xabar berish» tugmasini bosing.</p>`}`;
+}
+document.addEventListener("click", async (e) => {
+  const box = e.target.closest("#accWatch"); if (!box) return;
+  const un = e.target.closest("[data-unwatch]");
+  if (un) { const [pid, kind] = un.dataset.unwatch.split(":"); await toggleAlert(+pid, kind); return renderAccWatch(); }
+  const rt = e.target.closest("[data-rate]");
+  if (rt) { closeAll(); openProduct(+rt.dataset.rate); setTimeout(() => { $("#pmReviews")?.scrollIntoView({ behavior: "smooth" }); setTimeout(() => $("#rvWrite")?.click(), 500); }, 700); return; }
+  const op = e.target.closest("[data-open]");
+  if (op) { closeAll(); openProduct(+op.dataset.open); }
+});
+// Kirgan mijozga yangi xabarlar (omborga keldi, narx tushdi, sharh chop etildi)
+async function siteNotices() {
+  if (!auth.token) return;
+  const since = store.get("ntc_since", 0);
+  try {
+    const r = await api("GET", "/api/notices?since=" + since);
+    if (since) (r.notices || []).slice(0, 2).forEach((n, i) => setTimeout(() => toast(`${n.title} ${n.body}`), 1500 + i * 3500));
+    store.set("ntc_since", r.now || Date.now());
+  } catch {}
+}
+setTimeout(siteNotices, 2500);
+// Ulashilgan havola: #product-12 yoki #p-12 — mahsulot oynasi ochiladi
+{ const m = location.hash.match(/^#(?:product|p)-(d+)$/); if (m) setTimeout(() => { if (byId(+m[1])) { openProduct(+m[1]); history.replaceState(null, "", location.pathname + location.search); } }, 900); }
+document.addEventListener("visibilitychange", () => { if (!document.hidden) siteNotices(); });
