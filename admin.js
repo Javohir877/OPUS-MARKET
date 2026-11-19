@@ -534,6 +534,7 @@ function onCellChange(e) {
   else if (f === "old") p.old = +e.target.value > 0 ? +e.target.value : null;
   else {
     if (f === "stock" && +e.target.value > MAX_STOCK) { stockWarn(); e.target.value = p.stock; return; }
+    if (f === "price" && !(+e.target.value > 0)) { toast("⚠️ Narx 0 dan katta bo'lishi kerak"); e.target.value = p.price; return; }
     p[f] = Math.max(0, +e.target.value || 0);
   }
   row.classList.add("changed");
@@ -555,7 +556,13 @@ $("#pTable").addEventListener("click", (e) => {
     update(); toast("⧉ Nusxa yaratildi — tahrirlashni unutmang");
   }
 });
-const nextId = () => Math.max(0, ...S.data.PRODUCTS.map((p) => p.id)) + 1;
+// ID lar hech qachon qayta ishlatilmaydi (eski sharh, kuzatuv va savatlar yangi mahsulotga o'tib qolmasin)
+const nextId = () => {
+  const st = S.data.SETTINGS || (S.data.SETTINGS = {});
+  const id = Math.max(0, +st.lastProductId || 0, ...S.data.PRODUCTS.map((p) => p.id)) + 1;
+  st.lastProductId = id;
+  return id;
+};
 
 // ---------- Mahsulotni tahrirlash ----------
 const drawer = $("#editDrawer"), overlay = $("#overlay"), form = $("#editForm");
@@ -652,6 +659,7 @@ form.addEventListener("submit", (e) => {
     if (k && v) specs[k] = v;
   });
   if (+f.stock.value > MAX_STOCK) { stockWarn(); f.stock.focus(); return; }
+  if (!(+f.price.value > 0)) { toast("⚠️ Narx 0 dan katta bo'lishi kerak"); f.price.focus(); return; }
   const val = {
     cat: f.cat.value, brand: f.brand.value.trim(), name: f.name.value.trim(),
     price: Math.max(0, +f.price.value || 0), old: +f.old.value > 0 ? +f.old.value : null,
@@ -832,6 +840,9 @@ $("#historyList").addEventListener("click", async (e) => {
   try {
     const catalog = await api("GET", "/api/admin/catalog/versions/" + b.dataset.restore);
     S.data = normalize(catalog);
+    // Ombor qoldig'i eski versiyadan olinmaydi — mijozlar shu orada xarid qilgan bo'lishi mumkin
+    const curStock = new Map(JSON.parse(S.baseJSON).PRODUCTS.map((p) => [p.id, p.stock]));
+    S.data.PRODUCTS.forEach((p) => { if (curStock.has(p.id)) p.stock = curStock.get(p.id); });
     update(); go("products");
     toast("↩️ Eski versiya qoralama sifatida ochildi. Tekshiring va \"E'lon qilish\" ni bosing (yoki \"Bekor qilish\").");
   } catch (ex) { toast("❌ " + apiError(ex)); b.disabled = false; b.textContent = "Shu versiyani ochish"; }
@@ -1129,7 +1140,7 @@ async function pollOrders() {
   if (!S.token || !S.data) return;
   try {
     const st = await api("GET", "/api/admin/stats");
-    if (st.lastOrderAt > S.lastOrderAt && S.lastOrderAt) {
+    if (st.lastOrderAt > (S.lastOrderAt || 0) && S.stats) {
       const prev = S.orders.length;
       await loadServer();
       const fresh = Math.max(1, S.orders.length - prev);
