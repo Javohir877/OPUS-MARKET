@@ -176,11 +176,27 @@ async function fireAlerts(env, prevJson, data) {
   } catch (e) { console.error("alerts", e && e.stack || e); }
 }
 
+// Katalogni xavfsiz o'zgartirish: o'qish → fn(cat) → faqat shu orada boshqa yozuv bo'lmagan bo'lsa saqlash, aks holda qayta urinish.
+// Bir vaqtda kelgan ikki buyurtma oxirgi donani ikki marta sotib yubormasligi uchun.
+async function mutateCatalog(env, fn) {
+  for (let i = 0; i < 6; i++) {
+    const row = await env.DB.prepare("SELECT json, updated_at FROM catalog WHERE id = 1").first();
+    if (!row) fail(500, "Katalog topilmadi");
+    const cat = JSON.parse(row.json);
+    const out = await fn(cat);
+    const ts = Math.max(Date.now(), row.updated_at + 1);
+    const r = await env.DB.prepare("UPDATE catalog SET json = ?, updated_at = ? WHERE id = 1 AND updated_at = ?").bind(JSON.stringify(cat), ts, row.updated_at).run();
+    if (r.meta && r.meta.changes === 1) { await fireAlerts(env, row.json, cat); return out; }
+    await new Promise((res) => setTimeout(res, 30 + Math.random() * 120));
+  }
+  fail(503, "Server band — bir necha soniyadan keyin qayta urinib ko'ring");
+}
 // Buyurtma mahsulotlarini omborga qaytarish (sign = 1) yoki qayta ayirish (sign = -1)
 async function restock(env, o, sign) {
-  const cat = await getCatalog(env), byId = new Map(cat.PRODUCTS.map((x) => [x.id, x]));
-  for (const l of JSON.parse(o.items_json)) { const prod = byId.get(l.id); if (prod) prod.stock = Math.max(0, (prod.stock || 0) + sign * l.qty); }
-  await saveCatalog(env, cat);
+  await mutateCatalog(env, (cat) => {
+    const byId = new Map(cat.PRODUCTS.map((x) => [x.id, x]));
+    for (const l of JSON.parse(o.items_json)) { const prod = byId.get(l.id); if (prod) prod.stock = Math.max(0, (prod.stock || 0) + sign * l.qty); }
+  });
 }
 
 // ---------- Marshrutlar ----------
@@ -256,7 +272,8 @@ route("POST", "/api/auth/telegram", async (req, env) => {
   const tu = await verifyInitData(env, b.initData);
   if (!tu) { await recordFail(env, "tgauth:" + ip(req)); fail(401, "Telegram ma'lumotlari tasdiqlanmadi"); }
   const chat = String(tu.id);
-  const me = await currentUser(req, env);
+  // Seans tokeni bo'lmasa yoki eskirgan bo'lsa — xato emas: bog'langan Telegram orqali kiramiz
+  const me = bearer(req) ? await currentUser(req, env).catch((e) => { if (e.status === 403) throw e; return null; }) : null;
   if (me) {
     if (me.tg_chat_id !== chat) {
       await env.DB.prepare("UPDATE users SET tg_chat_id = NULL WHERE tg_chat_id = ? AND id != ?").bind(chat, me.id).run();
@@ -321,18 +338,22 @@ route("POST", "/api/orders", async (req, env) => {
   const payment = PAYMENTS.includes(b.payment) ? b.payment : fail(400, "To'lov usulini tanlang");
   const months = payment === "uzum" && [3, 6, 12, 24].includes(+b.months) ? +b.months : null;
 
-  const cat = await getCatalog(env);
-  const byId = new Map(cat.PRODUCTS.map((p) => [p.id, p]));
-  const lines = [];
-  let subtotal = 0;
-  for (const it of items) {
-    const p = byId.get(+it.id), qty = Math.floor(+it.qty);
-    if (!p) fail(400, "Mahsulot topilmadi (ID " + it.id + ")");
-    if (!(qty >= 1 && qty <= 99)) fail(400, "Miqdor noto'g'ri");
-    if ((p.stock ?? 0) < qty) fail(409, `"${p.name}" omborda ${p.stock || 0} dona qoldi`);
-    lines.push({ id: p.id, name: p.name, price: p.price, qty, img: p.img });
-    subtotal += p.price * qty;
-  }
+  // Tekshirish va ombordan ayirish bitta atomar qadamda (mutateCatalog) — oxirgi dona ikki kishiga sotilmaydi
+  const { cat, lines, subtotal } = await mutateCatalog(env, (cat) => {
+    const byId = new Map(cat.PRODUCTS.map((p) => [p.id, p]));
+    const lines = [];
+    let subtotal = 0;
+    for (const it of items) {
+      const p = byId.get(+it.id), qty = Math.floor(+it.qty);
+      if (!p) fail(400, "Mahsulot topilmadi (ID " + it.id + ")");
+      if (!(qty >= 1 && qty <= 99)) fail(400, "Miqdor noto'g'ri");
+      if ((p.stock ?? 0) < qty) fail(409, `"${p.name}" omborda ${p.stock || 0} dona qoldi`);
+      lines.push({ id: p.id, name: p.name, price: p.price, qty, img: p.img });
+      subtotal += p.price * qty;
+    }
+    for (const l of lines) byId.get(l.id).stock -= l.qty;
+    return { cat, lines, subtotal };
+  });
   const s = cat.SETTINGS || {};
   const promo = str(b.promo, 20).toUpperCase();
   const pct = promo && s.promos && s.promos[promo] ? +s.promos[promo] : 0;
@@ -340,9 +361,6 @@ route("POST", "/api/orders", async (req, env) => {
   const ship = delivery === "pickup" || subtotal >= (s.freeShipFrom ?? 1000000) ? 0 : (s.shipPrice ?? 50000);
   const total = subtotal - discount + ship;
 
-  // Omborni kamaytiramiz
-  for (const l of lines) byId.get(l.id).stock -= l.qty;
-  await saveCatalog(env, cat);
 
   const now = Date.now();
   let id;
@@ -807,7 +825,8 @@ route("PATCH", "/api/admin/orders/:id", async (req, env, p) => {
   // Bekor qilinganda mahsulotlar omborga qaytadi (va aksincha)
   const wasCancelled = o.status === "Bekor qilindi", nowCancelled = b.status === "Bekor qilindi";
   if (wasCancelled !== nowCancelled) await restock(env, o, nowCancelled ? 1 : -1);
-  await env.DB.prepare("UPDATE orders SET status = ?, updated_at = ? WHERE id = ?").bind(b.status, Date.now(), o.id).run();
+  const conf = !o.confirmed && b.status !== "Bekor qilindi";
+  await env.DB.prepare(`UPDATE orders SET status = ?1, updated_at = ?2${conf ? ", confirmed = 1, confirmed_at = ?2" : ""} WHERE id = ?3`).bind(b.status, Date.now(), o.id).run();
   if (b.status !== o.status) {
     const u = o.user_id && await env.DB.prepare("SELECT tg_chat_id FROM users WHERE id = ?").bind(o.user_id).first();
     const icon = { "Tasdiqlandi": "✅", "Yig'ilmoqda": "📦", "Yo'lda": "🚚", "Yetkazildi": "🎉", "Bekor qilindi": "❌" }[b.status] || "ℹ️";
@@ -956,7 +975,7 @@ route("PUT", "/api/admin/catalog", async (req, env) => {
   for (const p of b.PRODUCTS) {
     if (!Number.isInteger(p.id) || ids.has(p.id)) fail(400, "Mahsulot ID'lari takrorlanmas butun son bo'lishi kerak");
     ids.add(p.id);
-    if (typeof p.name !== "string" || !p.name.trim() || !(p.price >= 0)) fail(400, `Mahsulot #${p.id}: nomi yoki narxi noto'g'ri`);
+    if (typeof p.name !== "string" || !p.name.trim() || !(p.price > 0)) fail(400, `Mahsulot #${p.id}: nomi yoki narxi noto'g'ri (narx 0 dan katta bo'lishi kerak)`);
     if (p.stock != null && !(Number.isInteger(+p.stock) && +p.stock >= 0 && +p.stock <= 99999)) fail(400, `Mahsulot #${p.id}: ombor soni 0–99 999 oralig'ida bo'lishi kerak`);
   }
   const { adminPass, ...settings } = b.SETTINGS; // eski panel versiyasidan qolgan maydon saqlanmaydi
