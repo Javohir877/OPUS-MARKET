@@ -104,6 +104,7 @@
     requestAnimationFrame(() => { pop.classList.add("show"); if (bg) bg.classList.add("show"); });
   }
 
+  window.__opusSelectClose = () => (openUI ? (close(), true) : false);
   function close(instant) {
     if (!openUI) return;
     const { sel, pop, bg, cleanup } = openUI;
