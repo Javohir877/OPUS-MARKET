@@ -54,6 +54,7 @@ function setAuth(token, user) {
   store.set("token", auth.token);
   store.set("user", auth.user);
   if (!token) state.orders = [];
+  try { siteAlerts = null; siteMine = null; } catch (e) {}
   renderAccBtn();
 }
 // Reyting va sharhlar soni — serverdagi haqiqiy sharhlardan (katalogdagi qo'lda yozilgan sonlar ishlatilmaydi)
@@ -348,9 +349,9 @@ function renderCategories() {
   $("#catGrid").innerHTML = CATEGORIES.map((c) => {
     const n = PRODUCTS.filter((p) => p.cat === c.id).length;
     return `<div class="cat reveal" data-cat="${c.id}">
-      <img src="${IMG(c.img, 500, 360)}" alt="${c.name}" loading="lazy" />
+      <img src="${IMG(c.img, 500, 360)}" alt="${esc(c.name)}" loading="lazy" />
       <span class="cat-ic">${svgIcon(c.icon)}</span>
-      <div><h4>${c.name}</h4><small>${n} ta mahsulot</small></div>
+      <div><h4>${esc(c.name)}</h4><small>${n} ta mahsulot</small></div>
       <span class="cat-arrow">→</span>
     </div>`;
   }).join("");
@@ -364,7 +365,7 @@ function renderCategories() {
   });
 
   $("#chips").innerHTML = [`<button class="chip active" data-cat="all">Barchasi</button>`]
-    .concat(CATEGORIES.map((c) => `<button class="chip" data-cat="${c.id}">${c.name}</button>`)).join("");
+    .concat(CATEGORIES.map((c) => `<button class="chip" data-cat="${esc(c.id)}">${esc(c.name)}</button>`)).join("");
   $$("#chips .chip").forEach((b) => b.addEventListener("click", () => setCat(b.dataset.cat)));
 }
 function setCat(cat) {
@@ -457,12 +458,12 @@ function productCard(p, i) {
     <div class="card-img skeleton" data-open>
       ${img(p, 500, 400)}
       <div class="tags">${tags}</div>
-      <span class="card-brand">${p.brand}</span>
+      <span class="card-brand">${esc(p.brand)}</span>
       <span class="quick">👁 Tezkor ko'rish</span>
     </div>
     <button class="cmp ${compared ? "on" : ""}" data-cmp title="Solishtirish">${CMP_ICON}</button>
     <div class="card-body">
-      <h4 data-open>${p.name}</h4>
+      <h4 data-open>${esc(p.name)}</h4>
       <div class="rating">${ratingHTML(p)}</div>
       <div class="price-row">
         <div>
@@ -628,11 +629,11 @@ function openProduct(id) {
       <div class="pm-pay">${PAYMENTS.map(payLogo).join("")}</div>
     </div>
     <div>
-      <div class="pm-badges"><span class="pill">${c.name} · ${p.brand}</span>${p.original !== false ? `<span class="tag orig">${ORIG_ICON}Original</span>` : ""}</div>
-      <h2>${p.name}</h2>
+      <div class="pm-badges"><span class="pill">${esc(c.name)} · ${esc(p.brand)}</span>${p.original !== false ? `<span class="tag orig">${ORIG_ICON}Original</span>` : ""}</div>
+      <h2>${esc(p.name)}</h2>
       <div class="rating">${ratingHTML(p, true)}</div>
-      <p style="margin-top:10px">${p.desc}</p>
-      <table class="specs">${Object.entries(p.specs).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("")}</table>
+      <p style="margin-top:10px">${esc(p.desc)}</p>
+      <table class="specs">${Object.entries(p.specs).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</table>
       ${p.old ? `<span class="old">${fmt(p.old)}</span>` : ""}
       <div class="price">${fmt(p.price)}</div>
       <div class="pm-install">
@@ -719,7 +720,7 @@ function renderRecent() {
   $("#recentSection").hidden = !list.length;
   $("#recentList").innerHTML = list.map((p) => `<div class="rv" data-id="${p.id}">
       <img src="${pImg(p, 400, 240)}" alt="${escapeHtml(p.name)}" loading="lazy" />
-      <div><b>${p.name}</b><small>${fmt(p.price)}</small></div>
+      <div><b>${esc(p.name)}</b><small>${fmt(p.price)}</small></div>
     </div>`).join("");
 }
 $("#recentList").addEventListener("click", (e) => {
@@ -767,7 +768,7 @@ function removeFromCart(id) {
 
 function totals() {
   const sub = state.cart.reduce((s, x) => s + byId(x.id).price * x.qty, 0);
-  const disc = state.promo ? sub * PROMOS[state.promo] : 0;
+  const disc = state.promo && PROMOS[state.promo] ? sub * PROMOS[state.promo] : 0;
   const pickup = $("#checkoutForm").elements.delivery.value === "pickup";
   const ship = sub === 0 || pickup || sub >= FREE_SHIP_FROM ? 0 : SHIP_PRICE;
   return { sub, disc, ship, total: sub - disc + ship };
@@ -794,7 +795,7 @@ function renderCart() {
     return `<div class="citem" data-id="${id}">
       ${img(p, 140, 140, "loaded")}
       <div class="citem-info">
-        <h5>${p.name}</h5><b>${fmt(p.price * qty)}</b>
+        <h5>${esc(p.name)}</h5><b>${fmt(p.price * qty)}</b>
         <div class="qty"><button data-d="-1">−</button><span>${qty}</span><button data-d="1">+</button></div>
       </div>
       <button class="rm" title="O'chirish">🗑</button>
@@ -1119,7 +1120,7 @@ function renderSummary() {
   const t = totals();
   const pay = payOf(form.elements.payment.value);
   $("#orderSummary").innerHTML = state.cart.map(({ id, qty }) =>
-    `<div class="sum-row"><span>${byId(id).name} × ${qty}</span><span>${fmt(byId(id).price * qty)}</span></div>`).join("") +
+    `<div class="sum-row"><span>${esc(byId(id).name)} × ${qty}</span><span>${fmt(byId(id).price * qty)}</span></div>`).join("") +
     (t.disc ? `<div class="sum-row discount-row"><span>Chegirma (${state.promo})</span><span>−${fmt(t.disc)}</span></div>` : "") +
     `<div class="sum-row"><span>Yetkazib berish</span><span>${t.ship ? fmt(t.ship) : "Bepul"}</span></div>
      <div class="sum-row"><span>To'lov usuli</span><span>${pay.name}</span></div>
@@ -1384,16 +1385,16 @@ function renderCompare() {
   const maxRating = Math.max(...list.map((p) => p.rating));
   const row = (label, cells) => {
     const diff = new Set(cells.map((c) => c.v)).size > 1;
-    return `<tr class="${diff ? "diff" : ""}"><th scope="row">${label}</th>${cells.map((c) => `<td class="${c.best ? "best" : ""}">${c.v}</td>`).join("")}</tr>`;
+    return `<tr class="${diff ? "diff" : ""}"><th scope="row">${label}</th>${cells.map((c) => `<td class="${c.best ? "best" : ""}">${esc(c.v)}</td>`).join("")}</tr>`;
   };
   $("#compareBody").innerHTML = `
-    <h3 class="cmp-title">Solishtirish: ${catOf(list[0]).name}</h3>
+    <h3 class="cmp-title">Solishtirish: ${esc(catOf(list[0]).name)}</h3>
     <p class="cmp-sub">${list.length} ta mahsulot yonma-yon. Eng arzon narx va eng yuqori reyting yashil rangda.</p>
     <div class="cmp-scroll">
       <table class="cmp-table">
         <thead><tr><th></th>${list.map((p) => `<th><div class="cmp-head">
           <img src="${pImg(p)}" alt="${escapeHtml(p.name)}" />
-          <b>${p.name}</b>
+          <b>${esc(p.name)}</b>
           <button data-cmp-rm="${p.id}">Olib tashlash</button>
         </div></th>`).join("")}</tr></thead>
         <tbody>
@@ -1589,9 +1590,10 @@ function renderAccBtn() {
 // Kirmagan bo'lsa — kirish oynasini ochadi, kirgandan keyin then() ni bajaradi
 function requireLogin(msg, then) {
   afterLogin = then || null;
-  openAuth("login", msg);
+  openAuth("login", msg, true);
 }
-function openAuth(tab = "login", msg) {
+function openAuth(tab = "login", msg, keep) {
+  if (!keep) afterLogin = null; // oldingi yopilgan oynadan qolgan amal keyingi kirishda bajarilmasin
   $("#authSub").textContent = msg || "Akkauntingizga kiring yoki yangisini oching";
   $("#authModal").classList.toggle("why", !!msg);
   authTab(tab);
@@ -1756,7 +1758,7 @@ async function loadReviews(p, fresh) {
     b.addEventListener("click", () => { rating = +b.dataset.star; paint(rating); $("#rvPickLabel").textContent = labels[rating]; });
   });
   $("#rvWrite").addEventListener("click", async () => {
-    if (!auth.user) return requireLogin("Sharh yozish uchun akkauntingizga kiring", () => { openProduct(p.id); setTimeout(() => $("#rvWrite")?.click(), 900); });
+    if (!auth.user) return requireLogin("Sharh yozish uchun akkauntingizga kiring", () => { openProduct(p.id); let n = 0; const t = setInterval(() => { const w = $("#rvWrite"); if (w || ++n > 40) { clearInterval(t); w && w.click(); } }, 150); });
     let m; try { m = await loadMine(true); } catch (err) { return toast("⚠️ " + err.message); }
     if (!m.bought.includes(p.id)) return toast("🛍 Sharhni faqat shu mahsulotni sotib olib, qabul qilgan mijozlar yoza oladi — shunda har bir baho haqiqiy bo'ladi");
     const f = $("#rvForm"), own = m.reviews.find((x) => x.product_id === p.id);
@@ -1982,7 +1984,9 @@ if (TG) {
   fab.addEventListener("click", open);
   form.addEventListener("submit", (e) => { e.preventDefault(); ask(inp.value); });
   inp.addEventListener("input", fit);
-  inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(inp.value); } if (e.key === "Escape") close(); });
+  inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(inp.value); } });
+  // Esc — chat oynasi qayerda fokus bo'lishidan qat'i nazar yopiladi
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && box.classList.contains("open")) close(); });
   box.addEventListener("click", (e) => {
     if (e.target.closest("[data-oaclose]")) return close();
     if (e.target.closest("[data-oaclr]")) { if (!busy) { msgs = []; save(msgs); draw(); } return; }
@@ -2065,5 +2069,5 @@ async function siteNotices() {
 }
 setTimeout(siteNotices, 2500);
 // Ulashilgan havola: #product-12 yoki #p-12 — mahsulot oynasi ochiladi
-{ const m = location.hash.match(/^#(?:product|p)-(d+)$/); if (m) setTimeout(() => { if (byId(+m[1])) { openProduct(+m[1]); history.replaceState(null, "", location.pathname + location.search); } }, 900); }
+{ const m = location.hash.match(/^#(?:product|p)-(\d+)$/); if (m) setTimeout(() => { if (byId(+m[1])) { openProduct(+m[1]); history.replaceState(null, "", location.pathname + location.search); } }, 900); }
 document.addEventListener("visibilitychange", () => { if (!document.hidden) siteNotices(); });
