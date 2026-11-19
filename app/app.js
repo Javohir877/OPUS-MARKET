@@ -55,9 +55,18 @@ const disc = (p) => (p.old && p.old > p.price ? Math.round((1 - p.price / p.old)
 const inCart = (id) => (S.cart.find((x) => x.id === +id) || {}).qty || 0;
 
 function setAuth(token, user) {
+  const changed = (token || null) !== auth.token;
   auth.token = token || null; auth.user = token ? user : null;
   store.set("token", auth.token); store.set("user", auth.user);
   if (!token) S.orders = null;
+  if (changed) {
+    S.alerts = null; S.mine = null; S.orders = null;
+    // Umumiy telefonda keyingi odam oldingisining buyurtma xabarlari va AI suhbatini ko'rmasin
+    store.set("app_notifs", []); store.set("app_order_st", {}); store.set("app_ntc_since", 0); store.set("app_ai", []);
+    if (S.ai) S.ai = [];
+    try { bellBadge(); } catch (e) {}
+    try { if (tab !== "ai" && stacks.ai && stacks.ai.length) { stacks.ai.forEach((x) => x.remove()); stacks.ai.length = 0; } } catch (e) {}
+  }
   // Android vidjeti uchun: sessiya tokenini ilovaga uzatamiz
   try { window.OPUSApp && OPUSApp.session && OPUSApp.session(auth.token || ""); } catch (e) {}
 }
@@ -302,7 +311,7 @@ document.addEventListener("click", (e) => {
     refreshCards(); return;
   }
   const c = e.target.closest("[data-pid]");
-  if (c) { openProduct(+c.dataset.pid); return; }
+  if (c && !e.target.closest("[data-del],[data-rate],[data-own-click]")) { openProduct(+c.dataset.pid); return; }
   const k = e.target.closest("[data-cat]");
   if (k) { openList({ title: catOf(k.dataset.cat).name, cat: k.dataset.cat }); return; }
   const n = e.target.closest("[data-news]");
@@ -684,7 +693,7 @@ async function loadReviews(p, el) {
   const stars = (n) => "★".repeat(n) + `<i>${"★".repeat(5 - n)}</i>`;
   box.innerHTML = `<div class="sec-h" style="margin:0"><h3>Sharhlar (${r.count})</h3><button data-write style="color:var(--red2);font-weight:600">✍️ Yozish</button></div>
     ${r.count ? `<div class="rv-sum"><b>${r.avg}</b><div><span class="st" style="color:var(--gold)">${"★".repeat(Math.round(r.avg))}</span><br><small class="muted">${r.count} ta mijoz baholadi</small></div></div>` : `<p class="muted">Hali sharh yo'q — birinchi bo'lib fikr bildiring!</p>`}
-    ${r.reviews.slice(0, 6).map((v) => `<div class="rv"><header><b>${esc(v.user_name || "Mijoz")}</b><span class="st">${stars(v.rating)}</span></header>
+    ${r.reviews.slice(0, 6).map((v) => `<div class="rv"><header><b>${esc(v.author || v.user_name || "Mijoz")}</b><span class="st">${stars(v.rating)}</span></header>
       <small class="muted">${new Date(v.created_at).toLocaleDateString("ru-RU")}${v.verified ? " · ✓ Xarid qilgan" : ""}</small><p>${esc(v.text)}</p>${v.reply ? `<div class="reply"><b>OPUS MARKET:</b> ${esc(v.reply)}</div>` : ""}</div>`).join("")}`;
   if (r.count) {
     const cnt = [5, 4, 3, 2, 1].map((k) => r.reviews.filter((v) => v.rating === k).length);
@@ -858,6 +867,7 @@ function openConfirm(order, confirm, fresh) {
     noTab: true,
     html: hdr("Tasdiqlash") + `<div class="sb"><div class="sec" style="display:flex;flex-direction:column;gap:14px" id="cf"></div></div>`,
     mount(el) {
+      if (fresh) setTimeout(() => { const s = stacks[tab], i = s.indexOf(el), co = s[i - 1]; if (i > 1 && co) { s.splice(i - 1, 1); co._def.unmount && co._def.unmount(co); co.remove(); } }, 380);
       const started = Date.now();
       el._poll = setInterval(() => { if (Date.now() - started < 15 * 60e3 && !document.hidden) api("POST", "/api/tg/poll").catch(() => {}); }, 3000);
       const draw = (c) => {
@@ -1007,7 +1017,7 @@ function bindMenu(el) {
     if (k === "about") openSheet(`<div class="tg-hero"><i style="background:var(--grad);box-shadow:0 12px 30px rgba(var(--prgb),.4)"><img src="../icons/icon-192.png" alt="" style="width:76px;border-radius:24px" /></i><h2 style="font-size:20px">OPUS MARKET</h2><p class="muted">Versiya ${esc(VERSION)}<br>Kompyuterlar va aksessuarlar do'koni</p></div><button class="btn block" id="ab">Yopish</button>`, (b) => ($("#ab", b).onclick = closeSheet));
     if (k === "logout") openSheet(`<h3>Akkauntdan chiqasizmi?</h3><p class="muted" style="margin-bottom:14px">Savat va saralanganlar saqlanib qoladi.</p><div style="display:flex;gap:10px"><button class="btn ghost flex" id="no">Yo'q</button><button class="btn flex" id="yes">Chiqish</button></div>`, (b) => {
       $("#no", b).onclick = closeSheet;
-      $("#yes", b).onclick = async () => { closeSheet(); api("POST", "/api/auth/logout").catch(() => {}); setAuth(null); S.alerts = null; S.mine = null; store.set("app_ntc_since", 0); refreshRoot("profile"); refreshRoot("home"); toast("👋 Akkauntdan chiqdingiz"); };
+      $("#yes", b).onclick = async () => { closeSheet(); api("POST", "/api/auth/logout").catch(() => {}); setAuth(null); refreshRoot("profile"); refreshRoot("home"); toast("👋 Akkauntdan chiqdingiz"); };
     });
   });
 }
@@ -1172,7 +1182,7 @@ function openOrder(o) {
           const r = await api("POST", `/api/orders/${encodeURIComponent(o.id)}/code`);
           if (r.confirmed) { toast("✅ Buyurtma allaqachon tasdiqlangan"); await loadOrders(); pop(); return; }
           openConfirm(o, r);
-        } catch (ex) { toast("⚠️ " + ex.message); }
+        } catch (ex) { if (ex.status === 429) { toast("ℹ️ Kod yaqinda yuborilgan — Telegram'dagi kodni kiriting"); openConfirm(o, { linked: true }); } else toast("⚠️ " + ex.message); }
         c.disabled = false;
       };
       const x = $("#oCancel", el);
@@ -1459,6 +1469,7 @@ function enableSwipe(el) {
 // Ochiq qatlamlarni (stories, rasm ko'rish) "Orqaga" tugmasi yopadi
 const __back0 = window.__opusBack;
 window.__opusBack = () => {
+  if (window.__opusSelectClose && window.__opusSelectClose()) return true;
   if (storyState) { storyState.close(); return true; }
   if (viewerEl) { closeViewer(); return true; }
   if ($(".onb")) return true;
@@ -1923,8 +1934,15 @@ document.addEventListener("click", (e) => {
 
 const cmpVer = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
 const CHANGELOG = {
-  ver: "2.8", build: "2026-11-16a", date: "16-noyabr, 2026",
+  ver: "2.8.1", build: "2026-11-20a", date: "20-noyabr, 2026",
   groups: [
+    { t: "2.8.1 — tuzatishlar", e: "🛠", items: [
+      ["⭐", "Baholash tugmasi tuzatildi", "\"Xaridlarimni baholash\" bo'limida \"Baholash\" bosilganda sharh oynasi o'rniga mahsulot sahifasi ochilib ketardi. Endi sharh oynasi ochiladi. \"Kuzatuvlarim\"dagi ✕ ham endi faqat kuzatuvni o'chiradi."],
+      ["👤", "Sharh muallifining ismi", "Sharhlarda hamma uchun \"Mijoz\" deb yozilardi — endi sharh yozgan xaridorning ismi ko'rinadi."],
+      ["↩️", "Buyurtmadan keyin \"Orqaga\"", "Telegram kodi oynasidan orqaga qaytganda eski, ishlamaydigan buyurtma sahifasi chiqib qolardi. Endi to'g'ri savatga qaytasiz. Kod yaqinda yuborilgan bo'lsa ham, uni kiritish oynasi ochiladi."],
+      ["🔐", "Umumiy telefonda xavfsizlik", "Akkauntdan chiqqanda oldingi foydalanuvchining bildirishnomalari, AI suhbati va kuzatuvlari tozalanadi — keyingi odam ularni ko'rmaydi."],
+      ["📱", "Kichik tuzatishlar", "Telefonning \"Orqaga\" tugmasi avval ochiq ro'yxatni (masalan, viloyat tanlash) yopadi; Kabinet ekrani uzoq ishlatilganda sekinlashmaydi; admin buyurtmani tasdiqlaganda u ilovada ham \"tasdiqlangan\" bo'ladi."],
+    ] },
     { t: "Ilova 2.8", e: "🔔", items: [
       ["📉", "Narxi tushsa — xabar beramiz", "Mahsulot sahifasida \"Narxi tushsa xabar berish\" tugmasini bosing. Narx tushgan zahoti telefoningizga bildirishnoma (ilova yopiq bo'lsa ham) va Telegram xabari keladi, eski va yangi narx foizi bilan."],
       ["📦", "Omborga kelsa — xabar beramiz", "Tugagan mahsulotda \"Kelganda xabar berish\" ni bosing — omborga qaytishi bilan birinchilardan bo'lib bilasiz. Endi bu kuzatuv serverda saqlanadi, telefon almashsa ham yo'qolmaydi."],
@@ -2364,7 +2382,8 @@ function initLanyard(root) {
   card.addEventListener("pointerup", up); card.addEventListener("pointercancel", up); card.addEventListener("lostpointercapture", up);
   // Ekrandan chiqsa yoki ilova fonga o'tsa — hisoblash to'xtaydi
   if (window.IntersectionObserver) { const io = new IntersectionObserver((en) => { if (!box.isConnected) return io.disconnect(); visible = en[0].isIntersecting; if (visible) kick(); }); io.observe(box); }
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
+  const onVis = () => { if (!box.isConnected) return document.removeEventListener("visibilitychange", onVis); if (!document.hidden) kick(); };
+  document.addEventListener("visibilitychange", onVis);
   if (window.ResizeObserver) { const ro = new ResizeObserver(() => { if (!box.isConnected) return ro.disconnect(); measure(); draw(); }); ro.observe(box); }
   // Ochilganda tepadan tushib keladi
   if (reduceMotion) { draw(); return; }
@@ -2859,9 +2878,11 @@ async function loadAlerts() {
 const alertOf = (pid, kind) => (S.alerts || []).find((a) => a.product_id === pid && a.kind === kind);
 const hasAlert = (pid, kind) => !!alertOf(pid, kind);
 function toggleAlert(pid, kind) {
+  const authed = !!auth.token;
   return new Promise((res) => requireAuth(async () => {
     try {
       if (!S.alerts) await loadAlerts();
+      if (hasAlert(pid, kind) && !authed) { toast("✓ Bu mahsulot allaqachon kuzatilmoqda"); return res(true); }
       if (hasAlert(pid, kind)) {
         await api("DELETE", `/api/alerts/${pid}/${kind}`);
         S.alerts = S.alerts.filter((a) => !(a.product_id === pid && a.kind === kind));
@@ -2911,7 +2932,6 @@ function openWatch() {
         const d = e.target.closest("[data-del]");
         if (d) { const [pid, kind] = d.dataset.del.split(":"); await toggleAlert(+pid, kind); return draw(); }
         if (e.target.closest("[data-gocat]")) return switchTab("catalog");
-        const r = e.target.closest("[data-pid]"); if (r) openProduct(+r.dataset.pid);
       });
       if (S.alerts) draw();
       loadAlerts().then(draw).catch((ex) => { $("#wl", el).innerHTML = `<p class="muted">${esc(ex.message)}</p>`; });
@@ -2936,7 +2956,6 @@ function openRate() {
       el.addEventListener("click", (e) => {
         const b = e.target.closest("[data-rate]");
         if (b) { const p = byId(+b.dataset.rate); return writeReview(p, null, S.mine && S.mine.reviews.find((x) => x.product_id === p.id), load); }
-        const r = e.target.closest("[data-pid]"); if (r) openProduct(+r.dataset.pid);
       });
       load();
     },
