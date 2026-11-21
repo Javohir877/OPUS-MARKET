@@ -129,16 +129,20 @@ async function getCatalog(env) {
   c.updated_at = row ? row.updated_at : 0;
   return c;
 }
-async function saveCatalog(env, c, versionNote) {
+async function saveCatalog(env, c, versionNote, expect) {
   const { updated_at, ...data } = c;
-  const prev = await env.DB.prepare("SELECT json FROM catalog WHERE id = 1").first();
+  const prev = await env.DB.prepare("SELECT json, updated_at FROM catalog WHERE id = 1").first();
+  if (expect && prev && prev.updated_at !== expect) fail(409, "Katalog shu orada o'zgardi (yangi buyurtma bo'lgan bo'lishi mumkin) — qayta saqlang");
   if (versionNote !== undefined) {
     if (prev) {
       await env.DB.prepare("INSERT INTO catalog_versions (json, saved_at, note) VALUES (?, ?, ?)").bind(prev.json, Date.now(), versionNote).run();
       await env.DB.prepare("DELETE FROM catalog_versions WHERE id NOT IN (SELECT id FROM catalog_versions ORDER BY id DESC LIMIT 30)").run();
     }
   }
-  await env.DB.prepare("INSERT INTO catalog (id, json, updated_at) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at")
+  if (expect && prev) {
+    const r = await env.DB.prepare("UPDATE catalog SET json = ?, updated_at = ? WHERE id = 1 AND updated_at = ?").bind(JSON.stringify(data), Math.max(Date.now(), prev.updated_at + 1), expect).run();
+    if (!(r.meta && r.meta.changes === 1)) fail(409, "Katalog shu orada o'zgardi (yangi buyurtma bo'lgan bo'lishi mumkin) — qayta saqlang");
+  } else await env.DB.prepare("INSERT INTO catalog (id, json, updated_at) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at")
     .bind(JSON.stringify(data), Date.now()).run();
   if (prev) await fireAlerts(env, prev.json, data);
 }
@@ -195,7 +199,11 @@ async function mutateCatalog(env, fn) {
 async function restock(env, o, sign) {
   await mutateCatalog(env, (cat) => {
     const byId = new Map(cat.PRODUCTS.map((x) => [x.id, x]));
-    for (const l of JSON.parse(o.items_json)) { const prod = byId.get(l.id); if (prod) prod.stock = Math.max(0, (prod.stock || 0) + sign * l.qty); }
+    for (const l of JSON.parse(o.items_json)) {
+      const prod = byId.get(l.id); if (!prod) continue;
+      if (sign < 0 && (prod.stock || 0) < l.qty) fail(409, `"${prod.name}" omborda yetarli emas (${prod.stock || 0} dona) — buyurtmani tiklab bo'lmaydi`);
+      prod.stock = Math.max(0, (prod.stock || 0) + sign * l.qty);
+    }
   });
 }
 
@@ -606,9 +614,9 @@ route("POST", "/api/orders/:id/confirm", async (req, env, p) => {
     fail(400, left > 0 ? `Kod noto'g'ri. Yana ${left} marta urinish mumkin.` : "Kod noto'g'ri. \"Kodni qayta yuborish\" ni bosing.");
   }
   const now = Date.now();
-  await env.DB.prepare("UPDATE orders SET confirmed = 1, confirmed_at = ?, code_hash = NULL, updated_at = ? WHERE id = ?").bind(now, now, o.id).run();
+  const cr = await env.DB.prepare("UPDATE orders SET confirmed = 1, confirmed_at = ?, code_hash = NULL, updated_at = ? WHERE id = ? AND confirmed = 0").bind(now, now, o.id).run();
   const done = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(o.id).first();
-  await notifyConfirmed(env, done);
+  if (cr.meta && cr.meta.changes === 1) await notifyConfirmed(env, done); // ikki marta bosilsa — xabar bir marta
   return json({ order: orderOut(done) });
 });
 
@@ -637,8 +645,8 @@ route("POST", "/api/admin/telegram/test", async (req, env) => {
 async function expireUnconfirmed(env) {
   const old = await env.DB.prepare("SELECT * FROM orders WHERE confirmed = 0 AND status = 'Yangi' AND created_at < ? LIMIT 50").bind(Date.now() - UNCONFIRMED_TTL).all();
   for (const o of old.results) {
-    await restock(env, o, 1);
-    await env.DB.prepare("UPDATE orders SET status = 'Bekor qilindi', updated_at = ? WHERE id = ?").bind(Date.now(), o.id).run();
+    const r = await env.DB.prepare("UPDATE orders SET status = 'Bekor qilindi', updated_at = ? WHERE id = ? AND status = 'Yangi' AND confirmed = 0").bind(Date.now(), o.id).run();
+    if (r.meta && r.meta.changes === 1) await restock(env, o, 1);
   }
   return old.results.length;
 }
@@ -824,9 +832,14 @@ route("PATCH", "/api/admin/orders/:id", async (req, env, p) => {
   if (!o) fail(404, "Buyurtma topilmadi");
   // Bekor qilinganda mahsulotlar omborga qaytadi (va aksincha)
   const wasCancelled = o.status === "Bekor qilindi", nowCancelled = b.status === "Bekor qilindi";
-  if (wasCancelled !== nowCancelled) await restock(env, o, nowCancelled ? 1 : -1);
   const conf = !o.confirmed && b.status !== "Bekor qilindi";
-  await env.DB.prepare(`UPDATE orders SET status = ?1, updated_at = ?2${conf ? ", confirmed = 1, confirmed_at = ?2" : ""} WHERE id = ?3`).bind(b.status, Date.now(), o.id).run();
+  // Faqat holat biz o'qigandek bo'lsa o'zgartiramiz (bir vaqtda ikki o'zgartirish ombor sonini buzmasin)
+  const cr = await env.DB.prepare(`UPDATE orders SET status = ?1, updated_at = ?2${conf ? ", confirmed = 1, confirmed_at = ?2" : ""} WHERE id = ?3 AND status = ?4`).bind(b.status, Date.now(), o.id, o.status).run();
+  if (!(cr.meta && cr.meta.changes === 1)) fail(409, "Buyurtma holati shu orada o'zgargan — ro'yxatni yangilab, qayta urinib ko'ring");
+  if (wasCancelled !== nowCancelled) {
+    try { await restock(env, o, nowCancelled ? 1 : -1); }
+    catch (e) { await env.DB.prepare("UPDATE orders SET status = ?, confirmed = ?, updated_at = ? WHERE id = ?").bind(o.status, o.confirmed, Date.now(), o.id).run(); throw e; }
+  }
   if (b.status !== o.status) {
     const u = o.user_id && await env.DB.prepare("SELECT tg_chat_id FROM users WHERE id = ?").bind(o.user_id).first();
     const icon = { "Tasdiqlandi": "✅", "Yig'ilmoqda": "📦", "Yo'lda": "🚚", "Yetkazildi": "🎉", "Bekor qilindi": "❌" }[b.status] || "ℹ️";
@@ -898,8 +911,8 @@ route("POST", "/api/orders/:id/cancel", async (req, env, p) => {
   const o = await env.DB.prepare("SELECT * FROM orders WHERE id = ? AND user_id = ?").bind(p.id, u.id).first();
   if (!o) fail(404, "Buyurtma topilmadi");
   if (o.status !== "Yangi") fail(409, "Buyurtma allaqachon tasdiqlangan — bekor qilish uchun operatorga qo'ng'iroq qiling");
-  await restock(env, o, 1);
-  await env.DB.prepare("UPDATE orders SET status = 'Bekor qilindi', updated_at = ? WHERE id = ?").bind(Date.now(), o.id).run();
+  const r = await env.DB.prepare("UPDATE orders SET status = 'Bekor qilindi', updated_at = ? WHERE id = ? AND status = 'Yangi'").bind(Date.now(), o.id).run();
+  if (r.meta && r.meta.changes === 1) await restock(env, o, 1);
   return json({ order: orderOut(await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(o.id).first()) });
 });
 
@@ -979,7 +992,7 @@ route("PUT", "/api/admin/catalog", async (req, env) => {
     if (p.stock != null && !(Number.isInteger(+p.stock) && +p.stock >= 0 && +p.stock <= 99999)) fail(400, `Mahsulot #${p.id}: ombor soni 0–99 999 oralig'ida bo'lishi kerak`);
   }
   const { adminPass, ...settings } = b.SETTINGS; // eski panel versiyasidan qolgan maydon saqlanmaydi
-  await saveCatalog(env, { SETTINGS: settings, CATEGORIES: b.CATEGORIES, PRODUCTS: b.PRODUCTS, NEWS: b.NEWS }, (str(b.note, 120) || "Admin panel") + " · " + who.name);
+  await saveCatalog(env, { SETTINGS: settings, CATEGORIES: b.CATEGORIES, PRODUCTS: b.PRODUCTS, NEWS: b.NEWS }, (str(b.note, 120) || "Admin panel") + " · " + who.name, Number.isInteger(b.base) ? b.base : undefined);
   return json({ ok: true, updated_at: Date.now() });
 });
 route("GET", "/api/admin/catalog/versions", async (req, env) => {
@@ -1036,7 +1049,7 @@ QOIDALAR:
 - Har javobning ENG OXIRIDA alohida qatorda 2–3 ta qisqa keyingi savol taklif qil, aynan shu formatda: [[q:birinchi savol|ikkinchi savol|uchinchi savol]] — foydalanuvchi tilida, har biri 2–6 so'z.
 
 DO'KON MA'LUMOTLARI:
-- Yetkazish: Toshkent bo'ylab 24 soat ichida, viloyatlarga 2–4 ish kuni. ${fmtN(s.freeShipFrom || 1000000)} so'mdan yuqori xaridda bepul, aks holda ${fmtN(s.shipPrice || 50000)} so'm. Do'kondan olib ketish ham mumkin.
+- Yetkazish: Toshkent bo'ylab 24 soat ichida, viloyatlarga 2–4 ish kuni. ${fmtN(s.freeShipFrom ?? 1000000)} so'mdan yuqori xaridda bepul, aks holda ${fmtN(s.shipPrice ?? 50000)} so'm. Do'kondan olib ketish ham mumkin.
 - To'lov: Click, Payme, Uzcard, Humo, Visa, Mastercard va Uzum Nasiya (3, 6, 12, 24 oyga 0% ustama).
 - Kafolat: rasmiy, 12 oydan 36 oygacha. Qaytarish: 14 kun ichida, qadoq buzilmagan bo'lsa bepul.
 - Buyurtma Telegram bot (@opussmarketbot) yuborgan 6 xonali kod bilan tasdiqlanadi.
