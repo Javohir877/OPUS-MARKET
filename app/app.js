@@ -269,12 +269,14 @@ function refreshCards() {
 
 // ---------- Savat va saralangan ----------
 function saveCart() { store.set("cart", S.cart); badges(); }
+const MAXQ = 99;
 function addToCart(id, qty = 1, silent) {
   const p = byId(id);
   if (!p || (p.stock || 0) <= 0) { toast("⛔ Bu mahsulot tugagan"); return false; }
   const it = S.cart.find((x) => x.id === p.id);
-  const next = Math.min((it ? it.qty : 0) + qty, p.stock);
-  if (it && it.qty >= p.stock) { toast(`⚠️ Omborda faqat ${p.stock} dona bor`); return false; }
+  const cap = Math.min(p.stock, MAXQ); // server bitta buyurtmada bir mahsulotdan 99 tadan ko'p qabul qilmaydi
+  const next = Math.min((it ? it.qty : 0) + qty, cap);
+  if (it && it.qty >= cap) { toast(cap < p.stock ? `⚠️ Bitta buyurtmada ko'pi bilan ${MAXQ} dona` : `⚠️ Omborda faqat ${p.stock} dona bor`); return false; }
   if (it) it.qty = next; else S.cart.push({ id: p.id, qty: next });
   saveCart(); haptic(15); window.sfx && sfx("add");
   if (!silent) toast("🛒 Savatga qo'shildi", { t: "Savatga", fn: () => switchTab("cart") });
@@ -283,7 +285,7 @@ function addToCart(id, qty = 1, silent) {
 function setQty(id, qty) {
   const p = byId(id), it = S.cart.find((x) => x.id === +id);
   if (!it) return;
-  const q = Math.min(qty, p ? p.stock || 0 : 0);
+  const q = Math.min(qty, p ? p.stock || 0 : 0, MAXQ);
   if (q <= 0) S.cart = S.cart.filter((x) => x.id !== +id);
   else it.qty = q;
   saveCart(); haptic(6); if (window.sfx) sfx(qty <= 0 ? "remove" : "tick");
@@ -334,7 +336,7 @@ function homeScreen() {
   const banners = [
     top && { cls: "red", small: "Aksiya", b: S.settings.dealTitle || "Katta chegirmalar", span: "Eng zo'r takliflar bir joyda", img: top.img, act: "deals" },
     { cls: "violet", small: "Uzum Nasiya", b: "0% bo'lib to'lash", span: "3, 6, 12 yoki 24 oyga — ortiqcha to'lovsiz", img: (P[1] || top || {}).img, act: "nasiya" },
-    { cls: "green", small: "Yetkazib berish", b: "Bepul yetkazamiz", span: `${num(S.settings.freeShipFrom || 1000000)} so'mdan yuqori xaridlarda`, img: (P[2] || top || {}).img, act: "ship" },
+    { cls: "green", small: "Yetkazib berish", b: "Bepul yetkazamiz", span: `${num(S.settings.freeShipFrom ?? 1000000)} so'mdan yuqori xaridlarda`, img: (P[2] || top || {}).img, act: "ship" },
     pinned && { cls: "dark", small: pinned.tag || "Yangilik", b: pinned.title, span: pinned.excerpt || "", img: newsCover(pinned), act: "news:" + pinned.id },
   ].filter(Boolean);
   const name = auth.user ? auth.user.name.split(" ")[0] : "";
@@ -388,7 +390,7 @@ function homeScreen() {
         const a = b.dataset.bn;
         if (a === "deals") openList({ title: "⚡ Kun takliflari", deals: true });
         else if (a === "nasiya") infoSheet("💜 Uzum Nasiya — 0%", "Istalgan mahsulotni 3, 6, 12 yoki 24 oyga ortiqcha foizsiz bo'lib to'lab oling. Rasmiylashtirishda \"Uzum Nasiya\" to'lov usulini tanlang.");
-        else if (a === "ship") infoSheet("🚚 Yetkazib berish", `Toshkent bo'ylab 24 soat ichida, viloyatlarga 2–4 ish kunida. ${num(S.settings.freeShipFrom || 1000000)} so'mdan yuqori xaridlarda — bepul, aks holda ${fmt(S.settings.shipPrice || 50000)}. Do'kondan o'zingiz olib ketishingiz ham mumkin.`);
+        else if (a === "ship") infoSheet("🚚 Yetkazib berish", `Toshkent bo'ylab 24 soat ichida, viloyatlarga 2–4 ish kunida. ${num(S.settings.freeShipFrom ?? 1000000)} so'mdan yuqori xaridlarda — bepul, aks holda ${fmt(S.settings.shipPrice ?? 50000)}. Do'kondan o'zingiz olib ketishingiz ham mumkin.`);
         else if (a.startsWith("news:")) openNews(+a.slice(5));
       });
       // Kun takliflari taymeri (yarim tungacha)
@@ -602,7 +604,7 @@ function openProduct(id) {
   const d = disc(p), stock = p.stock || 0;
   const similar = sortList(S.products.filter((x) => x.cat === p.cat && x.id !== p.id && (x.stock || 0) > 0), "popular").slice(0, 10);
   const together = complementary(p, 10);
-  const freeFrom = S.settings.freeShipFrom || 1000000;
+  const freeFrom = S.settings.freeShipFrom ?? 1000000;
   push({
     noTab: true, anim: S.hero ? "hero-in" : "enter", pid: p.id,
     html: `<header class="hdr clear phdr" id="ph"><button class="ib" data-back aria-label="Orqaga">${svg(IC.back)}</button><div class="ph-t"><b>${esc(p.name)}</b><small>${fmt(p.price)}</small></div><button class="ib" data-share aria-label="Ulashish">${svg(IC.share)}</button><button class="ib${S.fav.includes(p.id) ? " on" : ""}" data-pfav aria-label="Saralangan">${svg(IC.heart)}</button></header>
@@ -620,7 +622,7 @@ function openProduct(id) {
           <div class="box">
             <div class="row"><span class="ri">📦</span><div><b class="${stock <= 0 ? "stock-out" : stock <= 5 ? "stock-low" : "stock-ok"}">${stock <= 0 ? "Tugagan" : stock <= 5 ? `Tez tugaydi — ${stock} dona qoldi` : `Omborda ${stock} dona bor`}</b><small>OPUS MARKET omboridan</small></div></div>
             ${stock > 0 && stock <= 5 ? `<i class="stock-bar" style="--w:${Math.max(8, stock * 18)}%"></i>` : ""}
-            <div class="row"><span class="ri">🚚</span><div><b>Yetkazish: ${deliveryDay()}</b><small>${p.price >= freeFrom ? "Bepul yetkazib beramiz" : `${fmt(S.settings.shipPrice || 50000)}, ${num(freeFrom)} so'mdan bepul`}</small></div></div>
+            <div class="row"><span class="ri">🚚</span><div><b>Yetkazish: ${deliveryDay()}</b><small>${p.price >= freeFrom ? "Bepul yetkazib beramiz" : `${fmt(S.settings.shipPrice ?? 50000)}, ${num(freeFrom)} so'mdan bepul`}</small></div></div>
             <div class="row"><span class="ri">🏬</span><div><b>Do'kondan olib ketish</b><small>Bepul · bugunoq, 09:00–21:00</small></div></div>
             <div class="row"><span class="ri">↩️</span><div><b>14 kun ichida qaytarish</b><small>Qadog'i buzilmagan bo'lsa</small></div></div>
           </div>
@@ -744,7 +746,7 @@ function totals() {
   const oldSum = items.reduce((a, x) => a + (x.p.old && x.p.old > x.p.price ? x.p.old : x.p.price) * x.qty, 0);
   const pct = S.promo && S.settings.promos && S.settings.promos[S.promo] ? +S.settings.promos[S.promo] : 0;
   const discount = Math.round(subtotal * pct / 100);
-  const free = S.settings.freeShipFrom || 1000000;
+  const free = S.settings.freeShipFrom ?? 1000000;
   return { items, subtotal, oldSum, pct, discount, free, count: items.reduce((a, x) => a + x.qty, 0) };
 }
 function cartScreen() {
@@ -810,7 +812,7 @@ function openCheckout() {
     mount(el) {
       const draw = () => {
         const T = totals();
-        const ship = o.delivery === "pickup" || T.subtotal >= T.free ? 0 : (S.settings.shipPrice || 50000);
+        const ship = o.delivery === "pickup" || T.subtotal >= T.free ? 0 : (S.settings.shipPrice ?? 50000);
         const total = T.subtotal - T.discount + ship;
         $("#co", el).innerHTML = `
           <div class="box"><h3>📍 Qabul qilish usuli</h3>
@@ -1712,7 +1714,7 @@ function storiesData() {
     if (L.length) out.push({ id: "c-" + c.id, name: c.name, cover: c.img, slides: L.map((p) => slideOf(p, `⭐ ${c.name}: eng ommabop`)) });
   });
   out.push({ id: "ship", name: "Yetkazish", emoji: "🚚", cover: (P[5] || P[0] || {}).img, slides: [
-    { bg: "green", art: "🚚", kicker: "Yetkazib berish", title: "Toshkent bo'ylab 24 soatda", text: `${num(S.settings.freeShipFrom || 1000000)} so'mdan yuqori xaridlarda — bepul. Viloyatlarga 2–4 kunda.` }] });
+    { bg: "green", art: "🚚", kicker: "Yetkazib berish", title: "Toshkent bo'ylab 24 soatda", text: `${num(S.settings.freeShipFrom ?? 1000000)} so'mdan yuqori xaridlarda — bepul. Viloyatlarga 2–4 kunda.` }] });
   return out;
 }
 let storyState = null;
@@ -1934,8 +1936,14 @@ document.addEventListener("click", (e) => {
 
 const cmpVer = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
 const CHANGELOG = {
-  ver: "2.8.1", build: "2026-11-20a", date: "20-noyabr, 2026",
+  ver: "2.8.2", build: "2026-11-21a", date: "21-noyabr, 2026",
   groups: [
+    { t: "2.8.2 — tuzatishlar", e: "🧰", items: [
+      ["🧠", "OPUS AI rasm bilan barqaror", "Rasm yuborganingizdan keyin \"Qayta so'rash\" yoki \"↻ Qayta\" bosilsa, rasm yo'qolib qolardi — endi rasm ham qayta yuboriladi. Javobni to'xtatsangiz, tavsiya qilingan mahsulot kartochkalari saqlanib qoladi."],
+      ["🖼", "Rasm ko'rish oynasi", "Mahsulot rasmini kattalashtirganda yopish tugmasi va \"1 / 3\" hisoblagichi oq fonda ko'rinmasdi. Endi fon qora, tugmalar doim ko'rinadi."],
+      ["🛒", "Savat va yetkazish narxi", "Bitta mahsulotdan 99 donadan ortiq qo'shib bo'lmaydi (aks holda buyurtma tushunarsiz xato bilan rad etilardi). Yetkazish narxi va bepul yetkazish chegarasi endi do'kon sozlamasiga to'liq mos ko'rsatiladi."],
+      ["📡", "Kichik ekranlar", "\"Internet yo'q\" yozuvi tor ekranlarda kesilib qolmaydi; katalogdagi bo'lim kartochkalarida mahsulot soni rasm ustida ham aniq o'qiladi."],
+    ] },
     { t: "2.8.1 — tuzatishlar", e: "🛠", items: [
       ["⭐", "Baholash tugmasi tuzatildi", "\"Xaridlarimni baholash\" bo'limida \"Baholash\" bosilganda sharh oynasi o'rniga mahsulot sahifasi ochilib ketardi. Endi sharh oynasi ochiladi. \"Kuzatuvlarim\"dagi ✕ ham endi faqat kuzatuvni o'chiradi."],
       ["👤", "Sharh muallifining ismi", "Sharhlarda hamma uchun \"Mijoz\" deb yozilardi — endi sharh yozgan xaridorning ismi ko'rinadi."],
@@ -2559,7 +2567,7 @@ async function shareText(title, text, url) {
 
 // Yordam markazi: saytdagi savol-javoblar bilan bir xil ma'lumot
 const HELP = [
-  ["🚚", "Yetkazib berish qancha vaqt oladi?", () => `Toshkent bo'ylab 24 soat ichida, viloyatlarga 2–4 ish kunida yetkazamiz. ${num(S.settings.freeShipFrom || 1000000)} so'mdan yuqori xaridlarda yetkazish bepul, aks holda ${fmt(S.settings.shipPrice || 50000)}. Do'kondan o'zingiz olib ketishingiz ham mumkin.`],
+  ["🚚", "Yetkazib berish qancha vaqt oladi?", () => `Toshkent bo'ylab 24 soat ichida, viloyatlarga 2–4 ish kunida yetkazamiz. ${num(S.settings.freeShipFrom ?? 1000000)} so'mdan yuqori xaridlarda yetkazish bepul, aks holda ${fmt(S.settings.shipPrice ?? 50000)}. Do'kondan o'zingiz olib ketishingiz ham mumkin.`],
   ["💜", "Bo'lib to'lash qanday ishlaydi?", () => "Uzum Nasiya orqali 3, 6, 12 yoki 24 oyga 0% ustama bilan bo'lib to'lashingiz mumkin. Faqat pasport va karta kerak. Rasmiylashtirishda \"Uzum Nasiya\" to'lov usulini tanlang."],
   ["🛡", "Mahsulotlarga kafolat bormi?", () => "Barcha mahsulotlar rasmiy — 12 oydan 36 oygacha ishlab chiqaruvchi kafolati beriladi."],
   ["↩️", "Mahsulotni qaytarsam bo'ladimi?", () => "Ha, 14 kun ichida qadoqlanishi buzilmagan mahsulotni bepul qaytarishingiz mumkin. Buning uchun operatorimizga qo'ng'iroq qiling."],
@@ -2654,7 +2662,7 @@ function aiHtml(t, live, last) {
   const fu = !live && last && follow.length ? `<div class="ai-follow">${follow.map((q) => `<button data-aiq="${esc(q)}">${esc(q)}</button>`).join("")}</div>` : "";
   return h + (cards ? `<div class="ai-cards">${cards}</div>` : "") + acts + tools + fu;
 }
-const aiSave = () => store.set("app_ai", S.ai.slice(-30));
+const aiSave = () => store.set("app_ai", S.ai.slice(-30).map(({ img, ...m }) => m));
 // AI uchun kontekst: savat, saralangan, ko'rilganlar, hozir ochiq mahsulot
 function aiCtx() {
   let viewing = null;
@@ -2701,6 +2709,7 @@ function aiScreen() {
       };
       const fit = () => { inp.style.height = "auto"; inp.style.height = Math.min(120, inp.scrollHeight) + "px"; };
       const setPic = (p) => { pic = p; picBox.hidden = !p; if (p) $("img", picBox).src = p.url; };
+      let failedImg = null;
       async function ask(q, opts = {}) {
         q = (q || "").trim();
         if (!q && pic) q = "Bu rasmda nima bor? Do'konimizda shunga o'xshash yoki mos mahsulot bormi?";
@@ -2709,8 +2718,8 @@ function aiScreen() {
         if (busy) { inp.value = q; fit(); toast("⏳ Avvalgi javob tugashini kuting — savolingiz yozib qo'yildi"); return; }
         if (!navigator.onLine) { toast("📡 Internet yo'q"); return; }
         busy = true; form.classList.add("busy"); haptic(8); window.sfx && sfx("tick");
-        const image = pic; setPic(null);
-        if (!opts.regen) S.ai.push({ role: "user", text: q.slice(0, 1000), pic: !!image });
+        const image = opts.image || pic; setPic(null);
+        if (!opts.regen) S.ai.push({ role: "user", text: q.slice(0, 1000), pic: !!image, img: image || undefined });
         aiSave(); inp.value = ""; fit(); draw();
         list.insertAdjacentHTML("beforeend", `<div class="ai-m ai live"><img class="ai-av" src="../icons/opus-ai.svg" alt="" /><div class="ai-b"><span class="ai-dots"><i></i><i></i><i></i></span></div></div>`);
         const b = $(".ai-m.live .ai-b", list); bottom();
@@ -2732,12 +2741,15 @@ function aiScreen() {
           draw();
         } catch (ex) {
           const stopped = ex.name === "AbortError";
-          if (stopped && text.trim()) { S.ai.push({ role: "ai", text: aiParse(text).s.trim() + "\n\n(to'xtatildi)" }); aiSave(); draw(); }
+          // To'xtatilsa: mahsulot teglari saqlanib qoladi (kartochkalar yo'qolmaydi), chala savol-taklif tegi olib tashlanadi
+          if (stopped && text.trim()) { S.ai.push({ role: "ai", text: text.replace(/\[\[q:[^\]]*\]?\]?\s*$/, "").replace(/\[\[[^\]]*$/, "").trim() + "\n\n(to'xtatildi)" }); aiSave(); draw(); }
           else {
             b.parentElement.classList.remove("live"); b.parentElement.classList.add("err");
             b.innerHTML = stopped ? "⏹ To'xtatildi" : `⚠️ ${esc(ex.message === "Failed to fetch" ? "Internet aloqasi yo'q" : ex.message)}<button class="ai-retry" data-airetry>↻ Qayta so'rash</button>`;
-            if (!opts.regen && !stopped) { S.ai.pop(); aiSave(); }
-            b.dataset.q = q;
+            // Javobsiz qolgan savol tarixda qolmasin (keyingi so'rovda ketma-ket ikki savol bo'lib ketmasin)
+            const last = S.ai[S.ai.length - 1];
+            if (last && last.role === "user") { S.ai.pop(); aiSave(); }
+            b.dataset.q = q; failedImg = image || null;
           }
         }
         busy = false; ctrl = null; form.classList.remove("busy"); bottom();
@@ -2753,8 +2765,8 @@ function aiScreen() {
       el.addEventListener("click", (e) => {
         const s = e.target.closest("[data-aiq]"); if (s) { ask(s.dataset.aiq); return; }
         if (e.target.closest("[data-aipicx]")) { setPic(null); return; }
-        const r = e.target.closest("[data-airetry]"); if (r) { const q = r.closest(".ai-b").dataset.q; const m = r.closest(".ai-m"); if (m.previousElementSibling && m.previousElementSibling.classList.contains("user")) m.previousElementSibling.remove(); m.remove(); ask(q); return; }
-        if (e.target.closest("[data-airegen]")) { if (busy) return; if (S.ai.length && S.ai[S.ai.length - 1].role === "ai") { S.ai.pop(); aiSave(); } const lastQ = [...S.ai].reverse().find((m) => m.role === "user"); if (lastQ) ask(lastQ.text, { regen: true }); return; }
+        const r = e.target.closest("[data-airetry]"); if (r) { const q = r.closest(".ai-b").dataset.q; const m = r.closest(".ai-m"); if (m.previousElementSibling && m.previousElementSibling.classList.contains("user")) m.previousElementSibling.remove(); m.remove(); ask(q, { image: failedImg }); failedImg = null; return; }
+        if (e.target.closest("[data-airegen]")) { if (busy) return; if (S.ai.length && S.ai[S.ai.length - 1].role === "ai") { S.ai.pop(); aiSave(); } const lastQ = [...S.ai].reverse().find((m) => m.role === "user"); if (lastQ) ask(lastQ.text, { regen: true, image: lastQ.img }); return; }
         if (e.target.closest("[data-aicopy]")) { const m = [...S.ai].reverse().find((x) => x.role === "ai"); if (!m) return; const t = aiParse(m.text).s.replace(/\u0000/g, "").replace(/\*\*/g, "").trim(); try { navigator.clipboard.writeText(t); toast("📋 Javob nusxalandi"); } catch (er) { toast("⚠️ Nusxalab bo'lmadi"); } return; }
         const all = e.target.closest("[data-aiall]"); if (all) { let ok = 0; all.dataset.aiall.split(",").forEach((id) => { if (!inCart(+id) && addToCart(+id, 1, true)) ok++; }); refreshCards(); badges(); toast(ok ? `🛒 ${ok} ta mahsulot savatga qo'shildi` : "✓ Hammasi allaqachon savatda", { t: "Savat", fn: () => switchTab("cart") }); return; }
         const cmp = e.target.closest("[data-aicmp]"); if (cmp) { S.compare = cmp.dataset.aicmp.split(",").map(Number).slice(0, 4); store.set("compare", S.compare); openCompare(); return; }
