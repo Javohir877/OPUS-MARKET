@@ -464,7 +464,7 @@ $("#bulkApply").addEventListener("click", () => {
 
 // ---------- CSV (Excel) eksport / import ----------
 const CSV_COLS = ["id", "name", "brand", "cat", "price", "old", "stock", "badge", "original"];
-const csvCell = (v) => { const s = v == null ? "" : String(v); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+const csvCell = (v) => { let s = v == null ? "" : String(v); if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s)) s = "'" + s; return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 function download(name, text, type = "text/csv;charset=utf-8") {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob(["﻿" + text], { type }));
@@ -780,7 +780,10 @@ nForm.addEventListener("submit", (e) => {
     const i = S.data.NEWS.findIndex((x) => x.id === S.editingNews);
     S.data.NEWS[i] = { id: S.editingNews, ...v };
   } else {
-    S.data.NEWS.unshift({ id: Math.max(0, ...S.data.NEWS.map((x) => x.id)) + 1, ...v });
+    const st = S.data.SETTINGS || (S.data.SETTINGS = {});
+    const nid = Math.max(0, +st.lastNewsId || 0, ...S.data.NEWS.map((x) => x.id)) + 1;
+    st.lastNewsId = nid;
+    S.data.NEWS.unshift({ id: nid, ...v });
   }
   closeEdit(); update();
   checkFx("Yangilik saqlandi");
@@ -1264,13 +1267,20 @@ async function publish() {
     }
     // 2) Ombor qoldig'i: panel ochilgandan beri mijozlar xarid qilgan bo'lishi mumkin.
     //    Admin o'zgartirmagan mahsulotlarda serverdagi joriy qoldiqni saqlaymiz.
-    const cur = await api("GET", "/api/catalog"), base = JSON.parse(S.baseJSON);
-    const curStock = new Map((cur.PRODUCTS || []).map((p) => [p.id, p.stock]));
+    const base = JSON.parse(S.baseJSON);
     const baseStock = new Map(base.PRODUCTS.map((p) => [p.id, p.stock]));
-    S.data.PRODUCTS.forEach((p) => { if (curStock.has(p.id) && baseStock.get(p.id) === p.stock) p.stock = curStock.get(p.id); });
-    // 3) Katalogni yozamiz (server oldingi holatni "Tarix" ga saqlaydi)
+    const mine = new Map(S.data.PRODUCTS.map((p) => [p.id, p.stock])); // admin kiritgan qiymatlar
     const { n } = diff();
-    await api("PUT", "/api/admin/catalog", { ...S.data, note: `Admin panel: ${n} ta o'zgarish${imgs ? `, ${imgs} ta rasm` : ""}` });
+    // 3) Katalogni yozamiz (server oldingi holatni "Tarix" ga saqlaydi). Shu orada buyurtma tushsa — server 409 qaytaradi, qayta urinamiz.
+    for (let attempt = 0; ; attempt++) {
+      const cur = await api("GET", "/api/catalog?t=" + Date.now());
+      const curStock = new Map((cur.PRODUCTS || []).map((p) => [p.id, p.stock]));
+      S.data.PRODUCTS.forEach((p) => { const m = mine.get(p.id); p.stock = curStock.has(p.id) && baseStock.get(p.id) === m ? curStock.get(p.id) : m; });
+      try {
+        await api("PUT", "/api/admin/catalog", { ...S.data, base: cur.updated_at, note: `Admin panel: ${n} ta o'zgarish${imgs ? `, ${imgs} ta rasm` : ""}` });
+        break;
+      } catch (ex) { if (ex.status !== 409 || attempt >= 3) throw ex; await new Promise((r) => setTimeout(r, 400)); }
+    }
     S.baseJSON = JSON.stringify(S.data);
     ls.del("opus_admin_draft");
     renderAll();
