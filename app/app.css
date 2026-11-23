@@ -1271,3 +1271,12 @@ html.lite .gal .gs > i { filter: none; opacity: .35; }
 .vw-top #vwN { background: rgba(0,0,0,.5); padding: 4px 11px; border-radius: 99px; backdrop-filter: blur(6px); }
 /* Internet yo'q yozuvi tor ekranda kesilib qolmasin */
 .offbar { max-width: calc(100vw - 24px); white-space: normal; text-align: center; line-height: 1.3; }
+
+/* ===== 3D rasm-ikonkalar (emoji o'rniga) ===== */
+img.fx { display: inline-block; width: 1.22em; height: 1.22em; vertical-align: -0.24em; margin: 0 .04em; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+.ri > img.fx { width: 1.35em; height: 1.35em; vertical-align: middle; margin: 0; }
+
+/* "+" (savatga) tugmasi — ixchamroq */
+.add { width: 30px; height: 30px; border-radius: 9px; box-shadow: 0 3px 8px rgba(var(--prgb), .3); }
+.add svg { width: 16px; height: 16px; }
+.add.in { box-shadow: 0 3px 8px rgba(22,163,74,.3); }
