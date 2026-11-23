@@ -114,7 +114,12 @@ window.imgFail = (el) => {
 };
 
 // ---------- Loader ----------
-setTimeout(() => $("#loader").classList.add("hide"), 1400);
+{
+  // Birinchi kirishda — to'liq "yoqilish", shu seansda keyingi sahifa yangilanishlarida — tezkor
+  let seen = false; try { seen = sessionStorage.getItem("opus_boot") === "1"; sessionStorage.setItem("opus_boot", "1"); } catch (e) {}
+  if (seen) $("#loader").classList.add("quick");
+  setTimeout(() => $("#loader").classList.add("hide"), seen ? 250 : 1350);
+}
 
 // ---------- Theme ----------
 const applyTheme = (t) => { document.documentElement.dataset.theme = t; store.set("theme", t); };
@@ -247,7 +252,9 @@ const io = new IntersectionObserver((entries) => {
     io.unobserve(en.target);
   });
 }, { threshold: 0.12 });
-$$(".reveal").forEach((el, i) => { el.style.transitionDelay = (i % 4) * 0.08 + "s"; io.observe(el); });
+$$(".reveal").forEach((el, i) => { el.style.setProperty("--rd", (i % 4) * 0.07 + "s"); io.observe(el); });
+// Animatsiya tugagach — kesish (clip) butunlay olib tashlanadi, soyalar va hover effektlari kesilmaydi
+document.addEventListener("animationend", (e) => { if (e.animationName === "scanIn") e.target.classList.add("done"); });
 
 function countUp(el) {
   // Haqiqiy katalogdan: mahsulotlar va brendlar soni
