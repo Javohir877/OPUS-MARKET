@@ -1936,8 +1936,12 @@ document.addEventListener("click", (e) => {
 
 const cmpVer = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
 const CHANGELOG = {
-  ver: "2.8.2", build: "2026-11-21a", date: "21-noyabr, 2026",
+  ver: "2.8.3", build: "2026-11-23a", date: "23-noyabr, 2026",
   groups: [
+    { t: "2.8.3 — yangi ko'rinish", e: "✨", items: [
+      ["🎨", "3D ikonkalar", "Ilova va saytdagi oddiy emojilar o'rniga endi hajmli 3D rasm-ikonkalar ishlatiladi — har qanday telefonda bir xil va chiroyli ko'rinadi."],
+      ["🛒", "Ixcham tugmalar", "Mahsulot kartochkalaridagi \"+\" (savatga) tugmasi kichraytirildi — kartochka tozaroq ko'rinadi."],
+    ] },
     { t: "2.8.2 — tuzatishlar", e: "🧰", items: [
       ["🧠", "OPUS AI rasm bilan barqaror", "Rasm yuborganingizdan keyin \"Qayta so'rash\" yoki \"↻ Qayta\" bosilsa, rasm yo'qolib qolardi — endi rasm ham qayta yuboriladi. Javobni to'xtatsangiz, tavsiya qilingan mahsulot kartochkalari saqlanib qoladi."],
       ["🖼", "Rasm ko'rish oynasi", "Mahsulot rasmini kattalashtirganda yopish tugmasi va \"1 / 3\" hisoblagichi oq fonda ko'rinmasdi. Endi fon qora, tugmalar doim ko'rinadi."],
@@ -2861,6 +2865,7 @@ const MI = {
   "🏷": "M20.6 13.4l-7.2 7.2a2 2 0 01-2.8 0L2 12V2h10l8.6 8.6a2 2 0 010 2.8z M7 7h.01",
   "⭐": "M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z",
 };
+window.__miHas = (e) => !!(MI[e] || MI[String(e).replace(/️/g, "")]);
 const miSvg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
 function lineIcons(root) {
   root.querySelectorAll(".ri:not(.ic)").forEach((r) => {
