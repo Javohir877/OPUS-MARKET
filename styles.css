@@ -1544,3 +1544,72 @@ select.os-sel.os-open, select.os-sel:focus-visible, .admin select.os-sel.os-open
 .aw-row small { font-size: 12px; color: var(--muted); }
 .aw-x { width: 30px; height: 30px; flex: 0 0 30px; border-radius: 9px; border: 0; cursor: pointer; background: rgba(127,127,127,.12); color: var(--muted); }
 .aw-empty { font-size: 13px; margin: 0; }
+
+/* ===== 3D rasm-ikonkalar (emoji o'rniga) ===== */
+img.fx { display: inline-block; width: 1.22em; height: 1.22em; vertical-align: -0.24em; margin: 0 .04em; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+
+
+/* =====================================================================
+   Harakat tili: "kompyuter yoqilishi" — oddiy pastdan-yuqoriga paydo bo'lish o'rniga
+   ===================================================================== */
+/* 1) Yuklanish ekrani: BIOS tekshiruvi qatorlari terilib chiqadi, keyin logotip "glitch" bilan yonadi, ekran CRT kabi o'chadi */
+#loader { background: #060203; gap: 26px; }
+#loader .boot { font: 500 13px/1.75 ui-monospace, "Cascadia Code", Consolas, monospace; color: #b9a5a8; width: min(340px, 86vw); }
+#loader .boot p { white-space: pre; overflow: hidden; width: 0; animation: bootType .28s steps(34, end) forwards; animation-delay: calc(var(--i) * .13s); }
+#loader .boot p:first-child { color: #fff; }
+#loader .boot b { color: #4ade80; font-weight: 700; }
+#loader .loader-logo { animation: logoOn .6s linear .72s both; }
+#loader.quick .boot { display: none; }
+#loader.quick .loader-logo { animation: none; }
+#loader.hide { animation: crtOff .42s cubic-bezier(.7,0,.3,1) forwards; transition: none; }
+@keyframes bootType { to { width: 100%; } }
+@keyframes logoOn {
+  0% { opacity: 0; }
+  12% { opacity: 1; text-shadow: -4px 0 #ff1f3d, 4px 0 #22d3ee; transform: skewX(-12deg); }
+  24% { opacity: .2; }
+  36% { opacity: 1; text-shadow: 3px 0 #ff1f3d, -3px 0 #22d3ee; transform: skewX(8deg); }
+  52% { text-shadow: -1px 0 #ff1f3d, 1px 0 #22d3ee; transform: none; }
+  100% { opacity: 1; text-shadow: 0 0 24px rgba(225,15,42,.45); transform: none; }
+}
+@keyframes crtOff {
+  0% { opacity: 1; transform: none; filter: none; }
+  55% { opacity: 1; transform: scale(1, .006); filter: brightness(3); }
+  100% { opacity: 0; transform: scale(0, .006); filter: brightness(5); visibility: hidden; }
+}
+
+/* 2) Bo'limlar: yuqoridan pastga "skanerlanib" ochiladi (yorqin chaqnash bilan), suzib chiqish yo'q */
+.reveal { opacity: 1; transform: none; transition: none; }
+/* Kesilgan (clip) element ekranga kirganini IntersectionObserver sezmaydi — shuning uchun kutishda shunchaki shaffof */
+.reveal:not(.visible) { opacity: 0; }
+.reveal.visible.done { animation: none; clip-path: none; filter: none; }
+.reveal.visible { animation: scanIn .85s cubic-bezier(.77,0,.18,1) both; animation-delay: var(--rd, 0s); }
+@keyframes scanIn {
+  0% { opacity: 1; clip-path: inset(0 0 100% 0); filter: brightness(2) saturate(0); }
+  60% { clip-path: inset(0 0 0 0); filter: brightness(1.35) saturate(.5); }
+  78% { filter: brightness(.9) saturate(1); }
+  100% { clip-path: inset(-200px); filter: none; }
+}
+
+/* 3) Mahsulot kartochkalari: eski monitor yoqilgandek — ingichka nur chizig'idan ochiladi */
+.card.pre { opacity: 0; transform: none; }
+.card.in { animation: crtOn .62s cubic-bezier(.2,.9,.25,1) backwards; animation-delay: var(--d, 0s); }
+@keyframes crtOn {
+  0% { opacity: 0; transform: scale(.55, .012); filter: brightness(4) saturate(0); }
+  30% { opacity: 1; transform: scale(1, .012); filter: brightness(3) saturate(0); }
+  62% { transform: scale(1, 1.015); filter: brightness(1.25) saturate(.8); }
+  100% { transform: none; filter: none; }
+}
+
+/* 4) "+" (savatga) tugmasi — ixcham, aylanmaydi */
+.add-btn { width: 36px; height: 36px; border-radius: 11px; box-shadow: 0 4px 10px rgba(var(--prgb), .28); transition: transform .18s, box-shadow .18s, background .25s; }
+.add-btn svg { width: 17px; }
+.add-btn:hover { transform: translateY(-2px); box-shadow: 0 7px 16px rgba(var(--prgb), .38); }
+.add-btn:active { transform: scale(.9); }
+.add-btn.added:hover { transform: translateY(-2px); }
+@media (max-width: 640px) { .add-btn { width: 32px; height: 32px; border-radius: 10px; } .add-btn svg { width: 15px; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal:not(.visible), .reveal.visible { opacity: 1; clip-path: none; animation: none; }
+  .card.in { animation: none; }
+  #loader .boot p { width: 100%; animation: none; }
+}
