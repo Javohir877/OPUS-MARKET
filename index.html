@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>OPUS MARKET</title>
   <meta name="description" content="OPUS MARKET — noutbuklar, kompyuterlar, monitorlar va aksessuarlar onlayn do'koni." />
-  <meta name="theme-color" content="#e10f2a" />
+  <meta name="theme-color" content="#0b0b0c" />
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
@@ -15,8 +15,9 @@
   <meta name="apple-mobile-web-app-title" content="OPUS MARKET" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=48" />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=49" />
+  <link rel="stylesheet" href="premium.css?v=1" />
 </head>
 <body>
   <!-- Loader -->
@@ -38,8 +39,9 @@
   <!-- Top bar -->
   <div class="topbar">
     <div class="container topbar-inner">
-      <span id="topbarText">🚚 1 mln so'mdan yuqori xaridlarga <b>bepul yetkazib berish</b></span>
-      <span class="topbar-right">📞 +998 71 200 00 00 · 🕘 09:00 – 21:00</span>
+      <span class="tb-open"><i></i>Hozir ochiq · 09:00 – 21:00</span>
+      <span id="topbarText">1 mln so'mdan yuqori xaridlarga <b>bepul yetkazib berish</b></span>
+      <span class="topbar-right"><a href="tel:+998712000000">+998 71 200 00 00</a></span>
     </div>
   </div>
 
@@ -100,38 +102,25 @@
 
   <main id="main">
   <!-- Hero -->
-  <section class="hero" id="hero" data-node="Start">
-    <div class="hero-bg">
-      <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
-      <div class="grid-lines"></div>
-      <div class="particles" id="particles"></div>
-    </div>
-    <div class="container hero-inner">
-      <div class="hero-text reveal">
-        <span class="pill">🔥 Yangi kolleksiya 2026</span>
-        <h1>Kelajak texnologiyasi<br /><span class="gradient-text" id="typed"></span><span class="caret">|</span></h1>
-        <p>Noutbuklar, o'yin kompyuterlari, monitorlar va eng sara aksessuarlar — rasmiy kafolat, tezkor yetkazib berish va 0% bo'lib to'lash bilan.</p>
+  <section class="hero ph" id="hero" data-node="Start">
+    <div class="container ph-grid">
+      <div class="hero-text">
+        <span class="ph-kicker"><i></i>Rasmiy kafolat · 0% bo'lib to'lash · Original</span>
+        <h1 class="ph-title">Kuchli<br />texnika.<br /><em>Halol narx.</em></h1>
+        <p class="ph-lead">Noutbuklar, o'yin kompyuterlari, monitorlar va aksessuarlar — Toshkent bo'ylab 24 soatda yetkazamiz.</p>
         <div class="hero-cta">
-          <a href="#products" class="btn btn-primary">Xarid qilish <span>→</span></a>
+          <a href="#products" class="btn btn-primary">Katalogni ochish <span>→</span></a>
           <a href="#deals" class="btn btn-ghost">Aksiyalar</a>
         </div>
         <div class="hero-stats">
-          <div><b data-count="0" data-live="products">0</b><small>Mahsulotlar</small></div>
-          <div><b data-count="0" data-live="brands">0</b><small>Brendlar</small></div>
-          <div><b>09–21</b><small>Har kuni ochiqmiz</small></div>
+          <div><b data-count="0" data-live="products">0</b><small>mahsulot</small></div>
+          <div><b data-count="0" data-live="brands">0</b><small>brend</small></div>
+          <div><b>24 soat</b><small>yetkazish</small></div>
         </div>
       </div>
-      <div class="hero-visual reveal">
-        <div class="device" id="tiltCard">
-          <div class="device-screen">
-            <img id="heroImg" alt="O'yin kompyuteri" />
-            <div class="screen-shine"></div>
-          </div>
-          <div class="device-base"></div>
-        </div>
-        <div class="float-card fc1">⚡ RTX 5090</div>
-        <div class="float-card fc2">🎧 −30%</div>
-        <div class="float-card fc3">🚚 Bepul yetkazish</div>
+      <div class="ph-visual" id="phVisual" aria-label="Tanlangan mahsulotlar">
+        <div class="ph-slides" id="phSlides"></div>
+        <div class="ph-dots" id="phDots"></div>
       </div>
     </div>
   </section>
@@ -712,7 +701,7 @@
   </script>
   <script src="fx-emoji.js?v=1"></script>
   <script src="ui-select.js?v=3"></script>
-  <script src="app.js?v=44"></script>
+  <script src="app.js?v=45"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="showcase.js?v=33"></script>
   <script src="scrollfx.js?v=33"></script>
