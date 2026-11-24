@@ -123,7 +123,7 @@ window.imgFail = (el) => {
 
 // ---------- Theme ----------
 const applyTheme = (t) => { document.documentElement.dataset.theme = t; store.set("theme", t); };
-applyTheme(store.get("theme", matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+applyTheme(store.get("theme", "dark")); // asosiy dizayn — to'q (grafit)
 $("#themeBtn").addEventListener("click", () => { applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"); sfx("toggle"); });
 // Ovoz sozlamalari: yoqish/o'chirish, balandlik, telefonda tebranish
 (() => {
@@ -205,43 +205,42 @@ $$("[data-proxy]").forEach((b) => b.addEventListener("click", (e) => { e.stopPro
 $("#year").textContent = new Date().getFullYear();
 
 // ---------- Hero ----------
-$("#heroImg").src = IMG(HERO_IMG, 900, 560);
+
 $("#dealsImg").style.backgroundImage = "url(img/deals.jpg)";
 
-(() => {
-  const words = ["sizning qo'lingizda", "o'yinlar uchun", "ish uchun", "o'qish uchun"];
-  const el = $("#typed");
-  let w = 0, i = 0, del = false;
-  (function tick() {
-    const word = words[w];
-    el.textContent = word.slice(0, i);
-    if (!del && i < word.length) i++;
-    else if (del && i > 0) i--;
-    else if (!del) { del = true; return setTimeout(tick, 1600); }
-    else { del = false; w = (w + 1) % words.length; }
-    setTimeout(tick, del ? 45 : 90);
-  })();
-})();
-
-(() => {
-  const box = $("#particles");
-  box.innerHTML = Array.from({ length: 22 }, () => {
-    const s = 3 + Math.random() * 5;
-    return `<span style="left:${Math.random() * 100}%;width:${s}px;height:${s}px;--dx:${(Math.random() - 0.5) * 200}px;animation-duration:${8 + Math.random() * 10}s;animation-delay:${-Math.random() * 15}s"></span>`;
-  }).join("");
-})();
-
-(() => {
-  const card = $("#tiltCard");
-  const wrap = card.parentElement;
-  wrap.addEventListener("mousemove", (e) => {
-    const r = wrap.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width - 0.5;
-    const y = (e.clientY - r.top) / r.height - 0.5;
-    card.style.transform = `rotateY(${x * 22}deg) rotateX(${-y * 18}deg)`;
-  });
-  wrap.addEventListener("mouseleave", () => (card.style.transform = ""));
-})();
+// Hero: flagman mahsulotlar almashib turadi (katta foto + narx kartochkasi)
+const heroFx = { i: 0, t: null, ids: [] };
+function renderHero() {
+  const box = $("#phSlides"), dots = $("#phDots");
+  if (!box) return;
+  const pick = (cat) => PRODUCTS.filter((p) => p.cat === cat && (p.stock ?? 0) > 0).sort((x, y) => (y.popular || 0) - (x.popular || 0) || y.price - x.price)[0];
+  const L = ["parts", "laptop", "pc", "monitor", "audio"].map(pick).filter(Boolean).slice(0, 4);
+  const ids = L.map((p) => p.id).join(",");
+  if (ids === heroFx.ids.join(",")) return;
+  heroFx.ids = L.map((p) => p.id); heroFx.i = 0;
+  box.innerHTML = L.map((p, i) => `<button class="ph-slide${i ? "" : " on"}" data-hp="${p.id}" aria-label="${esc(p.name)}">
+      <img src="${pImg(p, 1000)}" alt="" ${i ? 'loading="lazy"' : ""} onerror="imgFail(this)" data-icon="${esc((catOf(p) || {}).icon || "laptop")}" />
+      <span class="ph-tag"><small>${esc((catOf(p) || {}).name || "")}</small><b>${esc(p.name)}</b><em>${fmt(p.price)}${p.old > p.price ? ` <s>${fmt(p.old)}</s>` : ""}</em></span>
+    </button>`).join("");
+  dots.innerHTML = L.map((_, i) => `<button class="${i ? "" : "on"}" data-hd="${i}" aria-label="${i + 1}-mahsulot"></button>`).join("");
+  clearInterval(heroFx.t);
+  if (L.length > 1) heroFx.t = setInterval(() => { if (!document.hidden) heroGo(heroFx.i + 1); }, 5200);
+}
+function heroGo(n) {
+  const S = $$("#phSlides .ph-slide"), D = $$("#phDots button");
+  if (!S.length) return;
+  heroFx.i = (n + S.length) % S.length;
+  S.forEach((x, k) => x.classList.toggle("on", k === heroFx.i));
+  D.forEach((x, k) => x.classList.toggle("on", k === heroFx.i));
+}
+$("#phVisual") && $("#phVisual").addEventListener("click", (e) => {
+  const d = e.target.closest("[data-hd]");
+  if (d) { heroGo(+d.dataset.hd); clearInterval(heroFx.t); return; }
+  const s = e.target.closest("[data-hp]");
+  if (s) openProduct(+s.dataset.hp);
+});
+renderHero();
+setTimeout(() => $$(".hero [data-count]").forEach(countUp), 400);
 
 // ---------- Reveal + counters ----------
 const io = new IntersectionObserver((entries) => {
@@ -1817,7 +1816,7 @@ async function loadCatalog() {
     if (state.promo && !PROMOS[state.promo]) state.promo = null;
     if (SETTINGS.topbar) $("#topbarText").textContent = SETTINGS.topbar;
     if (SETTINGS.dealTitle) $("#dealTitle").textContent = SETTINGS.dealTitle;
-    renderCategories(); renderProducts(); renderCart(); renderRecent(); renderCompareBar(); renderNews(); updateBadges();
+    renderCategories(); renderProducts(); renderCart(); renderRecent(); renderCompareBar(); renderNews(); updateBadges(); renderHero(); $$(".hero [data-live]").forEach((el) => { el.textContent = el.dataset.live === "products" ? PRODUCTS.length : new Set(PRODUCTS.map((p) => p.brand)).size; });
   } catch {}
 }
 
