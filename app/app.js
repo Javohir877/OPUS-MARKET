@@ -1027,7 +1027,7 @@ function applyTheme() {
   let t = store.get("app_theme", "system");
   if (t === "system") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
   document.documentElement.dataset.theme = t;
-  $('meta[name="theme-color"]').content = t === "light" ? "#ffffff" : "#0c0708";
+  $('meta[name="theme-color"]').content = t === "light" ? "#ffffff" : "#0b0b0c";
   try { window.OPUSApp && OPUSApp.theme && OPUSApp.theme(t); } catch {} // Android: status paneli rangi
 }
 
@@ -1936,8 +1936,12 @@ document.addEventListener("click", (e) => {
 
 const cmpVer = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
 const CHANGELOG = {
-  ver: "2.8.3", build: "2026-11-23a", date: "23-noyabr, 2026",
+  ver: "2.9", build: "2026-11-26a", date: "26-noyabr, 2026",
   groups: [
+    { t: "2.9 — premium dizayn", e: "✨", items: [
+      ["🎨", "Yangi premium ko'rinish", "Ilova sayt bilan bir xil premium uslubga o'tdi: toza grafit fon, bitta qizil urg'u, qalin sarlavhalar va mahsulot fotolari to'liq ekranda. Porlash va rang-barang gradientlar olib tashlandi."],
+      ["🛒", "Tozaroq kartochkalar", "Mahsulot kartochkalari, bannerlar, Kabinet va pastki menyu yangilandi — ko'zga yengil, o'qish oson."],
+    ] },
     { t: "2.8.3 — yangi ko'rinish", e: "✨", items: [
       ["🎨", "3D ikonkalar", "Ilova va saytdagi oddiy emojilar o'rniga endi hajmli 3D rasm-ikonkalar ishlatiladi — har qanday telefonda bir xil va chiroyli ko'rinadi."],
       ["🛒", "Ixcham tugmalar", "Mahsulot kartochkalaridagi \"+\" (savatga) tugmasi kichraytirildi — kartochka tozaroq ko'rinadi."],
