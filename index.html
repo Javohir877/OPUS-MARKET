@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=49" />
-  <link rel="stylesheet" href="premium.css?v=13" />
+  <link rel="stylesheet" href="premium.css?v=14" />
 </head>
 <body>
   <!-- Loader -->
@@ -128,11 +128,31 @@
   </div>
 
   <!-- Features -->
-  <section class="features container">
-    <div class="feature reveal"><div class="f-ic"><img class="stk" src="icons/stk/rocket.png" alt="" loading="lazy" /></div><h4>Tezkor yetkazish</h4><p>Toshkent bo'ylab 24 soatda</p></div>
-    <div class="feature reveal"><div class="f-ic"><img class="stk" src="icons/stk/sheild.png" alt="" loading="lazy" /></div><h4>Rasmiy kafolat</h4><p>12 oydan 36 oygacha</p></div>
-    <div class="feature reveal"><div class="f-ic"><img class="stk" src="icons/stk/card.png" alt="" loading="lazy" /></div><h4>Bo'lib to'lash</h4><p>0% ustama, 24 oygacha</p></div>
-    <div class="feature reveal"><div class="f-ic"><img class="stk" src="icons/stk/calender.png" alt="" loading="lazy" /></div><h4>Qaytarish</h4><p>14 kun ichida bepul</p></div>
+  <section class="fs container" id="features" aria-label="Afzalliklarimiz">
+    <div class="fs-stage" id="fsStage">
+      <div class="fs-slide on" style="--c:255,122,46">
+        <div class="fs-art"><img src="icons/stk/rocket.png" alt="" /></div>
+        <div class="fs-txt"><small>01 — Yetkazish</small><h3>Tezkor yetkazish</h3><p>Buyurtmangizni Toshkent bo'ylab 24 soat ichida, viloyatlarga 2–4 ish kunida yetkazamiz. 1 mln so'mdan yuqori xaridlarga yetkazish bepul, xohlasangiz do'kondan o'zingiz olib ketasiz.</p></div>
+      </div>
+      <div class="fs-slide" style="--c:45,212,191">
+        <div class="fs-art"><img src="icons/stk/sheild.png" alt="" /></div>
+        <div class="fs-txt"><small>02 — Kafolat</small><h3>Rasmiy kafolat</h3><p>Har bir mahsulot — original, zavod qadog'ida va seriya raqami bilan. Rasmiy kafolat 12 oydan 36 oygacha, nosozlik bo'lsa servis markazimiz o'zi hal qiladi.</p></div>
+      </div>
+      <div class="fs-slide" style="--c:236,72,153">
+        <div class="fs-art"><img src="icons/stk/card.png" alt="" /></div>
+        <div class="fs-txt"><small>03 — To'lov</small><h3>Bo'lib to'lash</h3><p>Uzum Nasiya orqali 3, 6, 12 yoki 24 oyga 0% ustama bilan bo'lib to'lang. Click, Payme, Uzcard, Humo va naqd pul bilan to'lash ham mumkin.</p></div>
+      </div>
+      <div class="fs-slide" style="--c:225,15,42">
+        <div class="fs-art"><img src="icons/stk/calender.png" alt="" /></div>
+        <div class="fs-txt"><small>04 — Qaytarish</small><h3>Qaytarish</h3><p>Mahsulot yoqmasa yoki mos kelmasa — 14 kun ichida qadog'i buzilmagan holda qaytaring, pulingizni to'liq qaytaramiz. Savollar bo'lsa, operatorimiz yordam beradi.</p></div>
+      </div>
+    </div>
+    <div class="fs-tabs" role="tablist">
+      <button type="button" class="fs-tab on" data-fs="0" role="tab"><img src="icons/stk/rocket.png" alt="" /><span><b>Tezkor yetkazish</b><small>Toshkent bo'ylab 24 soatda</small></span><i class="fs-bar"></i></button>
+      <button type="button" class="fs-tab" data-fs="1" role="tab"><img src="icons/stk/sheild.png" alt="" /><span><b>Rasmiy kafolat</b><small>12 oydan 36 oygacha</small></span><i class="fs-bar"></i></button>
+      <button type="button" class="fs-tab" data-fs="2" role="tab"><img src="icons/stk/card.png" alt="" /><span><b>Bo'lib to'lash</b><small>0% ustama, 24 oygacha</small></span><i class="fs-bar"></i></button>
+      <button type="button" class="fs-tab" data-fs="3" role="tab"><img src="icons/stk/calender.png" alt="" /><span><b>Qaytarish</b><small>14 kun ichida bepul</small></span><i class="fs-bar"></i></button>
+    </div>
   </section>
 
   <!-- 3D Showcase -->
@@ -591,6 +611,8 @@
         <label>Parol<span class="pw"><input name="password" type="password" required autocomplete="current-password" placeholder="Parolingiz" /><button type="button" class="pw-eye" aria-label="Parolni ko'rsatish">👁</button></span></label>
         <p class="auth-err" hidden></p>
         <button class="btn btn-primary btn-block">Kirish</button>
+        <div class="g-alt" hidden><span>Muqobil</span></div>
+        <div class="g-btn" hidden></div>
         <small class="muted">Parolni unutdingizmi? Operatorimizga murojaat qiling — sizga vaqtinchalik parol beriladi.</small>
       </form>
       <form id="registerForm" class="auth-form" novalidate hidden>
@@ -601,6 +623,8 @@
         <label>Parolni takrorlang<input name="password2" type="password" required autocomplete="new-password" /></label>
         <p class="auth-err" hidden></p>
         <button class="btn btn-primary btn-block">Akkaunt ochish</button>
+        <div class="g-alt" hidden><span>Muqobil</span></div>
+        <div class="g-btn" hidden></div>
         <small class="muted"><img class="stk stk-sm" src="icons/stk/lock.png" alt="" loading="lazy" />Parolingiz shifrlangan holda saqlanadi — uni hech kim, hatto do'kon xodimlari ham ko'ra olmaydi.</small>
       </form>
     </div>
@@ -736,7 +760,7 @@
   </script>
   <script src="fx-emoji.js?v=2"></script>
   <script src="ui-select.js?v=3"></script>
-  <script src="app.js?v=52"></script>
+  <script src="app.js?v=53"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="showcase.js?v=33"></script>
   <script src="scrollfx.js?v=33"></script>
