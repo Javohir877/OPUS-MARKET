@@ -117,8 +117,15 @@ window.imgFail = (el) => {
 {
   // Birinchi kirishda — to'liq "yoqilish", shu seansda keyingi sahifa yangilanishlarida — tezkor
   let seen = false; try { seen = sessionStorage.getItem("opus_boot") === "1"; sessionStorage.setItem("opus_boot", "1"); } catch (e) {}
-  if (seen) $("#loader").classList.add("quick");
-  setTimeout(() => $("#loader").classList.add("hide"), seen ? 250 : 1350);
+  const L = $("#loader"), pct = $("#ldPct"), dur = seen ? 500 : 1500, t0 = performance.now();
+  if (seen) L.classList.add("quick");
+  // 0 → 100% hisoblagich (sekinlashib boradi)
+  (function step(t) {
+    const k = Math.min(1, (t - t0) / dur);
+    if (pct) pct.textContent = Math.round((1 - Math.pow(1 - k, 3)) * 100);
+    if (k < 1) requestAnimationFrame(step);
+  })(t0);
+  setTimeout(() => { L.classList.add("hide"); setTimeout(() => L.remove(), 1000); }, dur + 120);
 }
 
 // ---------- Theme ----------
