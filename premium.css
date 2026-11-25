@@ -453,3 +453,6 @@ body.acc-open main > :not(#accountPage) { display: none !important; }
 @media (max-width: 640px) { .ph-title { font-size: clamp(36px, 10.5vw, 52px); letter-spacing: -1px; } }
 .ph-obj { display: flex; align-items: center; justify-content: center; }
 .ph-slide .ph-obj img { max-width: 100%; max-height: 100%; min-width: 0; min-height: 0; flex: 0 1 auto; }
+
+/* 3D stikerlar (emoji o'rniga) — biroz kattaroq */
+img.fx.stkx { width: 1.4em; height: 1.4em; vertical-align: -0.32em; }
