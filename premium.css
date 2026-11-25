@@ -566,3 +566,59 @@ img.fx.stkx { width: 1.4em; height: 1.4em; vertical-align: -0.32em; }
 
 /* Hero tugmalari biroz pastroq */
 .hero.ph .hero-cta { margin-top: 46px; }
+
+
+/* ---------- Google orqali kirish ---------- */
+.g-alt { display: flex; align-items: center; gap: 12px; margin: 6px 0 2px; color: var(--muted); font-size: 11.5px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+.g-alt::before, .g-alt::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.g-btn { display: flex; justify-content: center; min-height: 44px; }
+
+
+/* =====================================================================
+   Afzalliklar slaydi
+   ===================================================================== */
+.fs { padding-top: 10px; }
+.fs-stage { position: relative; height: 300px; border-radius: 24px; overflow: hidden; background: #111113; border: 1px solid rgba(255,255,255,.07); }
+.fs-slide { position: absolute; inset: 0; display: grid; grid-template-columns: 40% 1fr; align-items: center; gap: 30px; padding: 0 56px 0 30px; opacity: 0; pointer-events: none; transition: opacity .7s; }
+.fs-slide.on { opacity: 1; pointer-events: auto; }
+.fs-slide::before { content: ""; position: absolute; left: -10%; top: -30%; width: 60%; height: 160%; background: radial-gradient(closest-side, rgba(var(--c), .26), transparent); pointer-events: none; }
+.fs-art { position: relative; display: grid; place-items: center; height: 100%; }
+.fs-art img { width: min(220px, 72%); filter: drop-shadow(0 30px 40px rgba(0,0,0,.55)); transform: translateY(26px) rotate(-10deg) scale(.82); opacity: 0; transition: transform .9s cubic-bezier(.2,.9,.25,1.15), opacity .6s; }
+.fs-slide.on .fs-art img { transform: none; opacity: 1; animation: fsFloat 5s ease-in-out .9s infinite; }
+@keyframes fsFloat { 50% { transform: translateY(-10px) rotate(2deg); } }
+.fs-txt { position: relative; display: flex; flex-direction: column; gap: 12px; }
+.fs-txt small { font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: rgb(var(--c)); }
+.fs-txt h3 { font-family: "Archivo", sans-serif; font-weight: 900; text-transform: uppercase; font-size: clamp(30px, 3.6vw, 48px); line-height: 1; letter-spacing: -1px; }
+.fs-txt p { color: var(--muted); font-size: 16px; line-height: 1.6; max-width: 560px; }
+.fs-txt > * { transform: translateY(18px); opacity: 0; transition: transform .7s cubic-bezier(.2,.8,.2,1), opacity .6s; }
+.fs-slide.on .fs-txt > * { transform: none; opacity: 1; }
+.fs-slide.on .fs-txt h3 { transition-delay: .08s; }
+.fs-slide.on .fs-txt p { transition-delay: .16s; }
+.fs-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; }
+.fs-tab { position: relative; display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--line); background: transparent; text-align: left; overflow: hidden; transition: border-color .25s, background .25s; }
+.fs-tab img { width: 38px; height: 38px; flex: none; filter: grayscale(.85) brightness(.8); transition: filter .3s, transform .3s; }
+.fs-tab span { display: flex; flex-direction: column; min-width: 0; }
+.fs-tab b { font-size: 14.5px; }
+.fs-tab small { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fs-tab:hover { border-color: var(--line2); }
+.fs-tab.on { background: #151518; border-color: rgba(255,255,255,.14); }
+.fs-tab.on img { filter: none; transform: scale(1.08); }
+.fs-bar { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: #e10f2a; transform-origin: left; transform: scaleX(0); }
+.fs-tab.on .fs-bar { animation: fsBar 5s linear forwards; }
+.fs.paused .fs-tab.on .fs-bar { animation-play-state: paused; }
+@keyframes fsBar { to { transform: scaleX(1); } }
+@media (max-width: 980px) {
+  .fs-stage { height: 360px; }
+  .fs-slide { grid-template-columns: 1fr; grid-template-rows: 150px 1fr; padding: 24px; gap: 10px; text-align: center; }
+  .fs-art img { width: 130px; }
+  .fs-txt { align-items: center; }
+  .fs-tabs { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .fs-stage { height: 390px; }
+  .fs-txt p { font-size: 14.5px; }
+  .fs-tab { padding: 10px 12px; gap: 8px; }
+  .fs-tab img { width: 30px; height: 30px; }
+  .fs-tab small { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .fs-slide.on .fs-art img { animation: none; } }
