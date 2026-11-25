@@ -1,0 +1,98 @@
+/* =====================================================================
+   OPUS MARKET ilovasi — premium qatlam (app.css dan keyin yuklanadi)
+   Saytdagidek: to'q grafit fon, bitta qizil urg'u, qalin sarlavhalar, porlash va neonsiz.
+   ===================================================================== */
+:root {
+  --font-d: "Archivo", "Inter", system-ui, sans-serif;
+  --grad: linear-gradient(180deg, #ec1a33, #d20c25);
+  --red2: #ff3349;
+}
+[data-theme="dark"] {
+  --bg: #0b0b0c; --bg2: #111113; --card: #151518; --card2: #1b1b1f;
+  --line: rgba(255,255,255,.07); --text: #f4f4f5; --muted: #9a9aa3;
+  --shadow: 0 10px 28px rgba(0,0,0,.4);
+}
+html, body { -webkit-font-smoothing: antialiased; }
+
+/* ---------- Sarlavhalar ---------- */
+.hdr { background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(14px); border-bottom-color: var(--line); }
+.hdr h1 { font-family: var(--font-d); font-weight: 800; letter-spacing: -.2px; }
+.home-hdr { background: var(--bg) !important; border-bottom: 1px solid var(--line); }
+.home-hdr .brand, .home-hdr .brand b { animation: none !important; background: none !important; -webkit-text-fill-color: currentColor !important; }
+.home-hdr .brand b { color: #e10f2a; }
+.searchbar { background: var(--card); border: 1px solid var(--line); border-radius: 13px; }
+.searchbar:active, .searchbar:focus-within { border-color: rgba(255,255,255,.2); }
+.sec-h h2 { font-family: var(--font-d); font-weight: 900; font-size: 19px; letter-spacing: -.3px; }
+.sec-h button { color: var(--muted); font-weight: 600; }
+
+/* ---------- Bannerlar: grafit, tekis rang urg'usi, yaltirashsiz ---------- */
+.bn { background: #151518 !important; border: 1px solid var(--line); }
+.bn::after { display: none !important; }
+.bn::before { background: linear-gradient(90deg, rgba(11,11,12,.95) 30%, rgba(11,11,12,.25) 75%); }
+.bn img { animation: none !important; opacity: .9; }
+.bn small { letter-spacing: 1.4px; opacity: 1; }
+.bn.red small { color: #ff5a6c; } .bn.violet small { color: #b794ff; } .bn.green small { color: #4ade80; } .bn.dark small { color: #fb923c; }
+.bn b { font-family: var(--font-d) !important; font-weight: 900 !important; font-size: 21px !important; letter-spacing: -.4px; text-transform: uppercase; line-height: 1 !important; }
+
+/* ---------- Tugmalar va chiplar ---------- */
+.btn { background: #e10f2a; box-shadow: none !important; border-radius: 13px; font-weight: 700; }
+.btn:not(.ghost):not(:disabled)::after { content: none !important; }
+.btn.ghost { background: transparent; border: 1px solid rgba(255,255,255,.14); }
+.btn.green { background: #16a34a; } .btn.tg { background: #229ed9; }
+.chip { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+.chip.on { background: var(--text); color: var(--bg); border-color: transparent; }
+.chip.filt i { background: #e10f2a; color: #fff; }
+
+/* ---------- Mahsulot kartochkalari ---------- */
+.pc { background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+.pc-img { background: var(--card2); }
+.pc-img img { object-fit: cover; padding: 0; }
+.pc-n { font-weight: 600; }
+.pc-p b { font-family: var(--font-d); font-weight: 900; letter-spacing: -.3px; }
+.pc-p b.sale { color: #ff3349; }
+.pc-m { background: rgba(255,212,59,.14); color: #ffd43b; border: 1px solid rgba(255,212,59,.25); }
+.add { background: #e10f2a; border-radius: 50% !important; box-shadow: none !important; }
+.add.in { background: #16a34a; }
+.ctile { background: var(--card); border-color: var(--line); }
+.ctile b { font-family: var(--font-d); font-weight: 800; }
+
+/* ---------- Kabinet ---------- */
+.prof { background: var(--card) !important; border: 1px solid var(--line); box-shadow: none !important; color: var(--text); }
+.prof small { color: var(--muted); opacity: 1; }
+.prof b { font-size: 19px; font-weight: 700; letter-spacing: -.3px; }
+.prof .ava { background: var(--card2) !important; border: 1px solid rgba(255,255,255,.12); color: var(--text) !important; }
+.stats button { background: var(--card); border-color: var(--line); }
+.stats b { font-family: var(--font-d) !important; font-weight: 900 !important; font-size: 21px !important; }
+.menu { background: var(--card); border-color: var(--line); }
+.mi:active { background: rgba(255,255,255,.04); }
+.mi .ri.ic { color: #f4f4f5; background: rgba(255,255,255,.05) !important; border: 1px solid rgba(255,255,255,.08) !important; }
+.mi.danger, .mi.danger .ri.ic { color: #ff3349; }
+
+/* ---------- Pastki menyu ---------- */
+.tabbar { background: rgba(11,11,12,.92) !important; backdrop-filter: blur(18px); border-top: 1px solid var(--line); box-shadow: none !important; }
+.tabbar button.active { color: #fff; }
+.tabbar button.active svg { filter: none !important; }
+.tb-ind::before { background: #e10f2a; box-shadow: none; }
+.tabbar button::before { background: #e10f2a; }
+.tb-badge { background: #e10f2a; }
+.tb-ai.active::after { color: #fff; }
+.tb-ai.active img { box-shadow: 0 0 0 2px var(--bg2), 0 0 0 4px #e10f2a; }
+
+/* ---------- Mahsulot sahifasi ---------- */
+.pd-price b, .ph-t small { font-family: var(--font-d); }
+.pd-price b { font-weight: 900; letter-spacing: -.5px; }
+.pd-name { font-weight: 700; letter-spacing: -.3px; }
+.box { background: var(--card); border-color: var(--line); }
+.buybar { background: rgba(11,11,12,.94); backdrop-filter: blur(16px); border-top: 1px solid var(--line); }
+
+/* ---------- Varaqlar (sheet) va toast ---------- */
+.sheet { background: #131315; }
+
+/* Storislar: bir xil tekis qizil halqa (rang-barang aylanuvchi gradient o'rniga) */
+.story-b .ring { background: #e10f2a; animation: none; }
+.story-b .ring img { animation: none; }
+.story-b.seen .ring { background: rgba(255,255,255,.14); }
+/* Kun kartalari: grafit, foto to'liq */
+.dk-b { background: var(--card) !important; }
+.dk-img { background: var(--card2); }
+.dk-img img { object-fit: cover; padding: 0; }
