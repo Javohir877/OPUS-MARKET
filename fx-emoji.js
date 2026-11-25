@@ -12,14 +12,31 @@
   const TEST = /[℀-⯿\u{1F000}-\u{1FAFF}]/u;
   const NO = "SCRIPT,STYLE,TEXTAREA,INPUT,OPTION,SELECT,TITLE,CODE,PRE,NOSCRIPT,svg";
   const key = (e) => [...e].map((c) => c.codePointAt(0).toString(16)).filter((h) => h !== "fe0f").join("-");
+  // Asosiy emojilar → 3D stikerlar (3dicons, CC0) — icons/stk/*.png. Ro'yxatda yo'qlari — Fluent 3D.
+  const STK_MAP = {
+    "🔥": "fire", "⚡": "flash", "⭐": "star", "🌟": "star", "✨": "star", "🎁": "gift", "🔔": "bell", "🔕": "bell",
+    "🛒": "bag", "🛍": "bag", "📦": "cube", "🚚": "rocket", "🚀": "rocket", "✈": "chat", "💳": "card", "💰": "money-bag",
+    "💸": "dollar", "🏷": "3d-coin", "🔒": "lock", "🔐": "lock", "🔑": "key", "🎧": "headphone", "💻": "computer", "🖥": "computer",
+    "📱": "mobile", "📲": "mobile", "📞": "mobile", "📅": "calender", "⏰": "clock", "⏱": "clock", "⏳": "clock", "🕘": "clock",
+    "📍": "map-pin", "📌": "pin", "🏬": "location", "✅": "tick", "🏆": "trophy", "🎉": "medal", "💬": "chat-bubble", "🔍": "zoom",
+    "⚙": "setting", "🛠": "tool", "🧰": "tool", "🔧": "tool", "💡": "bulb", "🧠": "bulb", "🌙": "moon", "🌓": "moon", "☀": "sun",
+    "📰": "file", "📋": "file", "🧾": "file", "📷": "camera", "🖼": "picture", "✍": "pencil", "✏": "pencil", "🔗": "link",
+    "📨": "mail", "✉": "mail", "❤": "heart", "💜": "heart", "🎯": "target", "📊": "chart", "📉": "chart", "📈": "chart",
+    "📢": "megaphone", "👍": "thumb-up", "👤": "boy", "🧩": "puzzle", "🛡": "sheild", "🆕": "star", "🎮": "puzzle", "🙏": "notify-heart",
+    "⚠": "flag", "⛔": "flag", "❌": "flag", "⚖": "copy", "👁": "zoom", "👀": "zoom", "🗑": "bucket", "🧹": "bucket", "🔁": "copy", "↩": "calender",
+  };
+  const STK = {};
+  for (const e in STK_MAP) STK[key(e)] = STK_MAP[e];
+  const STK_BASE = me ? new URL("icons/stk/", me).href : "icons/stk/";
   const fallback = (img) => img.replaceWith(document.createTextNode(img.alt));
 
   function make(e) {
     const k = key(e);
     if (SKIP.has(k)) return null;
     const img = document.createElement("img");
-    img.className = "fx"; img.alt = e; img.draggable = false; img.decoding = "async";
-    img.src = (LOCAL.has(k) ? BASE : CDN) + k + ".webp";
+    img.alt = e; img.draggable = false; img.decoding = "async";
+    if (STK[k]) { img.className = "fx stkx"; img.src = STK_BASE + STK[k] + ".png"; }
+    else { img.className = "fx"; img.src = (LOCAL.has(k) ? BASE : CDN) + k + ".webp"; }
     img.onerror = () => fallback(img);
     return img;
   }
