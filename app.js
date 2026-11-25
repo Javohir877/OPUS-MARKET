@@ -1594,7 +1594,9 @@ let afterLogin = null;
 function renderAccBtn() {
   const u = auth.user, ini = $("#accIni");
   ini.hidden = !u;
-  ini.textContent = u ? initials(u.name) : "";
+  ini.innerHTML = u ? (u.avatar ? `<img src="${esc(u.avatar)}" alt="" />` : esc(initials(u.name))) : "";
+  ini.classList.toggle("has-img", !!(u && u.avatar));
+  if (u) paintAccAva();
   $("#accLabel").textContent = u ? u.name.split(/\s+/)[0] : "Kirish";
   $("#accBtn").classList.toggle("on", !!u);
   $("#accBtn").title = u ? u.name + " — akkaunt" : "Kirish / Ro'yxatdan o'tish";
@@ -1684,6 +1686,49 @@ $("#registerForm").addEventListener("submit", (e) => {
 
 // Profil oynasi
 $("#profileForm [name=region]").innerHTML = $("#checkoutForm [name=region]").innerHTML;
+// ---------- Profil rasmi: brauzerda 256×256 ga kesiladi va kichraytiriladi, serverga ~20–40 KB ketadi ----------
+function paintAccAva() {
+  const u = auth.user, box = $("#accAva"); if (!box || !u) return;
+  box.innerHTML = u.avatar ? `<img src="${esc(u.avatar)}" alt="" />` : esc(initials(u.name));
+  $("#accAvaBtn").classList.toggle("has-img", !!u.avatar);
+  $("#accAvaRm").hidden = !u.avatar;
+}
+function squareImage(file, size = 256) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const s = Math.min(img.naturalWidth, img.naturalHeight), c = document.createElement("canvas");
+      c.width = c.height = size;
+      const g = c.getContext("2d"); g.imageSmoothingQuality = "high";
+      g.drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      let q = .86, out = c.toDataURL("image/jpeg", q);
+      while (out.length > 85000 && q > .4) { q -= .12; out = c.toDataURL("image/jpeg", q); }
+      res(out);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("Rasmni o'qib bo'lmadi")); };
+    img.src = url;
+  });
+}
+async function saveAvatar(avatar) {
+  const btn = $("#accAvaBtn"); btn.classList.add("busy");
+  try {
+    const r = await api("PATCH", "/api/me", { avatar });
+    setAuth(auth.token, r.user); paintAccAva();
+    toast(avatar ? "Profil rasmi yangilandi" : "Profil rasmi olib tashlandi");
+  } catch (e) { toast("⚠️ " + e.message); }
+  btn.classList.remove("busy");
+}
+$("#accAvaBtn").addEventListener("click", () => $("#accAvaFile").click());
+$("#accAvaFile").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  if (!/^image\//.test(f.type)) return toast("⚠️ Rasm faylini tanlang");
+  if (f.size > 15e6) return toast("⚠️ Rasm juda katta (15 MB gacha)");
+  try { await saveAvatar(await squareImage(f)); } catch (ex) { toast("⚠️ " + ex.message); }
+});
+$("#accAvaRm").addEventListener("click", () => saveAvatar(null));
+
 // ---------- Kabinet sahifasi (#account-orders, #account-watch, #account-reviews, #account-profile) ----------
 const ACC_TABS = ["orders", "watch", "reviews", "profile"];
 const accCount = (sel, n) => { const e = $(sel); if (e) e.textContent = n ? n : ""; };
@@ -1715,7 +1760,7 @@ function openAccount(tab) {
   tab = ACC_TABS.includes(tab) ? tab : "orders";
   if (!auth.user) return requireLogin("Kabinetga kirish uchun akkauntingizga kiring", () => openAccount(tab));
   const u = auth.user, f = $("#profileForm").elements;
-  $("#accAva").textContent = initials(u.name);
+  paintAccAva();
   $("#accName").textContent = u.name;
   $("#accPhone").textContent = fmtPhone(u.phone) + (u.email ? " · " + u.email : "");
   f.name.value = u.name || ""; f.email.value = u.email || ""; f.address.value = u.address || "";
@@ -1727,7 +1772,10 @@ function openAccount(tab) {
   $("#accountPage").hidden = false;
   if (!location.hash.startsWith("#account")) history.pushState(null, "", "#account-" + tab);
   accTab(tab);
-  if (!was) scrollTo({ top: 0 });
+  if (!was) {
+    scrollTo({ top: 0 });
+    const pg = $("#accountPage"); pg.classList.remove("acc-enter"); void pg.offsetWidth; pg.classList.add("acc-enter");
+  }
   if (tab !== "watch" && tab !== "reviews") renderAccWatch(); // hisoblagichlar uchun
   // Ma'lumotlar boshqa qurilmada o'zgargan bo'lishi mumkin — yangilab qo'yamiz
   api("GET", "/api/me").then((r) => setAuth(auth.token, r.user), (e) => { if (e.status === 401) { closeAll(); toast("Seans tugagan — qayta kiring"); } });
@@ -1747,7 +1795,7 @@ $("#profileForm").addEventListener("submit", async (e) => {
   try {
     const r = await api("PATCH", "/api/me", { name: f.name.value.trim(), email: f.email.value.trim() || null, region: f.region.value, address: f.address.value.trim() });
     setAuth(auth.token, r.user);
-    $("#accName").textContent = r.user.name; $("#accAva").textContent = initials(r.user.name);
+    $("#accName").textContent = r.user.name; paintAccAva();
     toast("✅ Ma'lumotlar saqlandi");
   } catch (err) { toast("⚠️ " + err.message); }
 });
