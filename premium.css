@@ -394,3 +394,42 @@ body.acc-open main > :not(#accountPage) { display: none !important; }
 @keyframes accRise { from { opacity: 0; transform: translateY(22px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes accAva { from { opacity: 0; transform: scale(.6) rotate(-8deg); } }
 @media (prefers-reduced-motion: reduce) { .acc-enter * { animation: none !important; } }
+
+
+/* =====================================================================
+   Hero rasm bloki: "studiya yorug'ligi" — qora studiya, tepadan yorug'lik, mahsulot va uning aksi
+   ===================================================================== */
+.ph-visual { background: #0e0e10; border-color: rgba(255,255,255,.07); aspect-ratio: 5 / 4; }
+.ph-visual::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(60% 55% at 50% -6%, rgba(255,255,255,.16), rgba(255,255,255,.04) 45%, transparent 70%),
+              radial-gradient(70% 30% at 50% 100%, rgba(255,255,255,.04), transparent 70%); }
+.ph-slide::after { display: none; }
+.ph-word { position: absolute; left: 0; right: 0; top: 9%; z-index: 0; text-align: center; white-space: nowrap; pointer-events: none;
+  font-family: var(--font-d); font-stretch: 75%; font-weight: 900; font-size: clamp(56px, 9vw, 132px); line-height: 1; letter-spacing: -1px;
+  color: rgba(255,255,255,.045); transform: translateY(14px); opacity: 0; transition: transform 1.1s cubic-bezier(.2,.8,.2,1), opacity 1s; }
+.ph-slide.on .ph-word { transform: none; opacity: 1; }
+.ph-obj { position: absolute; left: 50%; top: 45%; z-index: 1; width: 72%; height: 60%; transform: translate(-50%, -50%) scale(.94); opacity: 0;
+  transition: transform 1.1s cubic-bezier(.2,.8,.2,1), opacity .8s; display: grid; place-items: center; }
+.ph-slide.on .ph-obj { transform: translate(-50%, -50%); opacity: 1; }
+.ph-slide .ph-obj img { width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 14px; transform: none; transition: none;
+  box-shadow: 0 34px 60px -18px rgba(0,0,0,.85), 0 0 0 1px rgba(255,255,255,.06);
+  -webkit-box-reflect: below 8px linear-gradient(transparent 72%, rgba(255,255,255,.14)); }
+.ph-slide.on .ph-obj img { transform: none; }
+.ph-bar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; display: flex; align-items: center; gap: 14px; padding: 16px 20px;
+  border-top: 1px solid rgba(255,255,255,.07); background: rgba(14,14,16,.82); backdrop-filter: blur(10px);
+  transform: translateY(100%); transition: transform .7s cubic-bezier(.2,.8,.2,1) .2s; }
+.ph-slide.on .ph-bar { transform: none; }
+.ph-bar > span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ph-bar small { font-size: 11px; color: #71717a; text-transform: uppercase; letter-spacing: .8px; }
+.ph-bar b { font-size: 15px; color: #f4f4f5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph-bar em { font-style: normal; font-weight: 800; color: #fff; font-size: 16px; white-space: nowrap; }
+.ph-bar em s { display: block; font-weight: 500; font-size: 12px; color: #71717a; text-align: right; }
+.ph-go { font-style: normal; flex: none; padding: 9px 15px; border-radius: 99px; background: #e10f2a; color: #fff; font-weight: 600; font-size: 13px; transition: background .2s; }
+.ph-slide:hover .ph-go { background: #f0142f; }
+.ph-tag { display: none; }
+.ph-dots { top: 18px; bottom: auto; right: 18px; }
+@media (max-width: 640px) {
+  .ph-bar { padding: 12px 14px; gap: 10px; }
+  .ph-go { display: none; }
+  .ph-obj { width: 78%; height: 54%; top: 42%; }
+}
