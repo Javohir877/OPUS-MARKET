@@ -137,3 +137,6 @@ CREATE TABLE IF NOT EXISTS notices (
   created_at  INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_notices_user ON notices (user_id, created_at);
+
+-- Profil rasmi (migration 005)
+-- ALTER TABLE users ADD COLUMN avatar TEXT;
