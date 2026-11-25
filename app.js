@@ -226,13 +226,15 @@ function renderHero() {
   const box = $("#phSlides"), dots = $("#phDots");
   if (!box) return;
   const pick = (cat) => PRODUCTS.filter((p) => p.cat === cat && (p.stock ?? 0) > 0).sort((x, y) => (y.popular || 0) - (x.popular || 0) || y.price - x.price)[0];
-  const L = ["parts", "laptop", "pc", "monitor", "audio"].map(pick).filter(Boolean).slice(0, 4);
+  const CUT = SETTINGS.heroCuts || {};
+  const cut = PRODUCTS.filter((p) => CUT[p.id] && (p.stock ?? 0) > 0).sort((x, y) => y.price - x.price);
+  const L = (cut.length >= 2 ? cut : ["parts", "laptop", "pc", "monitor", "audio"].map(pick).filter(Boolean)).slice(0, 4);
   const ids = L.map((p) => p.id).join(",");
   if (ids === heroFx.ids.join(",")) return;
   heroFx.ids = L.map((p) => p.id); heroFx.i = 0;
   box.innerHTML = L.map((p, i) => `<button class="ph-slide${i ? "" : " on"}" data-hp="${p.id}" aria-label="${esc(p.name)}">
       <span class="ph-word" aria-hidden="true">${esc(heroWord(p))}</span>
-      <span class="ph-obj"><img src="${pImg(p, 1000)}" alt="" ${i ? 'loading="lazy"' : ""} onerror="imgFail(this)" data-icon="${esc((catOf(p) || {}).icon || "laptop")}" /></span>
+      <span class="ph-obj${CUT[p.id] ? " cut" : ""}"><img src="${CUT[p.id] ? IMG(CUT[p.id]) : pImg(p, 1000)}" alt="" ${i ? 'loading="lazy"' : ""} onerror="imgFail(this)" data-icon="${esc((catOf(p) || {}).icon || "laptop")}" /></span>
       <span class="ph-bar"><span><small>${esc((catOf(p) || {}).name || "")}</small><b>${esc(p.name)}</b></span><em>${fmt(p.price)}${p.old > p.price ? ` <s>${fmt(p.old)}</s>` : ""}</em><i class="ph-go">Ko'rish →</i></span>
     </button>`).join("");
   dots.innerHTML = L.map((_, i) => `<button class="${i ? "" : "on"}" data-hd="${i}" aria-label="${i + 1}-mahsulot"></button>`).join("");
@@ -909,8 +911,8 @@ function renderOrders() {
     return `<div class="order-card${cancelled ? " cancelled" : ""}">
       <header><b>#${esc(o.id)}</b><span class="status${pending ? " pending" : ""}">${cancelled ? "Bekor qilindi" : pending ? "⏳ Tasdiqlanmagan" : TRACK_LABEL[st]}</span></header>
       <small class="muted">${new Date(o.created_at).toLocaleString("ru-RU")} · ${pay ? pay.name : esc(o.payment)}${o.months ? ` (${o.months} oy)` : ""} · ${DELIVERY[o.delivery] || ""}</small>
-      <div class="thumbs">${items.map((i) => `<img src="${esc(IMG(i.p ? i.p.img : i.img))}" alt="" title="${esc(i.name)}" onerror="this.remove()" />`).join("")}</div>
-      <ul>${items.map((i) => `<li>${esc(i.name)} × ${i.qty}</li>`).join("")}</ul>
+      <div class="thumbs">${items.slice(0, 6).map((i) => `<img src="${esc(IMG(i.p ? i.p.img : i.img))}" alt="" title="${esc(i.name)}" onerror="this.remove()" />`).join("")}${items.length > 6 ? `<span class="thumbs-more">+${items.length - 6}</span>` : ""}</div>
+      <ul>${items.slice(0, 4).map((i) => `<li>${esc(i.name)} × ${i.qty}</li>`).join("")}${items.length > 4 ? `<li class="muted">… yana ${items.length - 4} ta mahsulot</li>` : ""}</ul>
       ${pending ? `<button class="btn btn-primary btn-sm order-confirm" data-confirm="${esc(o.id)}">✈️ Telegram orqali tasdiqlash</button><div class="confirm-slot"></div>` : ""}
       ${cancelled || pending ? "" : `<div class="order-track" style="--p:${(st / (TRACK.length - 1)) * 84}%">${TRACK_LABEL.map((t, i) => `<span class="${i <= st ? "on" : ""}">${t}</span>`).join("")}</div>`}
       <b>${fmt(o.total)}</b>
