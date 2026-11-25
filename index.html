@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=49" />
-  <link rel="stylesheet" href="premium.css?v=8" />
+  <link rel="stylesheet" href="premium.css?v=9" />
 </head>
 <body>
   <!-- Loader -->
@@ -438,8 +438,12 @@
       <a href="#hero" class="acc-back" id="accBack">← Do'konga qaytish</a>
       <div class="acc-top">
         <div class="acc-card">
-          <div class="acc-ava" id="accAva"></div>
-          <div><span class="acc-kicker">Kabinet</span><b id="accName"></b><small id="accPhone"></small></div>
+          <button type="button" class="acc-ava" id="accAvaBtn" aria-label="Profil rasmini o'zgartirish">
+            <span id="accAva"></span>
+            <span class="acc-ava-cam" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 3l-1.8 2H4a2 2 0 00-2 2v11a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2h-3.2L15 3H9zm3 5a4.5 4.5 0 110 9 4.5 4.5 0 010-9zm0 2a2.5 2.5 0 100 5 2.5 2.5 0 000-5z"/></svg></span>
+          </button>
+          <input type="file" id="accAvaFile" accept="image/*" hidden />
+          <div><span class="acc-kicker">Kabinet</span><b id="accName"></b><small id="accPhone"></small><button type="button" class="acc-ava-rm" id="accAvaRm" hidden>Rasmni olib tashlash</button></div>
         </div>
         <button type="button" class="btn btn-ghost btn-sm" id="accLogout">Chiqish</button>
       </div>
@@ -696,7 +700,7 @@
   </script>
   <script src="fx-emoji.js?v=1"></script>
   <script src="ui-select.js?v=3"></script>
-  <script src="app.js?v=48"></script>
+  <script src="app.js?v=49"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="showcase.js?v=33"></script>
   <script src="scrollfx.js?v=33"></script>
