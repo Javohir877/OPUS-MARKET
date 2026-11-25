@@ -18,6 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=49" />
   <link rel="stylesheet" href="premium.css?v=14" />
+  <link rel="stylesheet" href="catalog.css?v=1" />
 </head>
 <body>
   <!-- Loader -->
@@ -196,11 +197,11 @@
 
   <!-- Categories -->
   <section class="section container" id="categories" data-node="Kategoriya">
-    <div class="section-head reveal">
-      <h2>Kategoriyalar</h2>
-      <p>Kerakli bo'limni tanlang</p>
+    <div class="cx-head">
+      <div class="bi-head"><i></i><h2>Kategoriyalar</h2></div>
+      <button type="button" class="cx-toggle" id="catToggle" aria-expanded="true" aria-label="Kategoriyalarni yig'ish yoki ochish"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>
-    <div class="cat-grid" id="catGrid"></div>
+    <div class="cx-wrap"><div class="cx-grid" id="catGrid"></div></div>
   </section>
 
   <!-- Deals -->
@@ -243,35 +244,32 @@
 
   <!-- Products -->
   <section class="section container" id="products" data-node="Katalog">
-    <div class="section-head reveal">
-      <h2>Mahsulotlar</h2>
-      <p id="resultInfo">Barcha mahsulotlar</p>
+    <div class="cl-top">
+      <div class="bi-head"><i></i><h2>Katalog</h2></div>
+      <p class="cl-info" id="resultInfo">Barcha mahsulotlar</p>
     </div>
-
-    <div class="toolbar reveal">
-      <div class="chips" id="chips"></div>
-      <div class="toolbar-right">
-        <label class="price-filter">
-          Maks. narx: <b id="priceLabel"></b>
-          <input type="range" id="priceRange" min="500000" max="45000000" step="500000" />
-        </label>
-        <select id="sortSelect" aria-label="Saralash">
-          <option value="popular">Ommabop</option>
-          <option value="cheap">Arzonroq</option>
-          <option value="expensive">Qimmatroq</option>
-          <option value="rating">Reyting bo'yicha</option>
-          <option value="discount">Chegirma bo'yicha</option>
-        </select>
+    <div class="cl-bar">
+      <button type="button" class="cl-fbtn" id="fltOpen"><svg viewBox="0 0 24 24"><path d="M3 5h18M6 12h12M10 19h4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>Filtrlar<em></em></button>
+      <div class="cl-chips" id="fltChips"></div>
+      <div class="cl-sort" id="sortPills" role="tablist" aria-label="Saralash"></div>
+    </div>
+    <div class="cl-layout">
+      <aside class="flt" id="fltPanel" aria-label="Filtrlar">
+        <div class="flt-head"><b><svg viewBox="0 0 24 24"><path d="M3 5h18M6 12h12M10 19h4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>Filtrlar <em id="fltCount"></em></b><button type="button" data-fclear>Tozalash</button><button type="button" class="flt-x" data-fclose aria-label="Yopish">✕</button></div>
+        <div class="flt-body" id="fltBody"></div>
+        <div class="flt-foot"><button type="button" class="btn btn-primary btn-block" id="fltApply">Natijalarni ko'rsatish</button></div>
+      </aside>
+      <div class="cl-main">
+        <div class="product-grid" id="productGrid"></div>
+        <div class="empty" id="emptyState" hidden>
+          <img class="stk" src="icons/stk/zoom.png" alt="" style="width:84px;height:84px" />
+          <h3>Hech narsa topilmadi</h3>
+          <p>Filtrlarni yumshatib ko'ring yoki boshqa so'z bilan qidiring.</p>
+          <button class="btn btn-primary" id="resetFilters">Filtrlarni tozalash</button>
+        </div>
       </div>
     </div>
-
-    <div class="product-grid" id="productGrid"></div>
-    <div class="empty" id="emptyState" hidden>
-      <div class="empty-ic">🔍</div>
-      <h3>Hech narsa topilmadi</h3>
-      <p>Boshqa so'z bilan qidirib ko'ring yoki filtrlarni tozalang.</p>
-      <button class="btn btn-primary" id="resetFilters">Filtrlarni tozalash</button>
-    </div>
+    <div class="flt-shade" id="fltShade"></div>
   </section>
 
   <!-- Recently viewed -->
@@ -760,7 +758,7 @@
   </script>
   <script src="fx-emoji.js?v=2"></script>
   <script src="ui-select.js?v=3"></script>
-  <script src="app.js?v=53"></script>
+  <script src="app.js?v=54"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="showcase.js?v=33"></script>
   <script src="scrollfx.js?v=33"></script>
