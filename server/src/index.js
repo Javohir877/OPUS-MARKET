@@ -81,7 +81,7 @@ function normPhone(p) {
 }
 const normEmail = (e) => { const v = str(e, 120).toLowerCase(); return v && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v) ? v : null; };
 const ip = (req) => req.headers.get("CF-Connecting-IP") || "local";
-const publicUser = (u) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email, region: u.region, address: u.address, avatar: u.avatar || null, created_at: u.created_at });
+const publicUser = (u) => ({ id: u.id, name: u.name, phone: /^g/.test(u.phone || "") ? null : u.phone, needPhone: /^g/.test(u.phone || "") || undefined, email: u.email, region: u.region, address: u.address, avatar: u.avatar || null, created_at: u.created_at });
 const orderOut = (o) => ({ ...o, items: JSON.parse(o.items_json || "[]"), items_json: undefined, code_hash: undefined, code_exp: undefined, code_tries: undefined });
 
 // Xato urinishlar: oynada (windowMs) max dan ortiq bo'lsa — 429
@@ -258,6 +258,43 @@ route("POST", "/api/auth/login", async (req, env) => {
   return json({ token, user: publicUser(user) });
 });
 
+// ---------- Google orqali kirish ----------
+// Brauzer Google'dan ID-token (JWT) oladi; server uni Google'ning o'zida tekshiradi (tokeninfo),
+// "aud" do'konimizning Client ID siga mos bo'lishi shart. Client ID katalog sozlamasida: SETTINGS.googleClientId.
+route("POST", "/api/auth/google", async (req, env) => {
+  const b = await body(req);
+  await checkLimit(env, "google:" + ip(req), 20, 15 * 60e3);
+  const cid = String(((await getCatalog(env)).SETTINGS || {}).googleClientId || env.GOOGLE_CLIENT_ID || "");
+  if (!cid) fail(503, "Google orqali kirish hali sozlanmagan");
+  const cred = typeof b.credential === "string" && b.credential.length < 4096 ? b.credential : "";
+  if (!cred) fail(400, "Google ma'lumoti kelmadi");
+  let info = null;
+  try { const r = await fetch("https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(cred)); if (r.ok) info = await r.json(); } catch {}
+  if (!info || info.aud !== cid || !["accounts.google.com", "https://accounts.google.com"].includes(info.iss) || !info.sub || +info.exp * 1000 < Date.now()) {
+    await recordFail(env, "google:" + ip(req)); fail(401, "Google orqali kirishni tasdiqlab bo'lmadi");
+  }
+  const email = info.email && String(info.email_verified) === "true" ? normEmail(info.email) : null;
+  let user = await env.DB.prepare("SELECT * FROM users WHERE google_sub = ?").bind(info.sub).first();
+  // Shu email bilan oldin ochilgan akkaunt bo'lsa — Google'ni unga bog'laymiz
+  if (!user && email) {
+    user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
+    if (user) await env.DB.prepare("UPDATE users SET google_sub = ? WHERE id = ?").bind(info.sub, user.id).run();
+  }
+  let created = false;
+  if (!user) {
+    // Yangi akkaunt: telefon keyin so'raladi (vaqtincha "g..." belgisi bilan), parol — tasodifiy (faqat Google orqali kiriladi)
+    const salt = randHex(16), name = str(info.name || (email || "Mijoz").split("@")[0], 60) || "Mijoz";
+    const r = await env.DB.prepare("INSERT INTO users (name, phone, email, pass_hash, pass_salt, google_sub, avatar, created_at, last_login) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)")
+      .bind(name, "g" + info.sub, email, await pbkdf2(randHex(24), salt), salt, info.sub, Date.now(), Date.now()).run();
+    user = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(r.meta.last_row_id).first();
+    created = true;
+  }
+  if (user.blocked) fail(403, "Akkauntingiz bloklangan. Do'kon bilan bog'laning.");
+  await env.DB.prepare("UPDATE users SET last_login = ? WHERE id = ?").bind(Date.now(), user.id).run();
+  const token = await createSession(env, user.id, "user", USER_SESSION_DAYS * 864e5);
+  return json({ token, user: publicUser(user), created });
+});
+
 // Telegram Mini App: Telegram imzolagan initData orqali kirish.
 // Telegram akkaunti saytdagi akkauntga bog'langan bo'lsa — parolsiz kiradi.
 // Mijoz saytda (parol bilan) kirgan bo'lsa — shu Telegram akkauntini unga bog'laymiz.
@@ -312,6 +349,13 @@ route("PATCH", "/api/me", async (req, env) => {
   if (name.length < 2) fail(400, "Ism kamida 2 harfdan iborat bo'lsin");
   if (b.email && !email) fail(400, "Email manzili noto'g'ri");
   if (email && email !== u.email && await env.DB.prepare("SELECT id FROM users WHERE email = ? AND id != ?").bind(email, u.id).first()) fail(409, "Bu email boshqa akkauntda ishlatilgan");
+  // Google orqali kirgan mijoz telefon raqamini bir marta kiritadi (buyurtma va Telegram uchun kerak)
+  let phone = u.phone;
+  if (b.phone !== undefined && /^g/.test(u.phone || "")) {
+    phone = normPhone(String(b.phone));
+    if (!phone) fail(400, "Telefon raqami noto'g'ri. Masalan: +998 90 123 45 67");
+    if (await env.DB.prepare("SELECT id FROM users WHERE phone = ? AND id != ?").bind(phone, u.id).first()) fail(409, "Bu raqam bilan boshqa akkaunt bor — o'sha akkauntga telefon va parol bilan kiring");
+  }
   // Profil rasmi: brauzerda 256px gacha kichraytirilgan rasm (data: URL); null — o'chirish
   let avatar = u.avatar || null;
   if (b.avatar !== undefined) {
@@ -319,8 +363,8 @@ route("PATCH", "/api/me", async (req, env) => {
     else if (typeof b.avatar === "string" && b.avatar.length <= 90000 && /^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(b.avatar)) avatar = b.avatar;
     else fail(400, "Rasm formati noto'g'ri yoki juda katta");
   }
-  await env.DB.prepare("UPDATE users SET name = ?, email = ?, avatar = ?, region = ?, address = ? WHERE id = ?")
-    .bind(name, email, avatar, b.region !== undefined ? str(b.region, 60) : u.region, b.address !== undefined ? str(b.address, 200) : u.address, u.id).run();
+  await env.DB.prepare("UPDATE users SET name = ?, phone = ?, email = ?, avatar = ?, region = ?, address = ? WHERE id = ?")
+    .bind(name, phone, email, avatar, b.region !== undefined ? str(b.region, 60) : u.region, b.address !== undefined ? str(b.address, 200) : u.address, u.id).run();
   return json({ user: publicUser(await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(u.id).first()) });
 });
 route("POST", "/api/me/password", async (req, env) => {
