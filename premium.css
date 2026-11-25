@@ -363,3 +363,34 @@ body.acc-open main > :not(#accountPage) { display: none !important; }
 .acc-page .acc-card { background: none; box-shadow: none; color: var(--text); border-radius: 0; }
 .acc-page .acc-card small { opacity: 1; word-break: normal; }
 @media (max-width: 980px) { .acc-page { padding-top: 26px; } .acc-back { margin-top: 30px; } }
+
+
+/* ---------- Kabinet: ism — oddiy yozuvda, toza shrift ---------- */
+.acc-page .acc-card b { font-family: "Inter", system-ui, sans-serif; font-stretch: normal; text-transform: none; font-weight: 700; font-size: clamp(24px, 3vw, 32px); letter-spacing: -.6px; line-height: 1.15; margin: 4px 0 3px; }
+.acc-kicker { letter-spacing: 1.2px; font-size: 11.5px; }
+/* Profil rasmi */
+.acc-page .acc-ava { position: relative; padding: 0; cursor: pointer; overflow: hidden; font-family: "Inter", sans-serif; font-weight: 700; letter-spacing: .5px; }
+.acc-ava #accAva, .acc-ava #accAva img { width: 100%; height: 100%; display: grid; place-items: center; object-fit: cover; }
+.acc-ava-cam { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.55); opacity: 0; transition: opacity .2s; }
+.acc-ava-cam svg { width: 22px; height: 22px; fill: #fff; }
+.acc-ava:hover .acc-ava-cam, .acc-ava:focus-visible .acc-ava-cam, .acc-ava.busy .acc-ava-cam { opacity: 1; }
+.acc-ava.busy .acc-ava-cam svg { animation: rotate 1s linear infinite; }
+.acc-ava:not(.has-img)::after { content: ""; position: absolute; right: 2px; bottom: 2px; width: 18px; height: 18px; border-radius: 50%; background: #e10f2a url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z' fill='%23fff'/%3E%3C/svg%3E") center/12px no-repeat; border: 2px solid var(--bg); }
+.acc-ava-rm { display: block; margin-top: 6px; font-size: 12.5px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.acc-ava-rm:hover { color: var(--text); }
+.acc-ini.has-img { padding: 0; overflow: hidden; }
+.acc-ini.has-img img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+
+/* ---------- Kabinet ochilishi: qatlamlar navbat bilan ko'tariladi (mahsulotdan kabinetga "o'tish") ---------- */
+.acc-enter .acc-back, .acc-enter .acc-top, .acc-enter .acc-tabs, .acc-enter .acc-pane:not([hidden]) { animation: accRise .6s cubic-bezier(.2,.8,.2,1) both; }
+.acc-enter .acc-top { animation-delay: .05s; }
+.acc-enter .acc-tabs { animation-delay: .12s; }
+.acc-enter .acc-pane:not([hidden]) { animation-delay: .2s; }
+.acc-enter .acc-ava { animation: accAva .7s cubic-bezier(.2,.9,.25,1.15) .08s both; }
+.acc-enter .acc-orders .order-card, .acc-enter .acc-list .aw-row { animation: accRise .55s cubic-bezier(.2,.8,.2,1) both; }
+.acc-enter .acc-orders .order-card:nth-child(2), .acc-enter .acc-list .aw-row:nth-child(3) { animation-delay: .27s; }
+.acc-enter .acc-orders .order-card:nth-child(3), .acc-enter .acc-list .aw-row:nth-child(4) { animation-delay: .33s; }
+.acc-enter .acc-orders .order-card:nth-child(n+4), .acc-enter .acc-list .aw-row:nth-child(n+5) { animation-delay: .38s; }
+@keyframes accRise { from { opacity: 0; transform: translateY(22px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes accAva { from { opacity: 0; transform: scale(.6) rotate(-8deg); } }
+@media (prefers-reduced-motion: reduce) { .acc-enter * { animation: none !important; } }
