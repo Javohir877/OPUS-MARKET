@@ -437,43 +437,38 @@ const activeCount = () => state.brands.size + Object.values(state.flags).filter(
 // ---------- Kategoriya plitkalari ----------
 function renderCategories() {
   const grid = $("#catGrid");
-  if (grid) {
-    // Bento: eng ko'p mahsulotli kategoriya — katta karta; har birida "…dan" narx va top brendlar
-    const info = CATEGORIES.map((c) => {
-      const L = PRODUCTS.filter((p) => p.cat === c.id);
-      const bc = {}; L.forEach((p) => (bc[p.brand] = (bc[p.brand] || 0) + 1));
-      return { c, n: L.length, from: L.length ? Math.min(...L.map((p) => p.price)) : 0, brands: Object.keys(bc).sort((a, b) => bc[b] - bc[a]).slice(0, 3) };
-    }).filter((x) => x.n).sort((a, b) => b.n - a.n);
-    const top = (() => { const bc = {}; PRODUCTS.forEach((p) => (bc[p.brand] = (bc[p.brand] || 0) + 1)); return Object.keys(bc).sort((a, b) => bc[b] - bc[a]).slice(0, 8); })();
-    grid.innerHTML = info.map(({ c, n, from, brands }, k) => `<button type="button" class="bc bc-${k}${state.cat === c.id ? " on" : ""}" data-cat="${esc(c.id)}">
-      <img src="${IMG(c.img, k === 0 ? 900 : 500, k === 0 ? 700 : 360)}" alt="" loading="lazy" onerror="this.remove()" />
-      <span class="bc-n">${n} ta</span>
-      <span class="bc-go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-      <span class="bc-txt"><b>${esc(c.name)}</b><small>${fmt(from)} dan</small><em>${brands.map(esc).join(" · ")}</em></span>
-    </button>`).join("") + `<div class="bc bc-all${state.cat === "all" ? " on" : ""}">
-      <div class="bc-all-l"><small>Butun katalog</small><b>${PRODUCTS.length} ta mahsulot</b><button type="button" class="btn btn-primary btn-sm" data-cat="all">Barchasini ko'rish →</button></div>
-      <div class="bc-brands">${top.map((b) => `<button type="button" data-brand-go="${esc(b)}">${esc(b)}</button>`).join("")}</div>
-    </div>`;
-  }
+  if (grid) grid.innerHTML = CATEGORIES.map((c) => {
+    const n = PRODUCTS.filter((p) => p.cat === c.id).length;
+    return `<button type="button" class="ct${state.cat === c.id ? " on" : ""}" data-cat="${esc(c.id)}">
+      <span class="ct-bg"><img src="${IMG(c.img, 500, 360)}" alt="" loading="lazy" onerror="this.remove()" /></span>
+      <span class="ct-ic">${svgIcon(c.icon)}</span>
+      <b>${esc(c.name)}</b><small>${n} ta mahsulot</small>
+      <i class="ct-go">→</i>
+    </button>`;
+  }).join("") + `<button type="button" class="ct ct-all${state.cat === "all" ? " on" : ""}" data-cat="all"><span class="ct-ic"><svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></span><b>Barchasi</b><small>${PRODUCTS.length} ta mahsulot</small><i class="ct-go">→</i></button>`;
   renderFilters();
 }
 function setCat(cat) {
   if (state.cat !== cat) state.facets = {};
   state.cat = cat;
   state.dealsOnly = false;
-  $$("#catGrid .bc[data-cat]").forEach((b) => b.classList.toggle("on", b.dataset.cat === cat));
-  $("#catGrid .bc-all") && $("#catGrid .bc-all").classList.toggle("on", cat === "all");
+  $$("#catGrid .ct").forEach((b) => b.classList.toggle("on", b.dataset.cat === cat));
   renderProducts();
 }
 $("#catGrid").addEventListener("click", (e) => {
-  const bg = e.target.closest("[data-brand-go]");
-  if (bg) { state.cat = "all"; state.facets = {}; state.brands = new Set([bg.dataset.brandGo]); renderCategories(); renderProducts(); $("#products").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   const b = e.target.closest("[data-cat]"); if (!b) return;
   sfx("tap");
   setCat(b.dataset.cat);
   $("#products").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
+
+$("#catToggle").addEventListener("click", () => {
+  const s = $("#categories"); s.classList.toggle("collapsed");
+  $("#catToggle").setAttribute("aria-expanded", !s.classList.contains("collapsed"));
+  try { store.set("cat_collapsed", s.classList.contains("collapsed")); } catch (e) {}
+});
+if (store.get("cat_collapsed", false)) $("#categories").classList.add("collapsed");
 
 // ---------- Filtr paneli ----------
 let brandQ = "", brandsOpen = false;
