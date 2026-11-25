@@ -217,6 +217,11 @@ $("#dealsImg").style.backgroundImage = "url(img/deals.jpg)";
 
 // Hero: flagman mahsulotlar almashib turadi (katta foto + narx kartochkasi)
 const heroFx = { i: 0, t: null, ids: [] };
+// Foto orqasidagi katta xira yozuv: model nomi (RTX 5090, MacBook Pro...) yoki brend
+const heroWord = (p) => {
+  const m = String(p.name).match(/\b(RTX|RX|GTX)\s?\d{3,4}|MacBook\s\w+|iMac|ROG\s\w+|Legion|ThinkPad|XPS|Odyssey|UltraGear/i);
+  return (m ? m[0] : p.brand || "OPUS").toUpperCase();
+};
 function renderHero() {
   const box = $("#phSlides"), dots = $("#phDots");
   if (!box) return;
@@ -226,8 +231,9 @@ function renderHero() {
   if (ids === heroFx.ids.join(",")) return;
   heroFx.ids = L.map((p) => p.id); heroFx.i = 0;
   box.innerHTML = L.map((p, i) => `<button class="ph-slide${i ? "" : " on"}" data-hp="${p.id}" aria-label="${esc(p.name)}">
-      <img src="${pImg(p, 1000)}" alt="" ${i ? 'loading="lazy"' : ""} onerror="imgFail(this)" data-icon="${esc((catOf(p) || {}).icon || "laptop")}" />
-      <span class="ph-tag"><small>${esc((catOf(p) || {}).name || "")}</small><b>${esc(p.name)}</b><em>${fmt(p.price)}${p.old > p.price ? ` <s>${fmt(p.old)}</s>` : ""}</em></span>
+      <span class="ph-word" aria-hidden="true">${esc(heroWord(p))}</span>
+      <span class="ph-obj"><img src="${pImg(p, 1000)}" alt="" ${i ? 'loading="lazy"' : ""} onerror="imgFail(this)" data-icon="${esc((catOf(p) || {}).icon || "laptop")}" /></span>
+      <span class="ph-bar"><span><small>${esc((catOf(p) || {}).name || "")}</small><b>${esc(p.name)}</b></span><em>${fmt(p.price)}${p.old > p.price ? ` <s>${fmt(p.old)}</s>` : ""}</em><i class="ph-go">Ko'rish →</i></span>
     </button>`).join("");
   dots.innerHTML = L.map((_, i) => `<button class="${i ? "" : "on"}" data-hd="${i}" aria-label="${i + 1}-mahsulot"></button>`).join("");
   clearInterval(heroFx.t);
