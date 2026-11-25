@@ -879,20 +879,21 @@ async function loadOrders() {
   if (!auth.token) { state.orders = []; return; }
   state.orders = (await api("GET", "/api/orders")).orders;
 }
-async function showOrders() {
-  if (!auth.user) return requireLogin("Buyurtmalaringizni ko'rish uchun akkauntingizga kiring", showOrders);
+function showOrders() { openAccount("orders"); }
+async function loadAccOrders() {
   const box = $("#orderItems");
-  box.innerHTML = `<div class="drawer-empty"><div>⏳</div><p>Yuklanmoqda…</p></div>`;
-  openLayer($("#ordersDrawer"));
+  if (!state.orders || !state.orders.length) box.innerHTML = `<div class="drawer-empty"><p>Yuklanmoqda…</p></div>`;
   try { await loadOrders(); renderOrders(); }
-  catch (e) { box.innerHTML = `<div class="drawer-empty"><div>⚠️</div><h4>Yuklab bo'lmadi</h4><p>${esc(e.message)}</p></div>`; }
+  catch (e) { box.innerHTML = `<div class="drawer-empty"><h4>Yuklab bo'lmadi</h4><p>${esc(e.message)}</p></div>`; }
 }
 function renderOrders() {
   const box = $("#orderItems");
   if (!state.orders.length) {
-    box.innerHTML = `<div class="drawer-empty"><div>📦</div><h4>Hali buyurtmalar yo'q</h4><p>Birinchi xaridingizni amalga oshiring</p></div>`;
+    box.innerHTML = `<div class="drawer-empty"><img class="stk" src="icons/stk/bag.png" alt="" style="width:72px;height:72px" /><h4>Hali buyurtmalar yo'q</h4><p>Birinchi xaridingizni amalga oshiring</p><a href="#products" class="btn btn-primary btn-sm">Katalogga o'tish</a></div>`;
+    accCount("#accCntOrders", 0);
     return;
   }
+  accCount("#accCntOrders", state.orders.filter((o) => !["Yetkazildi", "Bekor qilindi"].includes(o.status)).length);
   box.innerHTML = state.orders.map((o) => {
     const cancelled = o.status === "Bekor qilindi";
     const pending = !cancelled && o.confirmed === 0;
@@ -1683,8 +1684,36 @@ $("#registerForm").addEventListener("submit", (e) => {
 
 // Profil oynasi
 $("#profileForm [name=region]").innerHTML = $("#checkoutForm [name=region]").innerHTML;
-function openAccount() {
-  if (!auth.user) return openAuth("login");
+// ---------- Kabinet sahifasi (#account-orders, #account-watch, #account-reviews, #account-profile) ----------
+const ACC_TABS = ["orders", "watch", "reviews", "profile"];
+const accCount = (sel, n) => { const e = $(sel); if (e) e.textContent = n ? n : ""; };
+function accTab(t) {
+  $$("[data-acctab]").forEach((b) => { const on = b.dataset.acctab === t; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
+  $$(".acc-pane").forEach((p) => (p.hidden = p.dataset.pane !== t));
+  if (location.hash !== "#account-" + t) history.replaceState(null, "", "#account-" + t);
+  if (t === "orders") loadAccOrders();
+  if (t === "watch" || t === "reviews") renderAccWatch();
+}
+function closeAccount() {
+  if (!document.body.classList.contains("acc-open")) return;
+  document.body.classList.remove("acc-open");
+  $("#accountPage").hidden = true;
+}
+$("#accountPage").addEventListener("click", (e) => { const b = e.target.closest("[data-acctab]"); if (b) { sfx("tab"); accTab(b.dataset.acctab); } });
+$("#accBack").addEventListener("click", (e) => { e.preventDefault(); closeAccount(); history.pushState(null, "", location.pathname + location.search); scrollTo({ top: 0 }); });
+// Sahifadagi boshqa havola (#products va h.k.) yoki "Orqaga" — kabinet yopiladi
+addEventListener("hashchange", () => {
+  const m = location.hash.match(/^#account(?:-(\w+))?$/);
+  if (m) return openAccount(m[1]);
+  if (!document.body.classList.contains("acc-open")) return;
+  closeAccount();
+  const t = location.hash.length > 1 && document.getElementById(location.hash.slice(1));
+  if (t) requestAnimationFrame(() => t.scrollIntoView());
+});
+{ const m = location.hash.match(/^#account(?:-(\w+))?$/); if (m) setTimeout(() => openAccount(m[1]), 600); }
+function openAccount(tab) {
+  tab = ACC_TABS.includes(tab) ? tab : "orders";
+  if (!auth.user) return requireLogin("Kabinetga kirish uchun akkauntingizga kiring", () => openAccount(tab));
   const u = auth.user, f = $("#profileForm").elements;
   $("#accAva").textContent = initials(u.name);
   $("#accName").textContent = u.name;
@@ -1692,17 +1721,23 @@ function openAccount() {
   f.name.value = u.name || ""; f.email.value = u.email || ""; f.address.value = u.address || "";
   f.region.value = u.region || "Toshkent shahri";
   $("#passForm").reset();
-  openLayer($("#accDrawer"));
-  renderAccWatch();
+  closeAll(false, true);
+  const was = document.body.classList.contains("acc-open");
+  document.body.classList.add("acc-open");
+  $("#accountPage").hidden = false;
+  if (!location.hash.startsWith("#account")) history.pushState(null, "", "#account-" + tab);
+  accTab(tab);
+  if (!was) scrollTo({ top: 0 });
+  if (tab !== "watch" && tab !== "reviews") renderAccWatch(); // hisoblagichlar uchun
   // Ma'lumotlar boshqa qurilmada o'zgargan bo'lishi mumkin — yangilab qo'yamiz
   api("GET", "/api/me").then((r) => setAuth(auth.token, r.user), (e) => { if (e.status === 401) { closeAll(); toast("Seans tugagan — qayta kiring"); } });
 }
-$("#accBtn").addEventListener("click", openAccount);
-$("#accOrders").addEventListener("click", showOrders);
+$("#accBtn").addEventListener("click", () => openAccount("orders"));
 $("#accLogout").addEventListener("click", async () => {
   try { await api("POST", "/api/auth/logout"); } catch {}
   setAuth(null);
   closeAll();
+  closeAccount(); history.pushState(null, "", location.pathname + location.search); scrollTo({ top: 0 });
   toast("Akkauntdan chiqdingiz");
 });
 $("#profileForm").addEventListener("submit", async (e) => {
@@ -2045,23 +2080,28 @@ function toggleAlert(pid, kind) {
   });
 }
 async function renderAccWatch() {
-  const box = $("#accWatch"); if (!box) return;
-  box.innerHTML = `<div class="rv-wait">Yuklanmoqda…</div>`;
+  const box = $("#accWatch"), rbox = $("#accRate"); if (!box || !rbox) return;
+  if (!box.children.length) box.innerHTML = `<div class="rv-wait">Yuklanmoqda…</div>`;
+  if (!rbox.children.length) rbox.innerHTML = `<div class="rv-wait">Yuklanmoqda…</div>`;
   let al = [], m = null;
-  try { [al, m] = await Promise.all([loadAlerts(), loadMine(true)]); } catch { box.innerHTML = ""; return; }
-  const rate = m ? m.bought.map((id) => ({ p: byId(id), r: m.reviews.find((x) => x.product_id === id) })).filter((x) => x.p && (!x.r || x.r.pending)) : [];
+  try { [al, m] = await Promise.all([loadAlerts(), loadMine(true)]); } catch { box.innerHTML = rbox.innerHTML = `<p class="muted aw-empty">Yuklab bo'lmadi. Qayta urinib ko'ring.</p>`; return; }
+  const all = m ? m.bought.map((id) => ({ p: byId(id), r: m.reviews.find((x) => x.product_id === id) })).filter((x) => x.p) : [];
+  all.sort((x, y) => (x.r ? 1 : 0) - (y.r ? 1 : 0));
+  const rate = all;
   const watch = al.map((x) => ({ a: x, p: byId(x.product_id) })).filter((x) => x.p);
   const row = (p, sub, btn) => `<div class="aw-row" data-open="${p.id}"><img src="${IMG(p.img, 120)}" alt="" onerror="this.style.visibility='hidden'" /><div><b>${esc(p.name)}</b><small>${sub}</small></div>${btn}</div>`;
-  box.innerHTML = `
-    <h4>⭐ Xaridlarimni baholash</h4>
-    ${rate.length ? rate.map(({ p, r }) => row(p, r ? "⏳ Sharhingiz tekshiruvda" : "Hali baho bermagansiz", r ? "" : `<button type="button" class="btn btn-primary btn-sm" data-rate="${p.id}">Baholash</button>`)).join("")
-      : `<p class="muted aw-empty">${m && m.bought.length ? "Barcha xaridlaringizga baho bergansiz — rahmat! 🙏" : "Buyurtmangiz yetkazilgach, mahsulotlar shu yerda chiqadi."}</p>`}
-    <h4>🔔 Kuzatuvlarim</h4>
+  const stars = (n) => `<span class="aw-stars">${"★".repeat(n)}<i>${"★".repeat(5 - n)}</i></span>`;
+  accCount("#accCntRate", rate.filter((x) => !x.r).length);
+  accCount("#accCntWatch", watch.length);
+  rbox.innerHTML = `<p class="acc-hint">Sotib olgan mahsulotlaringizga baho bering — sharhlar "✓ Xarid qilgan" belgisi bilan, tekshiruvdan so'ng chiqadi.</p>
+    ${rate.length ? rate.map(({ p, r }) => row(p, !r ? "Hali baho bermagansiz" : r.pending ? "Tekshiruvda" : r.hidden ? "Do'kon tomonidan yashirilgan" : `${stars(r.rating)} Chop etilgan`, `<button type="button" class="btn ${r ? "btn-ghost" : "btn-primary"} btn-sm" data-rate="${p.id}">${r ? "Tahrirlash" : "Baholash"}</button>`)).join("")
+      : `<div class="drawer-empty"><img class="stk" src="icons/stk/star.png" alt="" style="width:64px;height:64px" /><h4>Baholanadigan xarid yo'q</h4><p>Buyurtmangiz yetkazilgach, mahsulotlar shu yerda chiqadi.</p></div>`}`;
+  box.innerHTML = `<p class="acc-hint">Mahsulot omborga kelsa yoki arzonlashsa — Telegram va ilovaga darhol xabar keladi.</p>
     ${watch.length ? watch.map(({ a, p }) => row(p, a.kind === "stock" ? (p.stock > 0 ? "✅ Omborda bor!" : "Omborga kelishini kutyapsiz") : `${fmt(a.base_price)} dan arzonlashsa · hozir ${fmt(p.price)}`, `<button type="button" class="aw-x" data-unwatch="${p.id}:${a.kind}" aria-label="O'chirish">✕</button>`)).join("")
-      : `<p class="muted aw-empty">Mahsulot oynasida «Narxi tushsa xabar berish» yoki «Kelganda xabar berish» tugmasini bosing.</p>`}`;
+      : `<div class="drawer-empty"><img class="stk" src="icons/stk/bell.png" alt="" style="width:64px;height:64px" /><h4>Kuzatuv yo'q</h4><p>Mahsulot oynasida «Narxi tushsa xabar berish» yoki «Kelganda xabar berish» tugmasini bosing.</p></div>`}`;
 }
 document.addEventListener("click", async (e) => {
-  const box = e.target.closest("#accWatch"); if (!box) return;
+  const box = e.target.closest("#accWatch, #accRate"); if (!box) return;
   const un = e.target.closest("[data-unwatch]");
   if (un) { const [pid, kind] = un.dataset.unwatch.split(":"); await toggleAlert(+pid, kind); return renderAccWatch(); }
   const rt = e.target.closest("[data-rate]");
