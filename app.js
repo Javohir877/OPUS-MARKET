@@ -437,22 +437,30 @@ const activeCount = () => state.brands.size + Object.values(state.flags).filter(
 // ---------- Kategoriya plitkalari ----------
 function renderCategories() {
   const grid = $("#catGrid");
-  if (grid) grid.innerHTML = CATEGORIES.map((c) => {
-    const n = PRODUCTS.filter((p) => p.cat === c.id).length;
-    return `<button type="button" class="ct${state.cat === c.id ? " on" : ""}" data-cat="${esc(c.id)}">
-      <span class="ct-bg"><img src="${IMG(c.img, 500, 360)}" alt="" loading="lazy" onerror="this.remove()" /></span>
-      <span class="ct-ic">${svgIcon(c.icon)}</span>
-      <b>${esc(c.name)}</b><small>${n} ta mahsulot</small>
-      <i class="ct-go">→</i>
-    </button>`;
-  }).join("") + `<button type="button" class="ct ct-all${state.cat === "all" ? " on" : ""}" data-cat="all"><span class="ct-ic"><svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></span><b>Barchasi</b><small>${PRODUCTS.length} ta mahsulot</small><i class="ct-go">→</i></button>`;
+  if (grid) {
+    grid.innerHTML = CATEGORIES.map((c) => {
+      const n = PRODUCTS.filter((p) => p.cat === c.id).length;
+      return `<div class="cat reveal${state.cat === c.id ? " on" : ""}" data-cat="${esc(c.id)}">
+        <img src="${IMG(c.img, 500, 360)}" alt="${esc(c.name)}" loading="lazy" />
+        <span class="cat-ic">${svgIcon(c.icon)}</span>
+        <div><h4>${esc(c.name)}</h4><small>${n} ta mahsulot</small></div>
+        <span class="cat-arrow">→</span>
+      </div>`;
+    }).join("");
+    $$("#catGrid .cat").forEach((el) => {
+      io.observe(el);
+      const im = $("img", el);
+      const apply = () => { const t = imageTint(im); if (t) { el.style.setProperty("--tint", t.tint); el.style.setProperty("--tint-deep", t.deep); el.classList.add("tinted"); } };
+      if (im.complete && im.naturalWidth) apply(); else im.addEventListener("load", apply, { once: true });
+    });
+  }
   renderFilters();
 }
 function setCat(cat) {
   if (state.cat !== cat) state.facets = {};
   state.cat = cat;
   state.dealsOnly = false;
-  $$("#catGrid .ct").forEach((b) => b.classList.toggle("on", b.dataset.cat === cat));
+  $$("#catGrid .cat").forEach((b) => b.classList.toggle("on", b.dataset.cat === cat));
   renderProducts();
 }
 $("#catGrid").addEventListener("click", (e) => {
@@ -462,13 +470,6 @@ $("#catGrid").addEventListener("click", (e) => {
   $("#products").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
-
-$("#catToggle").addEventListener("click", () => {
-  const s = $("#categories"); s.classList.toggle("collapsed");
-  $("#catToggle").setAttribute("aria-expanded", !s.classList.contains("collapsed"));
-  try { store.set("cat_collapsed", s.classList.contains("collapsed")); } catch (e) {}
-});
-if (store.get("cat_collapsed", false)) $("#categories").classList.add("collapsed");
 
 // ---------- Filtr paneli ----------
 let brandQ = "", brandsOpen = false;
