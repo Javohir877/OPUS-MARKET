@@ -224,3 +224,30 @@ body { -webkit-font-smoothing: antialiased; }
 .tag.hit { background: #111113; color: #fff; }
 .tag.new { background: #fff; color: #111; }
 .tag.orig { box-shadow: none; }
+
+
+/* ---------- 3D stikerlar (emoji o'rniga) ---------- */
+img.stk { display: inline-block; width: 1.5em; height: 1.5em; object-fit: contain; vertical-align: middle; pointer-events: none; user-select: none; }
+.f-ic img.stk { width: 40px; height: 40px; }
+.f-ic { background: none; border: 0; width: 52px; height: 52px; }
+.pill-stk { display: inline-flex; align-items: center; gap: 7px; padding-left: 8px; }
+.pill-stk img.stk { width: 22px; height: 22px; }
+img.stk-lg { width: 46px; height: 46px; margin-right: 12px; vertical-align: -12px; }
+img.stk-opt { width: 34px; height: 34px; float: left; margin: 0 10px 0 0; }
+img.stk-sm { width: 18px; height: 18px; margin-right: 6px; vertical-align: -4px; }
+svg.li { width: 16px; height: 16px; fill: currentColor; flex: none; vertical-align: -3px; margin-right: 8px; opacity: .8; }
+.footer-grid a svg.li { display: inline-block; }
+.btn svg.li { margin-right: 2px; opacity: 1; width: 17px; height: 17px; }
+
+/* 2: yuklab olish va ovoz tugmalari olib tashlandi */
+#soundBtn, #installBtn, [data-proxy="soundBtn"] { display: none !important; }
+
+/* 3: kirgan foydalanuvchi tugmasi — ustiga borganda ism ko'rinib turadi */
+.acc-btn.on { background: var(--card); color: var(--text); border: 1px solid var(--line2); }
+.acc-btn.on:hover { background: var(--card2); color: var(--text); border-color: var(--text); }
+.acc-btn.on .acc-label { color: inherit; }
+
+/* 4: brendlar lentasi va chapdagi "elektr sxemasi" chizig'i olib tashlandi */
+.marquee, .circuit-wrap, .beam, .cx-node, .cx-svg { display: none !important; }
+/* Hero parallaksi o'chirildi — matn aylantirganda keyingi bo'lim ustiga tushib qolmasin */
+.hero .hero-text, .hero .ph-visual { translate: none !important; opacity: 1 !important; }
