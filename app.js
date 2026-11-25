@@ -1913,7 +1913,7 @@ async function loadCatalog() {
     if (state.promo && !PROMOS[state.promo]) state.promo = null;
     if (SETTINGS.topbar) $("#topbarText").textContent = String(SETTINGS.topbar).replace(/^\p{Extended_Pictographic}️?\s*/u, "");
     if (SETTINGS.dealTitle) $("#dealTitle").textContent = SETTINGS.dealTitle;
-    renderCategories(); renderProducts(); renderCart(); renderRecent(); renderCompareBar(); renderNews(); updateBadges(); renderHero(); $$(".hero [data-live]").forEach((el) => { el.textContent = el.dataset.live === "products" ? PRODUCTS.length : new Set(PRODUCTS.map((p) => p.brand)).size; });
+    renderCategories(); renderProducts(); renderCart(); renderRecent(); renderCompareBar(); renderNews(); updateBadges(); renderHero(); renderBuilds(); renderConnect(); $$(".hero [data-live]").forEach((el) => { el.textContent = el.dataset.live === "products" ? PRODUCTS.length : new Set(PRODUCTS.map((p) => p.brand)).size; });
   } catch {}
 }
 
@@ -2179,3 +2179,125 @@ setTimeout(siteNotices, 2500);
 // Ulashilgan havola: #product-12 yoki #p-12 — mahsulot oynasi ochiladi
 { const m = location.hash.match(/^#(?:product|p)-(\d+)$/); if (m) setTimeout(() => { if (byId(+m[1])) { openProduct(+m[1]); history.replaceState(null, "", location.pathname + location.search); } }, 900); }
 document.addEventListener("visibilitychange", () => { if (!document.hidden) siteNotices(); });
+
+// =====================================================================
+// Test: "Sizga qanday kompyuter kerak?" — 3 savol → katalogdan 3 ta tavsiya
+// =====================================================================
+(() => {
+  const Q = [
+    { k: "goal", t: "Kompyuter nima uchun kerak?", o: [["game", "O'yinlar", "fire"], ["work", "Ish va dizayn", "paint-brush"], ["study", "O'qish va ofis", "file"], ["stream", "Striming va video", "video-camera"]] },
+    { k: "budget", t: "Byudjetingiz qancha?", o: [["0-8", "8 mln gacha", "wallet"], ["8-15", "8–15 mln", "money-bag"], ["15-30", "15–30 mln", "dollar"], ["30-999", "30 mln dan yuqori", "trophy"]] },
+    { k: "type", t: "Qaysi turi qulay?", o: [["pc", "Stol kompyuteri", "computer"], ["laptop", "Noutbuk", "mobile"], ["any", "Farqi yo'q", "tick"]] },
+  ];
+  let step = 0, ans = {};
+  const body = $("#quizBody");
+  if (!body) return;
+  const spec = (p) => Object.values(p.specs || {}).join(" ") + " " + p.name;
+  const score = (p, goal) => {
+    const s = spec(p), gpu = /RTX|RX\s?\d|GTX|Radeon Pro|Vega II/i.test(s), ram = +((s.match(/(\d+)\s?GB\s?(DDR|LPDDR|ECC|unified)?/i) || [])[1] || 0);
+    if (goal === "game") return (gpu ? 50 : 0) + (/gaming|rog|legion|omen|alienware|victus|tuf/i.test(p.name) ? 25 : 0) + Math.min(ram, 64) / 2;
+    if (goal === "work") return (/apple|mac|xps|studio|surface|thinkpad/i.test(p.name) ? 40 : 0) + Math.min(ram, 64) + (/4K|5K|Retina|OLED/i.test(s) ? 15 : 0);
+    if (goal === "study") return 60 - p.price / 1e6 + (/air|ofis|optiplex|nuc|go|chromebook|thinkpad/i.test(p.name) ? 25 : 0);
+    return (gpu ? 35 : 0) + Math.min(ram, 64) * 1.2 + (/i7|i9|ryzen 7|ryzen 9|m\d (pro|max)/i.test(s) ? 20 : 0);
+  };
+  function results() {
+    const [lo, hi] = ans.budget.split("-").map((x) => +x * 1e6);
+    const cats = ans.type === "any" ? ["pc", "laptop"] : [ans.type];
+    let L = PRODUCTS.filter((p) => cats.includes(p.cat) && (p.stock ?? 0) > 0 && p.price >= lo && p.price <= hi);
+    let wide = false;
+    if (L.length < 3) { wide = true; L = PRODUCTS.filter((p) => cats.includes(p.cat) && (p.stock ?? 0) > 0 && p.price <= hi * 1.25); }
+    return { L: L.sort((a, b) => score(b, ans.goal) - score(a, ans.goal)).slice(0, 3), wide };
+  }
+  function draw() {
+    if (step < Q.length) {
+      const q = Q[step];
+      body.innerHTML = `<div class="qz-step">
+        <div class="qz-prog">${Q.map((_, i) => `<i class="${i <= step ? "on" : ""}"></i>`).join("")}</div>
+        <small class="qz-n">${step + 1} / ${Q.length}-savol</small>
+        <h3>${q.t}</h3>
+        <div class="qz-opts">${q.o.map(([v, t, ic]) => `<button type="button" class="qz-opt${ans[q.k] === v ? " on" : ""}" data-qv="${v}"><img src="icons/stk/${ic}.png" alt="" /><span>${t}</span></button>`).join("")}</div>
+        ${step ? `<button type="button" class="qz-back" data-qback>← Orqaga</button>` : ""}
+      </div>`;
+      return;
+    }
+    const { L, wide } = results();
+    body.innerHTML = `<div class="qz-step qz-res">
+      <div class="qz-prog">${Q.map(() => `<i class="on"></i>`).join("")}</div>
+      <h3>Sizga mos variantlar</h3>
+      <p class="qz-sub">${wide ? "Aynan shu byudjetda variant kam — yaqin narxdagilarni ham qo'shdik." : "Javoblaringiz bo'yicha katalogimizdan tanlandi."}</p>
+      <div class="qz-list">${L.length ? L.map((p, i) => `<div class="qz-card" data-open-p="${p.id}">
+        ${i === 0 ? `<span class="qz-best">Eng mos</span>` : ""}
+        <div class="qz-img"><img src="${pImg(p, 400)}" alt="" onerror="imgFail(this)" data-icon="${esc((catOf(p) || {}).icon || "laptop")}" /></div>
+        <b>${esc(p.name)}</b>
+        <small>${esc(Object.values(p.specs || {}).slice(0, 2).join(" · "))}</small>
+        <div class="qz-foot"><em>${fmt(p.price)}</em><button type="button" class="add-btn" data-qadd="${p.id}" aria-label="Savatga qo'shish"><svg viewBox="0 0 24 24"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg></button></div>
+      </div>`).join("") : `<p class="qz-sub">Afsuski, mos variant topilmadi. Operatorimiz yordam beradi: <a href="tel:+998712000000">+998 71 200 00 00</a></p>`}</div>
+      <div class="qz-actions"><button type="button" class="btn btn-ghost btn-sm" data-qagain>Qaytadan</button><button type="button" class="btn btn-ghost btn-sm" data-qai>OPUS AI bilan maslahatlashish</button></div>
+    </div>`;
+  }
+  $("#quizStart").addEventListener("click", () => { step = 0; ans = {}; draw(); openLayer($("#quizModal")); });
+  body.addEventListener("click", (e) => {
+    const o = e.target.closest("[data-qv]");
+    if (o) { ans[Q[step].k] = o.dataset.qv; sfx("tick"); step++; body.classList.remove("qz-anim"); void body.offsetWidth; body.classList.add("qz-anim"); return draw(); }
+    if (e.target.closest("[data-qback]")) { step = Math.max(0, step - 1); return draw(); }
+    if (e.target.closest("[data-qagain]")) { step = 0; ans = {}; return draw(); }
+    if (e.target.closest("[data-qai]")) { closeAll(); const G = { game: "o'yinlar", work: "ish va dizayn", study: "o'qish", stream: "striming" }[ans.goal]; window.openOpusAI && openOpusAI(`${G} uchun ${ans.budget.replace("-", "–").replace("–999", "+")} mln so'm byudjetga kompyuter tanlab bering`); return; }
+    const ad = e.target.closest("[data-qadd]");
+    if (ad) { e.stopPropagation(); addToCart(+ad.dataset.qadd, 1, ad); return; }
+    const c = e.target.closest("[data-open-p]");
+    if (c) { const id = +c.dataset.openP; closeAll(); setTimeout(() => openProduct(id), 120); }
+  });
+})();
+
+// =====================================================================
+// Yig'ish g'oyalari — katalogdagi haqiqiy tayyor kompyuterlar
+// =====================================================================
+function renderBuilds() {
+  const box = $("#buildGrid"); if (!box) return;
+  const T = [
+    { ids: [145, 144], tag: "Boshlang'ich", title: "Arzon o'yin kompyuteri" },
+    { ids: [7, 59], tag: "Esports", title: "Pro gaming to'plami" },
+    { ids: [6, 60], tag: "Creator elite", title: "Striming va montaj stansiyasi" },
+  ];
+  const pc = PRODUCTS.filter((p) => p.cat === "pc" && (p.stock ?? 0) > 0);
+  const used = new Set();
+  const L = T.map((t) => {
+    const p = t.ids.map(byId).find((x) => x && (x.stock ?? 0) > 0 && !used.has(x.id)) || null;
+    if (p) used.add(p.id);
+    return p && { ...t, p };
+  }).filter(Boolean);
+  if (L.length < 2) { box.closest("section").hidden = true; return; }
+  box.innerHTML = L.map(({ tag, title, p }) => {
+    const s = p.specs || {};
+    const line = [s.Videokarta || s.Grafika, s.Protsessor, s["Operativ xotira"]].filter(Boolean).map((x) => String(x).split("(")[0].trim()).join(" + ");
+    return `<article class="bi-card" data-open-b="${p.id}">
+      <div class="bi-img"><img src="${pImg(p, 700)}" alt="" loading="lazy" onerror="imgFail(this)" data-icon="pc" /><span class="bi-price">${fmt(p.price)}</span><span class="bi-tag"><i></i>${esc(tag)}</span></div>
+      <div class="bi-body"><h3>${esc(title)}</h3><p>${esc(line)}</p><small>${esc(p.name)}</small>
+      <button type="button" class="bi-btn">To'plamni ko'rish</button></div>
+    </article>`;
+  }).join("");
+}
+$("#buildGrid") && $("#buildGrid").addEventListener("click", (e) => { const c = e.target.closest("[data-open-b]"); if (c) openProduct(+c.dataset.openB); });
+renderBuilds();
+
+// =====================================================================
+// Biz bilan aloqada bo'ling — Telegram, Instagram (sozlamada bo'lsa), telefon
+// =====================================================================
+function renderConnect() {
+  const box = $("#connectLinks"); if (!box) return;
+  const so = SETTINGS.social || {};
+  const L = [
+    so.tgChannel && { cls: "tg", href: "https://t.me/" + String(so.tgChannel).replace(/^@|https?:\/\/t\.me\//g, ""), t: "Telegram kanal", s: "t.me/" + String(so.tgChannel).replace(/^@|https?:\/\/t\.me\//g, ""), ic: "tg" },
+    { cls: "tg", href: "https://t.me/opussmarketbot", t: "Telegram bot", s: "@opussmarketbot — buyurtma va kuzatish", ic: "tg" },
+    so.instagram && { cls: "ig", href: "https://instagram.com/" + String(so.instagram).replace(/^@/, ""), t: "Instagram sahifa", s: "@" + String(so.instagram).replace(/^@/, ""), ic: "ig" },
+    { cls: "ph", href: "tel:+998712000000", t: "Qo'ng'iroq qiling", s: "+998 71 200 00 00 · 09:00–21:00", ic: "ph" },
+  ].filter(Boolean);
+  const IC = {
+    tg: '<svg viewBox="0 0 24 24"><path d="M21.9 4.3l-3.2 15.1c-.2 1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.3-5 9.2-8.3c.4-.4-.1-.6-.6-.2L6.1 13 1.2 11.5c-1-.3-1-1 .2-1.5l19-7.3c.9-.3 1.7.2 1.5 1.6z"/></svg>',
+    ig: '<svg viewBox="0 0 24 24"><path d="M12 7a5 5 0 100 10 5 5 0 000-10zm0 8.2a3.2 3.2 0 110-6.4 3.2 3.2 0 010 6.4zM17.3 5.5a1.2 1.2 0 100 2.4 1.2 1.2 0 000-2.4zM12 2.5c-2.6 0-2.9 0-3.9.1-3.4.2-5.3 2-5.5 5.5-.1 1-.1 1.3-.1 3.9s0 2.9.1 3.9c.2 3.4 2.1 5.3 5.5 5.5 1 .1 1.3.1 3.9.1s2.9 0 3.9-.1c3.4-.2 5.3-2.1 5.5-5.5.1-1 .1-1.3.1-3.9s0-2.9-.1-3.9c-.2-3.4-2.1-5.3-5.5-5.5-1-.1-1.3-.1-3.9-.1z"/></svg>',
+    ph: '<svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.6a1 1 0 01-.25 1z"/></svg>',
+  };
+  box.innerHTML = L.map((x) => `<a class="ct-link ${x.cls}" href="${esc(x.href)}" ${x.href.startsWith("http") ? 'target="_blank" rel="noopener"' : ""}>
+    <span class="ct-ic">${IC[x.ic]}</span><span class="ct-tx"><b>${esc(x.t)}</b><small>${esc(x.s)}</small></span><span class="ct-arr">→</span></a>`).join("");
+}
+renderConnect();
