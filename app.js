@@ -1770,7 +1770,7 @@ function openAccount(tab) {
   const u = auth.user, f = $("#profileForm").elements;
   paintAccAva();
   $("#accName").textContent = u.name;
-  $("#accPhone").textContent = fmtPhone(u.phone) + (u.email ? " · " + u.email : "");
+  $("#accPhone").textContent = (u.phone ? fmtPhone(u.phone) : "Telefon kiritilmagan") + (u.email ? " · " + u.email : "");
   f.name.value = u.name || ""; f.email.value = u.email || ""; f.address.value = u.address || "";
   f.region.value = u.region || "Toshkent shahri";
   $("#passForm").reset();
@@ -2301,3 +2301,65 @@ function renderConnect() {
     <span class="ct-ic">${IC[x.ic]}</span><span class="ct-tx"><b>${esc(x.t)}</b><small>${esc(x.s)}</small></span><span class="ct-arr">→</span></a>`).join("");
 }
 renderConnect();
+
+// =====================================================================
+// Google orqali kirish (Google Identity Services). Client ID — admin sozlamasi SETTINGS.googleClientId
+// =====================================================================
+let gsiLoading = null;
+const loadGSI = () => window.google && google.accounts ? Promise.resolve() : (gsiLoading ||= new Promise((res, rej) => {
+  const s = document.createElement("script");
+  s.src = "https://accounts.google.com/gsi/client"; s.async = true;
+  s.onload = res; s.onerror = () => { gsiLoading = null; rej(); };
+  document.head.appendChild(s);
+}));
+async function googleCredential(resp) {
+  try {
+    const r = await api("POST", "/api/auth/google", { credential: resp.credential });
+    setAuth(r.token, r.user);
+    closeAll();
+    toast(r.created ? `🎉 Xush kelibsiz, ${r.user.name}! Akkaunt ochildi.` : `👋 Salom, ${r.user.name}!`);
+    const next = afterLogin; afterLogin = null;
+    if (r.user.needPhone) setTimeout(askPhone, 450);
+    else if (next) setTimeout(next, 380);
+  } catch (e) { toast("⚠️ " + e.message); }
+}
+async function setupGoogle() {
+  const cid = SETTINGS.googleClientId;
+  if (!cid || TG) return; // Telegram ichida Google oynasi ochilmaydi
+  try { await loadGSI(); } catch { return; }
+  google.accounts.id.initialize({ client_id: cid, callback: googleCredential, ux_mode: "popup", auto_select: false, context: "signin" });
+  $$(".g-btn").forEach((el) => {
+    el.innerHTML = "";
+    google.accounts.id.renderButton(el, { theme: "filled_black", size: "large", shape: "pill", text: "continue_with", logo_alignment: "center", width: Math.min(360, el.clientWidth || 340), locale: "uz" });
+    el.hidden = false; el.previousElementSibling.hidden = false;
+  });
+}
+// Google orqali kirgan mijozdan telefon raqami bir marta so'raladi
+function askPhone() {
+  const p = prompt("Buyurtma va yetkazib berish uchun telefon raqamingizni kiriting (masalan, +998 90 123 45 67):");
+  if (!p) return toast("ℹ️ Telefon raqamini keyin Kabinet → Profil bo'limida kiritishingiz mumkin");
+  api("PATCH", "/api/me", { phone: p }).then((r) => { setAuth(auth.token, r.user); toast("✅ Telefon raqami saqlandi"); }, (e) => { toast("⚠️ " + e.message); setTimeout(askPhone, 300); });
+}
+$("#authModal") && new MutationObserver(() => { if ($("#authModal").classList.contains("open") && !$(".g-btn iframe, .g-btn div[role=button]")) setupGoogle(); })
+  .observe($("#authModal"), { attributes: true, attributeFilter: ["class"] });
+
+// =====================================================================
+// Afzalliklar slaydi: rasm + matn almashadi, pastdagi yorliqlarda vaqt chizig'i
+// =====================================================================
+(() => {
+  const S = $$("#fsStage .fs-slide"), T = $$(".fs-tab");
+  if (!S.length) return;
+  let i = 0, t = null, paused = false;
+  const DUR = 5000;
+  const go = (n) => {
+    i = (n + S.length) % S.length;
+    S.forEach((x, k) => x.classList.toggle("on", k === i));
+    T.forEach((x, k) => { x.classList.toggle("on", k === i); const b = $(".fs-bar", x); b.style.animation = "none"; void b.offsetWidth; b.style.animation = ""; });
+  };
+  const loop = () => { clearInterval(t); t = setInterval(() => { if (!paused && !document.hidden) go(i + 1); }, DUR); };
+  T.forEach((b) => b.addEventListener("click", () => { go(+b.dataset.fs); loop(); }));
+  const box = $("#features");
+  box.addEventListener("mouseenter", () => { paused = true; box.classList.add("paused"); });
+  box.addEventListener("mouseleave", () => { paused = false; box.classList.remove("paused"); });
+  loop();
+})();
