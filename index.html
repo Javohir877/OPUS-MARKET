@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=49" />
-  <link rel="stylesheet" href="premium.css?v=1" />
+  <link rel="stylesheet" href="premium.css?v=2" />
 </head>
 <body>
   <!-- Loader -->
@@ -61,7 +61,7 @@
         <a href="#news">Yangiliklar</a>
         <a href="#deals">Aksiya</a>
         <a href="#contact">Aloqa</a>
-        <div class="nav-tools"><button type="button" data-proxy="ordersBtn">📦 Buyurtmalarim</button><button type="button" data-proxy="themeBtn">🌓 Mavzu</button><button type="button" data-proxy="soundBtn">🔊 Ovoz effektlari</button></div>
+        <div class="nav-tools"><button type="button" data-proxy="ordersBtn">Buyurtmalarim</button><button type="button" data-proxy="themeBtn">Mavzu</button></div>
       </nav>
 
       <div class="search" id="searchBox">
@@ -135,10 +135,10 @@
 
   <!-- Features -->
   <section class="features container">
-    <div class="feature reveal"><div class="f-ic">🚚</div><h4>Tezkor yetkazish</h4><p>Toshkent bo'ylab 24 soatda</p></div>
-    <div class="feature reveal"><div class="f-ic">🛡️</div><h4>Rasmiy kafolat</h4><p>12 oydan 36 oygacha</p></div>
-    <div class="feature reveal"><div class="f-ic">💳</div><h4>Bo'lib to'lash</h4><p>0% ustama, 24 oygacha</p></div>
-    <div class="feature reveal"><div class="f-ic">↩️</div><h4>Qaytarish</h4><p>14 kun ichida bepul</p></div>
+    <div class="feature reveal"><div class="f-ic"><img class="stk" src="icons/stk/rocket.png" alt="" loading="lazy" /></div><h4>Tezkor yetkazish</h4><p>Toshkent bo'ylab 24 soatda</p></div>
+    <div class="feature reveal"><div class="f-ic"><img class="stk" src="icons/stk/sheild.png" alt="" loading="lazy" /></div><h4>Rasmiy kafolat</h4><p>12 oydan 36 oygacha</p></div>
+    <div class="feature reveal"><div class="f-ic"><img class="stk" src="icons/stk/card.png" alt="" loading="lazy" /></div><h4>Bo'lib to'lash</h4><p>0% ustama, 24 oygacha</p></div>
+    <div class="feature reveal"><div class="f-ic"><img class="stk" src="icons/stk/calender.png" alt="" loading="lazy" /></div><h4>Qaytarish</h4><p>14 kun ichida bepul</p></div>
   </section>
 
   <!-- 3D Showcase -->
@@ -171,10 +171,10 @@
       </div>
 
       <div class="sc-chips">
-        <span class="sc-chip" style="--x:46%;--y:14%">⚡ RTX 5090 · 32GB</span>
-        <span class="sc-chip" style="--x:84%;--y:22%">🖥 16" QHD+ 240Hz</span>
-        <span class="sc-chip" style="--x:44%;--y:84%">🧠 64GB DDR5</span>
-        <span class="sc-chip" style="--x:84%;--y:78%">❄️ Ultra sovutish</span>
+        <span class="sc-chip" style="--x:46%;--y:14%">RTX 5090 · 32GB</span>
+        <span class="sc-chip" style="--x:84%;--y:22%">16" QHD+ 240Hz</span>
+        <span class="sc-chip" style="--x:44%;--y:84%">64GB DDR5</span>
+        <span class="sc-chip" style="--x:84%;--y:78%">Ultra sovutish</span>
       </div>
       <div class="sc-hint"><span class="mouse-ic"><i></i></span>Aylantiring</div>
     </div>
@@ -194,7 +194,7 @@
     <div class="deals-img" id="dealsImg"></div>
     <div class="container deals-inner reveal">
       <div>
-        <span class="pill pill-dark">⏰ Cheklangan vaqt</span>
+        <span class="pill pill-dark pill-stk"><img class="stk" src="icons/stk/clock.png" alt="" loading="lazy" />Cheklangan vaqt</span>
         <h2 id="dealTitle">MEGA CHEGIRMA — 40% gacha!</h2>
         <p>Promo-kod: <button type="button" class="promo" id="copyPromo" title="Nusxa olish" aria-label="OPUS10 promo-kodini nusxalash">OPUS10</button> — savatda qo'shimcha 10% chegirma.</p>
         <div class="countdown" id="countdown">
@@ -296,7 +296,7 @@
   <section class="section container app-promo" id="app" data-node="Ilova">
     <div class="app-card reveal">
       <div class="app-text">
-        <span class="pill">📲 Android va iPhone</span>
+        <span class="pill pill-stk"><img class="stk" src="icons/stk/mobile.png" alt="" loading="lazy" />Android va iPhone</span>
         <h2>OPUS MARKET endi <span class="gradient-text">ilova</span></h2>
         <p>Do'kon telefoningizda bir bosishda ochiladi: brauzer panelisiz, tezkor, internet sekin bo'lsa ham katalog keshdan yuklanadi.</p>
         <ul class="app-perks">
@@ -429,12 +429,12 @@
   <!-- Newsletter -->
   <section class="newsletter container reveal">
     <div>
-      <h3>Birinchi xaridga 5% chegirma 🎁</h3>
+      <h3><img class="stk stk-lg" src="icons/stk/gift.png" alt="" loading="lazy" />Birinchi xaridga 5% chegirma</h3>
       <p>Buyurtma berishda promo-kodni kiriting. Buyurtma holatini esa Telegram botimizda kuzatib boring.</p>
     </div>
     <div class="news-cta" id="newsForm">
       <button type="button" class="promo-chip" id="promoCopy" title="Nusxalash"><span>YANGI5</span><small>nusxalash</small></button>
-      <a class="btn btn-primary" href="https://t.me/opussmarketbot" target="_blank" rel="noopener">✈️ Telegram bot</a>
+      <a class="btn btn-primary" href="https://t.me/opussmarketbot" target="_blank" rel="noopener"><svg class="li" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.9 4.3l-3.2 15.1c-.2 1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.3-5 9.2-8.3c.4-.4-.1-.6-.6-.2L6.1 13 1.2 11.5c-1-.3-1-1 .2-1.5l19-7.3c.9-.3 1.7.2 1.5 1.6z"/></svg> Telegram bot</a>
     </div>
   </section>
   </main>
@@ -461,9 +461,9 @@
       </div>
       <div>
         <h5>Aloqa</h5>
-        <a href="tel:+998712000000">📞 +998 71 200 00 00</a>
-        <a href="#">📍 Toshkent sh., Amir Temur ko'chasi</a>
-        <a href="#">🕘 Har kuni 09:00 – 21:00</a>
+        <a href="tel:+998712000000"><svg class="li" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.6a1 1 0 01-.25 1z"/></svg>+998 71 200 00 00</a>
+        <a href="#"><svg class="li" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 00-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 00-7-7zm0 9.5A2.5 2.5 0 1112 6.5a2.5 2.5 0 010 5z"/></svg>Toshkent sh., Amir Temur ko'chasi</a>
+        <a href="#"><svg class="li" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 10.4l3.2 1.9-.9 1.5L11 13V7h2z"/></svg>Har kuni 09:00 – 21:00</a>
       </div>
     </div>
     <div class="container footer-pay" id="footerPay"></div>
@@ -478,7 +478,7 @@
   <!-- Cart drawer -->
   <aside class="drawer" id="cartDrawer">
     <div class="drawer-head">
-      <h3>🛒 Savat</h3>
+      <h3>Savat</h3>
       <button type="button" class="close" data-close aria-label="Savatni yopish">✕</button>
     </div>
     <div class="ship-progress" id="shipProgress">
@@ -505,7 +505,7 @@
   <!-- Orders drawer -->
   <aside class="drawer" id="ordersDrawer">
     <div class="drawer-head">
-      <h3>📦 Buyurtmalarim</h3>
+      <h3>Buyurtmalarim</h3>
       <button type="button" class="close" data-close aria-label="Buyurtmalar oynasini yopish">✕</button>
     </div>
     <div class="drawer-body" id="orderItems"></div>
@@ -514,7 +514,7 @@
   <!-- Account drawer -->
   <aside class="drawer" id="accDrawer">
     <div class="drawer-head">
-      <h3>👤 Akkauntim</h3>
+      <h3>Akkauntim</h3>
       <button type="button" class="close" data-close aria-label="Akkaunt oynasini yopish">✕</button>
     </div>
     <div class="drawer-body" id="accBody">
@@ -523,7 +523,7 @@
         <div><b id="accName"></b><small id="accPhone"></small></div>
       </div>
       <div class="acc-actions">
-        <button type="button" class="btn btn-ghost btn-sm" id="accOrders">📦 Buyurtmalarim</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="accOrders">Buyurtmalarim</button>
         <button type="button" class="btn btn-ghost btn-sm" id="accLogout">↪ Chiqish</button>
       </div>
       <div class="acc-watch" id="accWatch"></div>
@@ -573,7 +573,7 @@
         <label>Parolni takrorlang<input name="password2" type="password" required autocomplete="new-password" /></label>
         <p class="auth-err" hidden></p>
         <button class="btn btn-primary btn-block">Akkaunt ochish</button>
-        <small class="muted">🔒 Parolingiz shifrlangan holda saqlanadi — uni hech kim, hatto do'kon xodimlari ham ko'ra olmaydi.</small>
+        <small class="muted"><img class="stk stk-sm" src="icons/stk/lock.png" alt="" loading="lazy" />Parolingiz shifrlangan holda saqlanadi — uni hech kim, hatto do'kon xodimlari ham ko'ra olmaydi.</small>
       </form>
     </div>
   </div>
@@ -605,8 +605,8 @@
         <div class="step-pane" data-pane="2">
           <h3>Yetkazib berish</h3>
           <div class="radio-cards">
-            <label class="rcard"><input type="radio" name="delivery" value="courier" checked /><span><b>🚚 Kuryer</b><small>1 mln so'mdan yuqori — bepul, 24 soat</small></span></label>
-            <label class="rcard"><input type="radio" name="delivery" value="pickup" /><span><b>🏬 Do'kondan olib ketish</b><small>Bepul, bugunoq</small></span></label>
+            <label class="rcard"><input type="radio" name="delivery" value="courier" checked /><span><img class="stk stk-opt" src="icons/stk/rocket.png" alt="" loading="lazy" /><b>Kuryer</b><small>1 mln so'mdan yuqori — bepul, 24 soat</small></span></label>
+            <label class="rcard"><input type="radio" name="delivery" value="pickup" /><span><img class="stk stk-opt" src="icons/stk/location.png" alt="" loading="lazy" /><b>Do'kondan olib ketish</b><small>Bepul, bugunoq</small></span></label>
           </div>
           <label>Viloyat
             <select name="region" aria-label="Viloyat">
@@ -625,7 +625,7 @@
           </div>
           <p class="pay-hint" id="payHint" hidden></p>
           <div class="order-summary" id="orderSummary"></div>
-          <p class="secure">🔒 Ma'lumotlaringiz himoyalangan. Buyurtma akkauntingizga saqlanadi va holatini «Buyurtmalarim» bo'limida kuzatasiz.</p>
+          <p class="secure"><img class="stk stk-sm" src="icons/stk/lock.png" alt="" loading="lazy" />Ma'lumotlaringiz himoyalangan. Buyurtma akkauntingizga saqlanadi va holatini «Buyurtmalarim» bo'limida kuzatasiz.</p>
         </div>
         <div class="form-nav">
           <button type="button" class="btn btn-ghost" id="prevStep">← Orqaga</button>
@@ -701,7 +701,7 @@
   </script>
   <script src="fx-emoji.js?v=1"></script>
   <script src="ui-select.js?v=3"></script>
-  <script src="app.js?v=45"></script>
+  <script src="app.js?v=46"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="showcase.js?v=33"></script>
   <script src="scrollfx.js?v=33"></script>
