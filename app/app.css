@@ -1280,3 +1280,6 @@ img.fx { display: inline-block; width: 1.22em; height: 1.22em; vertical-align: -
 .add { width: 30px; height: 30px; border-radius: 9px; box-shadow: 0 3px 8px rgba(var(--prgb), .3); }
 .add svg { width: 16px; height: 16px; }
 .add.in { box-shadow: 0 3px 8px rgba(22,163,74,.3); }
+
+/* 3D stikerlar (emoji o'rniga) — biroz kattaroq */
+img.fx.stkx { width: 1.4em; height: 1.4em; vertical-align: -0.32em; }
