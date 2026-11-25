@@ -81,7 +81,7 @@ function normPhone(p) {
 }
 const normEmail = (e) => { const v = str(e, 120).toLowerCase(); return v && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v) ? v : null; };
 const ip = (req) => req.headers.get("CF-Connecting-IP") || "local";
-const publicUser = (u) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email, region: u.region, address: u.address, created_at: u.created_at });
+const publicUser = (u) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email, region: u.region, address: u.address, avatar: u.avatar || null, created_at: u.created_at });
 const orderOut = (o) => ({ ...o, items: JSON.parse(o.items_json || "[]"), items_json: undefined, code_hash: undefined, code_exp: undefined, code_tries: undefined });
 
 // Xato urinishlar: oynada (windowMs) max dan ortiq bo'lsa — 429
@@ -312,8 +312,15 @@ route("PATCH", "/api/me", async (req, env) => {
   if (name.length < 2) fail(400, "Ism kamida 2 harfdan iborat bo'lsin");
   if (b.email && !email) fail(400, "Email manzili noto'g'ri");
   if (email && email !== u.email && await env.DB.prepare("SELECT id FROM users WHERE email = ? AND id != ?").bind(email, u.id).first()) fail(409, "Bu email boshqa akkauntda ishlatilgan");
-  await env.DB.prepare("UPDATE users SET name = ?, email = ?, region = ?, address = ? WHERE id = ?")
-    .bind(name, email, b.region !== undefined ? str(b.region, 60) : u.region, b.address !== undefined ? str(b.address, 200) : u.address, u.id).run();
+  // Profil rasmi: brauzerda 256px gacha kichraytirilgan rasm (data: URL); null — o'chirish
+  let avatar = u.avatar || null;
+  if (b.avatar !== undefined) {
+    if (b.avatar === null || b.avatar === "") avatar = null;
+    else if (typeof b.avatar === "string" && b.avatar.length <= 90000 && /^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(b.avatar)) avatar = b.avatar;
+    else fail(400, "Rasm formati noto'g'ri yoki juda katta");
+  }
+  await env.DB.prepare("UPDATE users SET name = ?, email = ?, avatar = ?, region = ?, address = ? WHERE id = ?")
+    .bind(name, email, avatar, b.region !== undefined ? str(b.region, 60) : u.region, b.address !== undefined ? str(b.address, 200) : u.address, u.id).run();
   return json({ user: publicUser(await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(u.id).first()) });
 });
 route("POST", "/api/me/password", async (req, env) => {
