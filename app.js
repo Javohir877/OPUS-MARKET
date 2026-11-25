@@ -465,7 +465,6 @@ function productCard(p, i) {
       ${img(p, 500, 400)}
       <div class="tags">${tags}</div>
       <span class="card-brand">${esc(p.brand)}</span>
-      <span class="quick">👁 Tezkor ko'rish</span>
     </div>
     <button class="cmp ${compared ? "on" : ""}" data-cmp title="Solishtirish">${CMP_ICON}</button>
     <div class="card-body">
@@ -1814,7 +1813,7 @@ async function loadCatalog() {
     applyReviewStats();
     state.cart = state.cart.filter((x) => byId(x.id));
     if (state.promo && !PROMOS[state.promo]) state.promo = null;
-    if (SETTINGS.topbar) $("#topbarText").textContent = SETTINGS.topbar;
+    if (SETTINGS.topbar) $("#topbarText").textContent = String(SETTINGS.topbar).replace(/^\p{Extended_Pictographic}️?\s*/u, "");
     if (SETTINGS.dealTitle) $("#dealTitle").textContent = SETTINGS.dealTitle;
     renderCategories(); renderProducts(); renderCart(); renderRecent(); renderCompareBar(); renderNews(); updateBadges(); renderHero(); $$(".hero [data-live]").forEach((el) => { el.textContent = el.dataset.live === "products" ? PRODUCTS.length : new Set(PRODUCTS.map((p) => p.brand)).size; });
   } catch {}
@@ -1824,7 +1823,7 @@ async function loadCatalog() {
 if (window.OPUS_PREVIEW) { $("#previewBar").hidden = false; document.body.classList.add("is-preview"); }
 
 // ---------- Admin sozlamalaridagi matnlar ----------
-if (SETTINGS.topbar) $("#topbarText").textContent = SETTINGS.topbar;
+if (SETTINGS.topbar) $("#topbarText").textContent = String(SETTINGS.topbar).replace(/^\p{Extended_Pictographic}️?\s*/u, "");
 if (SETTINGS.dealTitle) $("#dealTitle").textContent = SETTINGS.dealTitle;
 
 // Lokal sinov nusxasi (kompyuterdagi server) — haqiqiy sayt bilan adashtirmaslik uchun belgi
