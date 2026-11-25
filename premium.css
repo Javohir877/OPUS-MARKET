@@ -313,3 +313,53 @@ html { background: #0b0b0c; }
 .logo-text { font-family: "Orbitron", "Inter", sans-serif; font-stretch: normal; font-weight: 800; font-size: 18px; letter-spacing: 1.5px; text-transform: none; }
 .logo-text b { margin-left: 4px; font-weight: 800; }
 .ld-word { font-family: "Orbitron", "Inter", sans-serif; font-stretch: normal; font-weight: 800; letter-spacing: 3px; gap: 14px; font-size: clamp(30px, 5.4vw, 58px); }
+
+
+/* =====================================================================
+   Kabinet sahifasi
+   ===================================================================== */
+body.acc-open main > :not(#accountPage) { display: none !important; }
+.acc-page { padding: 34px 0 70px; min-height: 70vh; }
+.acc-back { display: inline-flex; color: var(--muted); font-size: 14px; margin-bottom: 18px; }
+.acc-back:hover { color: var(--text); }
+.acc-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+.acc-page .acc-card { display: flex; align-items: center; gap: 16px; padding: 0; background: none; border: 0; }
+.acc-page .acc-ava { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 22px; background: var(--card2); border: 1px solid var(--line2); color: var(--text); flex: none; }
+.acc-kicker { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); }
+.acc-page .acc-card b { display: block; font-family: var(--font-d); font-stretch: 75%; font-weight: 900; text-transform: uppercase; font-size: clamp(30px, 4vw, 44px); line-height: 1; margin: 3px 0 4px; }
+.acc-page .acc-card small { color: var(--muted); font-size: 14px; }
+.acc-tabs { display: flex; gap: 8px; margin: 22px 0 26px; overflow-x: auto; scrollbar-width: none; }
+.acc-tabs::-webkit-scrollbar { display: none; }
+.acc-tabs button { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); font-weight: 600; font-size: 14px; white-space: nowrap; transition: background .2s, color .2s, border-color .2s; }
+.acc-tabs button:hover { color: var(--text); border-color: var(--line2); }
+.acc-tabs button.on { background: var(--text); color: var(--bg); border-color: transparent; }
+.acc-tabs em { font-style: normal; font-size: 12px; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; display: grid; place-items: center; background: #e10f2a; color: #fff; }
+.acc-tabs em:empty { display: none; }
+.acc-orders { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+.acc-orders .order-card { border-radius: 16px; padding: 18px; animation: none; background: var(--card); border: 1px solid var(--line); }
+.acc-orders .drawer-empty, .acc-list .drawer-empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 56px 16px; border: 1px dashed var(--line2); border-radius: 18px; }
+.acc-orders .drawer-empty p, .acc-list .drawer-empty p { color: var(--muted); max-width: 380px; }
+.acc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 10px; }
+.acc-list .acc-hint, .acc-list .rv-wait { grid-column: 1 / -1; }
+.acc-hint { color: var(--muted); font-size: 14px; margin-bottom: 6px; }
+.acc-list .aw-row { padding: 12px; border-radius: 14px; background: var(--card); border-color: var(--line); gap: 14px; }
+.acc-list .aw-row img { width: 58px; height: 58px; flex-basis: 58px; border-radius: 10px; background: var(--card2); object-fit: cover; }
+.acc-list .aw-row b { font-size: 14px; }
+.acc-list .aw-row small { display: flex; align-items: center; gap: 6px; }
+.aw-stars { color: #f59e0b; letter-spacing: 1px; } .aw-stars i { font-style: normal; opacity: .25; }
+.acc-forms { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+.acc-page .acc-form { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 12px; margin: 0; }
+.acc-page .acc-form h4 { font-size: 16px; }
+.acc-page .acc-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
+.acc-page .acc-form input, .acc-page .acc-form select { padding: 11px 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font-size: 14px; }
+.acc-page .acc-form input:focus { outline: none; border-color: var(--line2); }
+.acc-page .acc-form .btn { align-self: flex-start; }
+@media (max-width: 640px) {
+  .acc-page { padding: 18px 0 50px; }
+  .acc-top { flex-wrap: wrap; }
+  .acc-page .acc-ava { width: 52px; height: 52px; font-size: 18px; }
+  .acc-orders, .acc-list, .acc-forms { grid-template-columns: 1fr; }
+}
+.acc-page .acc-card { background: none; box-shadow: none; color: var(--text); border-radius: 0; }
+.acc-page .acc-card small { opacity: 1; word-break: normal; }
+@media (max-width: 980px) { .acc-page { padding-top: 26px; } .acc-back { margin-top: 30px; } }
