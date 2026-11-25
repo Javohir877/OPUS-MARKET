@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=49" />
-  <link rel="stylesheet" href="premium.css?v=12" />
+  <link rel="stylesheet" href="premium.css?v=13" />
 </head>
 <body>
   <!-- Loader -->
@@ -184,6 +184,25 @@
   </section>
 
   <!-- Deals -->
+  <!-- Test: "Sizga qanday kompyuter kerak?" -->
+  <section class="section container" id="quiz">
+    <div class="qz-banner reveal">
+      <div class="qz-text">
+        <span class="qz-kicker"><i></i>O'zingizga mosini toping</span>
+        <h2>Sizga qanday<br />kompyuter kerak?</h2>
+        <p>Atigi 3 ta qisqa savolga javob bering — maqsadingiz va byudjetingizga mos eng yaxshi variantlarni katalogimizdan tanlab beramiz.</p>
+        <button type="button" class="btn btn-primary qz-start" id="quizStart">Testni boshlash <span>→</span></button>
+      </div>
+      <div class="qz-media"><img src="img/hero.jpg" alt="" loading="lazy" /></div>
+    </div>
+  </section>
+
+  <!-- Yig'ish g'oyalari: tayyor kompyuterlar -->
+  <section class="section container" id="builds">
+    <div class="bi-head"><i></i><h2>Yig'ish g'oyalari</h2></div>
+    <div class="bi-grid" id="buildGrid"></div>
+  </section>
+
   <section class="deals" id="deals" data-node="Aksiya">
     <div class="deals-img" id="dealsImg"></div>
     <div class="container deals-inner reveal">
@@ -475,6 +494,17 @@
       </div>
     </div>
   </section>
+  <!-- Biz bilan aloqada bo'ling -->
+  <section class="section container" id="connect">
+    <div class="ct-box reveal">
+      <div class="ct-text">
+        <span class="qz-kicker"><i></i>Biz bilan aloqada bo'ling</span>
+        <h2>Biz bilan<br />aloqada bo'ling</h2>
+        <p>Eng so'nggi kompyuterlar, maxsus aksiyalar va yangiliklardan birinchi bo'lib xabardor bo'ling. Savolingiz bo'lsa — yozing yoki qo'ng'iroq qiling.</p>
+      </div>
+      <div class="ct-links" id="connectLinks"></div>
+    </div>
+  </section>
   </main>
 
   <!-- Footer -->
@@ -577,6 +607,13 @@
   </div>
 
   <!-- Product modal -->
+  <div class="modal" id="quizModal">
+    <div class="modal-box modal-quiz">
+      <button type="button" class="close" data-close aria-label="Test oynasini yopish">✕</button>
+      <div id="quizBody"></div>
+    </div>
+  </div>
+
   <div class="modal" id="productModal">
     <div class="modal-box modal-product">
       <button type="button" class="close" data-close aria-label="Mahsulot oynasini yopish">✕</button>
@@ -699,7 +736,7 @@
   </script>
   <script src="fx-emoji.js?v=2"></script>
   <script src="ui-select.js?v=3"></script>
-  <script src="app.js?v=51"></script>
+  <script src="app.js?v=52"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="showcase.js?v=33"></script>
   <script src="scrollfx.js?v=33"></script>
