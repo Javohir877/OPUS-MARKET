@@ -251,3 +251,50 @@ svg.li { width: 16px; height: 16px; fill: currentColor; flex: none; vertical-ali
 .marquee, .circuit-wrap, .beam, .cx-node, .cx-svg { display: none !important; }
 /* Hero parallaksi o'chirildi — matn aylantirganda keyingi bo'lim ustiga tushib qolmasin */
 .hero .hero-text, .hero .ph-visual { translate: none !important; opacity: 1 !important; }
+
+
+/* =====================================================================
+   Intro: logo belgisi chiziladi → harflar pastdan chiqadi → parda yuqoriga ko'tariladi
+   ===================================================================== */
+html { background: #0b0b0c; }
+#loader {
+  position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: #0b0b0c; color: #fff;
+  animation: none; transition: none; transform: none; opacity: 1; visibility: visible;
+}
+#loader .boot, #loader .loader-ring, #loader .loader-bar, #loader .loader-logo { display: none; }
+.ld-center { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.ld-mark { width: 64px; height: 64px; }
+.ld-mark rect { fill: #e10f2a; transform-origin: center; animation: ldPop .6s cubic-bezier(.2,.9,.25,1.2) both; }
+.ld-ring { fill: none; stroke: #fff; stroke-width: 4.2; stroke-linecap: round; stroke-dasharray: 66; stroke-dashoffset: 66; transform: rotate(-90deg); transform-origin: center; animation: ldDraw .8s .25s cubic-bezier(.65,0,.35,1) forwards; }
+.ld-word { display: flex; gap: 14px; font-family: var(--font-d); font-stretch: 115%; font-weight: 800; font-size: clamp(30px, 5.4vw, 58px); letter-spacing: 3px; line-height: 1; }
+.ld-word span { display: flex; overflow: hidden; padding-bottom: .08em; }
+.ld-word .w2 { color: #e10f2a; }
+.ld-word i { font-style: normal; display: inline-block; transform: translateY(110%); animation: ldUp .7s cubic-bezier(.2,.9,.25,1) forwards; animation-delay: calc(.35s + var(--i) * .045s); }
+.ld-word .w2 i { animation-delay: calc(.5s + var(--i) * .045s); }
+.ld-sub { font-size: 12px; letter-spacing: 3.5px; text-transform: uppercase; color: #71717a; opacity: 0; animation: ldFade .6s .95s forwards; }
+.ld-foot { position: absolute; left: 32px; right: 32px; bottom: 28px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 12px; letter-spacing: 1.5px; color: #71717a; text-transform: uppercase; }
+.ld-foot b { font-family: var(--font-d); font-stretch: 75%; font-weight: 800; font-size: clamp(44px, 7vw, 84px); line-height: .8; color: #fff; letter-spacing: -1px; }
+.ld-foot b::after { content: "%"; font-size: .4em; color: #e10f2a; margin-left: 4px; }
+.ld-line { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(255,255,255,.06); }
+.ld-line i { display: block; height: 100%; background: #e10f2a; transform-origin: left; transform: scaleX(0); animation: ldBar 1.5s cubic-bezier(.33,1,.68,1) forwards; }
+/* Takroriy kirish: qisqa variant */
+#loader.quick .ld-sub, #loader.quick .ld-foot { display: none; }
+#loader.quick .ld-word i, #loader.quick .ld-word .w2 i { animation-duration: .45s; animation-delay: calc(var(--i) * .03s); }
+#loader.quick .ld-ring { animation-duration: .45s; animation-delay: 0s; }
+#loader.quick .ld-line i { animation-duration: .5s; }
+/* Chiqish: parda yuqoriga ko'tariladi, ichidagilar biroz oldinroq yo'qoladi */
+#loader.hide { animation: ldCurtain .85s cubic-bezier(.76,0,.24,1) forwards; pointer-events: none; }
+#loader.hide .ld-center, #loader.hide .ld-foot { animation: ldOut .4s cubic-bezier(.5,0,.75,0) forwards; }
+@keyframes ldPop { from { transform: scale(.4); opacity: 0; } }
+@keyframes ldDraw { to { stroke-dashoffset: 0; } }
+@keyframes ldUp { to { transform: none; } }
+@keyframes ldFade { to { opacity: 1; } }
+@keyframes ldBar { to { transform: scaleX(1); } }
+@keyframes ldOut { to { opacity: 0; transform: translateY(-24px); } }
+@keyframes ldCurtain { to { transform: translateY(-100%); visibility: hidden; } }
+@media (max-width: 640px) { .ld-foot { left: 18px; right: 18px; bottom: 18px; } .ld-word { gap: 10px; letter-spacing: 2px; } }
+@media (prefers-reduced-motion: reduce) {
+  .ld-word i, .ld-ring, .ld-sub, .ld-mark rect, .ld-line i { animation: none; transform: none; opacity: 1; stroke-dashoffset: 0; }
+  #loader.hide { animation: none; opacity: 0; visibility: hidden; }
+}
+#loader.hide { opacity: 1; visibility: visible; }
