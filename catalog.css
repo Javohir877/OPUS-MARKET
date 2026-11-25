@@ -190,3 +190,6 @@
   .bc-go { width: 34px; height: 34px; }
   .bc-all { flex-direction: column; align-items: flex-start; padding: 20px; }
 }
+
+/* Asl fotoli kategoriya kartalari: tanlangan bo'lim belgisi */
+.cat.on { outline: 2px solid #e10f2a; outline-offset: 3px; }
