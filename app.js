@@ -366,35 +366,253 @@ function imageTint(img) {
   } catch { return null; }
 }
 
-function renderCategories() {
-  $("#catGrid").innerHTML = CATEGORIES.map((c) => {
-    const n = PRODUCTS.filter((p) => p.cat === c.id).length;
-    return `<div class="cat reveal" data-cat="${c.id}">
-      <img src="${IMG(c.img, 500, 360)}" alt="${esc(c.name)}" loading="lazy" />
-      <span class="cat-ic">${svgIcon(c.icon)}</span>
-      <div><h4>${esc(c.name)}</h4><small>${n} ta mahsulot</small></div>
-      <span class="cat-arrow">→</span>
-    </div>`;
-  }).join("");
-  $$("#catGrid .cat").forEach((el) => {
-    io.observe(el);
-    el.addEventListener("click", () => { setCat(el.dataset.cat); $("#products").scrollIntoView(); });
-    // Rasmning asosiy rangini topib, hover gradientini shu rangda qilamiz
-    const im = $("img", el);
-    const apply = () => { const t = imageTint(im); if (t) { el.style.setProperty("--tint", t.tint); el.style.setProperty("--tint-deep", t.deep); el.classList.add("tinted"); } };
-    if (im.complete && im.naturalWidth) apply(); else im.addEventListener("load", apply, { once: true });
-  });
+// =====================================================================
+// Katalog: kategoriya plitkalari + chap filtr paneli (narx, brend, tezkor belgilar, kategoriyaga xos filtrlar)
+// Har bir filtr yonida — shu tanlov bilan nechta mahsulot qolishi. Holat manzilga (?cat=&brand=...) yoziladi.
+// =====================================================================
+state.brands = new Set();
+state.minPrice = 0;
+state.flags = { stock: false, deal: false, orig: false, new: false };
+state.facets = {}; // { "Operativ xotira": Set(["16GB"]) }
+const FLAG_LABEL = { stock: "Omborda bor", deal: "Chegirmada", orig: "Original", new: "Yangi" };
+const SORTS = [["popular", "Ommabop"], ["new", "Yangi"], ["cheap", "Arzonroq"], ["expensive", "Qimmatroq"], ["discount", "Chegirma"]];
+const PRICE_PRESETS = [[0, 5e6, "5 mln gacha"], [5e6, 15e6, "5–15 mln"], [15e6, 30e6, "15–30 mln"], [30e6, MAX_PRICE, "30 mln+"]];
+const mln = (n) => (n >= 1e6 ? (Math.round(n / 1e5) / 10 + "").replace(".", ",") + " mln" : Math.round(n / 1e3) + " ming");
 
-  $("#chips").innerHTML = [`<button class="chip active" data-cat="all">Barchasi</button>`]
-    .concat(CATEGORIES.map((c) => `<button class="chip" data-cat="${esc(c.id)}">${esc(c.name)}</button>`)).join("");
-  $$("#chips .chip").forEach((b) => b.addEventListener("click", () => setCat(b.dataset.cat)));
+// Xususiyat qiymatini filtr uchun qisqa ko'rinishga keltirish ("16GB DDR5 6000" → "16GB")
+function facetVal(p, key) {
+  const v = (p.specs || {})[key];
+  if (v == null) return null;
+  const s = String(v), k = key.toLowerCase();
+  let m;
+  if (/xotira|ram/.test(k) && (m = s.match(/(\d+)\s?(GB|TB)/i))) return m[1] + m[2].toUpperCase();
+  if (/videokarta|grafika|gpu/.test(k)) { m = s.match(/(RTX|GTX|RX|Arc)\s?[A-Z]?\d{3,4}(\s?(Ti|Super|XT|XTX))*/i); return m ? m[0].replace(/\s+/g, " ").toUpperCase().replace("SUPER", "Super") : /intel|uhd|iris|vega|ichki|integr|gpu/i.test(s) ? "Ichki grafika" : s.split(/[,(]/)[0].trim().slice(0, 22); }
+  if (/protsessor|cpu/.test(k)) { m = s.match(/(Core\s?(Ultra\s?)?i?\d|Ryzen\s?\d|Apple\s?M\d(\s?(Pro|Max|Ultra))?|Xeon|Celeron|Pentium|Snapdragon)/i); return m ? m[0].replace(/\s+/g, " ").replace(/^core/i, "Core").replace(/^ryzen/i, "Ryzen") : s.split(/[,(]/)[0].trim().slice(0, 22); }
+  if ((m = s.match(/(\d{2}(?:[.,]\d)?)\s?["”]/))) return m[1].replace(",", ".") + '"';
+  if ((m = s.match(/(\d{2,3})\s?Hz/i))) return m[1] + " Hz";
+  return s.split(/[,(]/)[0].trim().slice(0, 24) || null;
+}
+// Kategoriyaga xos filtrlar: ko'p mahsulotda bor, 2–9 xil qiymatli xususiyatlar (eng ko'pi 4 ta)
+function facetKeys(list) {
+  if (state.cat === "all" || list.length < 4) return [];
+  const cnt = {};
+  list.forEach((p) => Object.keys(p.specs || {}).forEach((k) => (cnt[k] = (cnt[k] || 0) + 1)));
+  const PRI = ["Protsessor", "Videokarta", "Grafika", "Operativ xotira", "Xotira", "Displey", "Ekran", "Chastota"];
+  return Object.keys(cnt)
+    .filter((k) => cnt[k] >= list.length * 0.4)
+    .map((k) => ({ k, vals: new Set(list.map((p) => facetVal(p, k)).filter(Boolean)) }))
+    .filter((x) => x.vals.size >= 2 && x.vals.size <= 9)
+    .sort((a, b) => (PRI.indexOf(a.k) + 1 || 99) - (PRI.indexOf(b.k) + 1 || 99))
+    .slice(0, 4).map((x) => x.k);
+}
+// skip — sanash uchun shu filtrni hisobga olmaymiz (masalan, brend yonidagi sonlar)
+function baseList(skip) {
+  const deal = state.flags.deal || state.dealsOnly;
+  return search(state.query).filter((p) =>
+    (skip === "cat" || state.cat === "all" || p.cat === state.cat) &&
+    (skip === "price" || (p.price >= state.minPrice && (state.maxPrice >= MAX_PRICE || p.price <= state.maxPrice))) &&
+    (skip === "brand" || !state.brands.size || state.brands.has(p.brand)) &&
+    (skip === "stock" || !state.flags.stock || (p.stock ?? 0) > 0) &&
+    (skip === "deal" || !deal || p.old > p.price) &&
+    (skip === "orig" || !state.flags.orig || p.original !== false) &&
+    (skip === "new" || !state.flags.new || p.badge === "Yangi") &&
+    Object.entries(state.facets).every(([k, set]) => skip === "f:" + k || !set.size || set.has(facetVal(p, k))));
+}
+function filtered() {
+  const list = baseList();
+  const sorters = {
+    popular: (a, b) => b.popular - a.popular,
+    new: (a, b) => b.id - a.id,
+    cheap: (a, b) => a.price - b.price,
+    expensive: (a, b) => b.price - a.price,
+    rating: (a, b) => b.rating - a.rating,
+    discount: (a, b) => discount(b) - discount(a),
+  };
+  if (state.query.trim() && state.sort === "popular") return list;
+  return list.sort(sorters[state.sort] || sorters.popular);
+}
+const activeCount = () => state.brands.size + Object.values(state.flags).filter(Boolean).length + (state.dealsOnly && !state.flags.deal ? 1 : 0)
+  + Object.values(state.facets).reduce((a, s) => a + s.size, 0) + (state.minPrice > 0 || state.maxPrice < MAX_PRICE ? 1 : 0);
+
+// ---------- Kategoriya plitkalari ----------
+function renderCategories() {
+  const grid = $("#catGrid");
+  if (grid) grid.innerHTML = CATEGORIES.map((c) => {
+    const n = PRODUCTS.filter((p) => p.cat === c.id).length;
+    return `<button type="button" class="ct${state.cat === c.id ? " on" : ""}" data-cat="${esc(c.id)}">
+      <span class="ct-bg"><img src="${IMG(c.img, 500, 360)}" alt="" loading="lazy" onerror="this.remove()" /></span>
+      <span class="ct-ic">${svgIcon(c.icon)}</span>
+      <b>${esc(c.name)}</b><small>${n} ta mahsulot</small>
+      <i class="ct-go">→</i>
+    </button>`;
+  }).join("") + `<button type="button" class="ct ct-all${state.cat === "all" ? " on" : ""}" data-cat="all"><span class="ct-ic"><svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></span><b>Barchasi</b><small>${PRODUCTS.length} ta mahsulot</small><i class="ct-go">→</i></button>`;
+  renderFilters();
 }
 function setCat(cat) {
+  if (state.cat !== cat) state.facets = {};
   state.cat = cat;
   state.dealsOnly = false;
-  $$("#chips .chip").forEach((b) => b.classList.toggle("active", b.dataset.cat === cat));
+  $$("#catGrid .ct").forEach((b) => b.classList.toggle("on", b.dataset.cat === cat));
   renderProducts();
 }
+$("#catGrid").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-cat]"); if (!b) return;
+  sfx("tap");
+  setCat(b.dataset.cat);
+  $("#products").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+$("#catToggle").addEventListener("click", () => {
+  const s = $("#categories"); s.classList.toggle("collapsed");
+  $("#catToggle").setAttribute("aria-expanded", !s.classList.contains("collapsed"));
+  try { store.set("cat_collapsed", s.classList.contains("collapsed")); } catch (e) {}
+});
+if (store.get("cat_collapsed", false)) $("#categories").classList.add("collapsed");
+
+// ---------- Filtr paneli ----------
+let brandQ = "", brandsOpen = false;
+function renderFilters() {
+  const side = $("#fltBody"); if (!side) return;
+  const inCat = baseList("brand");
+  // Brendlar (soni bilan) — joriy boshqa filtrlar bo'yicha
+  const bc = {};
+  inCat.forEach((p) => (bc[p.brand] = (bc[p.brand] || 0) + 1));
+  const allBrands = [...new Set(PRODUCTS.filter((p) => state.cat === "all" || p.cat === state.cat).map((p) => p.brand))]
+    .sort((a, b) => (bc[b] || 0) - (bc[a] || 0) || a.localeCompare(b));
+  const bl = allBrands.filter((b) => !brandQ || b.toLowerCase().includes(brandQ.toLowerCase()));
+  const shownB = brandsOpen || brandQ ? bl : bl.slice(0, 8);
+  const flagN = (f) => baseList(f).filter((p) => f === "stock" ? (p.stock ?? 0) > 0 : f === "deal" ? p.old > p.price : f === "orig" ? p.original !== false : p.badge === "Yangi").length;
+  const keys = facetKeys(PRODUCTS.filter((p) => p.cat === state.cat));
+  const prices = baseList("price").map((p) => p.price);
+  const hi = Math.max(1e6, ...PRODUCTS.map((p) => p.price));
+  side.innerHTML = `
+    <div class="fl-sec">
+      <h5>Narx, so'm</h5>
+      <div class="fl-range"><input type="number" inputmode="numeric" id="flMin" placeholder="dan" value="${state.minPrice || ""}" /><span>—</span><input type="number" inputmode="numeric" id="flMax" placeholder="gacha" value="${state.maxPrice < MAX_PRICE ? state.maxPrice : ""}" /></div>
+      <div class="fl-dual" style="--a:${(state.minPrice / hi) * 100}%;--b:${(state.maxPrice >= MAX_PRICE ? 100 : (Math.min(state.maxPrice, hi) / hi) * 100)}%">
+        <i></i><input type="range" id="flA" min="0" max="${hi}" step="100000" value="${state.minPrice}" aria-label="Eng kam narx" /><input type="range" id="flB" min="0" max="${hi}" step="100000" value="${state.maxPrice >= MAX_PRICE ? hi : Math.min(state.maxPrice, hi)}" aria-label="Eng yuqori narx" />
+      </div>
+      <div class="fl-pre">${PRICE_PRESETS.map(([a, b, t]) => { const n = prices.filter((x) => x >= a && x <= b).length; const on = state.minPrice === a && (b >= MAX_PRICE ? state.maxPrice >= MAX_PRICE : state.maxPrice === b); return `<button type="button" class="${on ? "on" : ""}" data-pp="${a}:${b}" ${n ? "" : "disabled"}>${t}<em>${n}</em></button>`; }).join("")}</div>
+    </div>
+    <div class="fl-sec">
+      <h5>Tezkor</h5>
+      ${Object.keys(FLAG_LABEL).map((f) => { const n = flagN(f), on = state.flags[f] || (f === "deal" && state.dealsOnly); return `<label class="fl-sw${n || on ? "" : " off"}"><input type="checkbox" data-flag="${f}" ${on ? "checked" : ""} /><span class="fl-tg"></span><span>${FLAG_LABEL[f]}</span><em>${n}</em></label>`; }).join("")}
+    </div>
+    <div class="fl-sec">
+      <h5>Brend <small>${allBrands.length}</small></h5>
+      ${allBrands.length > 8 ? `<input class="fl-search" id="flBrandQ" placeholder="Brend qidirish…" value="${esc(brandQ)}" />` : ""}
+      <div class="fl-list" id="flBrands">${shownB.map((b) => { const n = bc[b] || 0, on = state.brands.has(b); return `<label class="fl-ck${n || on ? "" : " off"}"><input type="checkbox" data-brand="${esc(b)}" ${on ? "checked" : ""} /><span class="fl-box"></span><span>${esc(b)}</span><em>${n}</em></label>`; }).join("") || `<p class="fl-none">Topilmadi</p>`}</div>
+      ${!brandQ && bl.length > 8 ? `<button type="button" class="fl-more" data-bmore>${brandsOpen ? "Yig'ish" : `Yana ${bl.length - 8} ta`}</button>` : ""}
+    </div>
+    ${keys.map((k) => {
+      const base = baseList("f:" + k), c = {};
+      base.forEach((p) => { const v = facetVal(p, k); if (v) c[v] = (c[v] || 0) + 1; });
+      const vals = [...new Set(PRODUCTS.filter((p) => p.cat === state.cat).map((p) => facetVal(p, k)).filter(Boolean))]
+        .sort((a, b) => (parseFloat(a) && parseFloat(b) ? parseFloat(a) - parseFloat(b) : (c[b] || 0) - (c[a] || 0)));
+      const set = state.facets[k] || new Set();
+      return `<div class="fl-sec"><h5>${esc(k)}</h5><div class="fl-tags">${vals.map((v) => `<button type="button" class="${set.has(v) ? "on" : ""}" data-fk="${esc(k)}" data-fv="${esc(v)}" ${c[v] || set.has(v) ? "" : "disabled"}>${esc(v)}<em>${c[v] || 0}</em></button>`).join("")}</div></div>`;
+    }).join("")}`;
+  // Yuqori panel: tanlangan filtrlar chiplari
+  const chips = [];
+  if (state.minPrice > 0 || state.maxPrice < MAX_PRICE) chips.push([`${state.minPrice ? mln(state.minPrice) : "0"} – ${state.maxPrice < MAX_PRICE ? mln(state.maxPrice) : "∞"}`, "price"]);
+  Object.keys(state.flags).forEach((f) => state.flags[f] && chips.push([FLAG_LABEL[f], "flag:" + f]));
+  if (state.dealsOnly && !state.flags.deal) chips.push(["Chegirmada", "flag:deal"]);
+  state.brands.forEach((b) => chips.push([b, "brand:" + b]));
+  Object.entries(state.facets).forEach(([k, s]) => s.forEach((v) => chips.push([v, "f:" + k + "\u0000" + v])));
+  const cat = state.cat === "all" ? null : CATEGORIES.find((c) => c.id === state.cat);
+  $("#fltChips").innerHTML = (cat ? `<button type="button" class="fc fc-cat" data-rm="cat">${svgIcon(cat.icon)}${esc(cat.name)}<i>✕</i></button>` : "")
+    + chips.map(([t, k]) => `<button type="button" class="fc" data-rm="${esc(k)}">${esc(t)}<i>✕</i></button>`).join("")
+    + (chips.length || cat ? `<button type="button" class="fc-clear" data-clear>Hammasini tozalash</button>` : "");
+  const n = activeCount();
+  $("#fltCount").textContent = n || "";
+  $("#fltOpen em").textContent = n ? n : "";
+  $$("#sortPills button").forEach((b) => b.classList.toggle("on", b.dataset.sort === state.sort));
+  syncURL();
+}
+function syncURL() {
+  const q = new URLSearchParams(location.search);
+  ["cat", "brand", "min", "max", "f", "sort", "flags"].forEach((k) => q.delete(k));
+  if (state.cat !== "all") q.set("cat", state.cat);
+  if (state.brands.size) q.set("brand", [...state.brands].join(","));
+  if (state.minPrice > 0) q.set("min", state.minPrice);
+  if (state.maxPrice < MAX_PRICE) q.set("max", state.maxPrice);
+  const fl = Object.keys(state.flags).filter((f) => state.flags[f]); if (fl.length) q.set("flags", fl.join(","));
+  const fs = Object.entries(state.facets).filter(([, s]) => s.size).map(([k, s]) => k + ":" + [...s].join("|")); if (fs.length) q.set("f", fs.join(";"));
+  if (state.sort !== "popular") q.set("sort", state.sort);
+  const s = q.toString();
+  history.replaceState(history.state, "", location.pathname + (s ? "?" + s : "") + location.hash);
+}
+(function readURL() {
+  const q = new URLSearchParams(location.search);
+  if (q.get("cat") && CATEGORIES.some((c) => c.id === q.get("cat"))) state.cat = q.get("cat");
+  (q.get("brand") || "").split(",").filter(Boolean).forEach((b) => state.brands.add(b));
+  if (+q.get("min")) state.minPrice = +q.get("min");
+  if (+q.get("max")) state.maxPrice = +q.get("max");
+  (q.get("flags") || "").split(",").forEach((f) => { if (f in state.flags) state.flags[f] = true; });
+  (q.get("f") || "").split(";").filter(Boolean).forEach((x) => { const i = x.indexOf(":"); if (i > 0) state.facets[x.slice(0, i)] = new Set(x.slice(i + 1).split("|")); });
+  if (SORTS.some(([k]) => k === q.get("sort"))) state.sort = q.get("sort");
+})();
+
+let fltT;
+const refilter = (now) => { clearTimeout(fltT); fltT = setTimeout(() => renderProducts(), now ? 0 : 140); };
+const fltPanel = $("#fltPanel");
+fltPanel.addEventListener("click", (e) => {
+  const pp = e.target.closest("[data-pp]");
+  if (pp) { const [a, b] = pp.dataset.pp.split(":").map(Number); const on = pp.classList.contains("on"); state.minPrice = on ? 0 : a; state.maxPrice = on ? MAX_PRICE : b; return refilter(true); }
+  const fk = e.target.closest("[data-fk]");
+  if (fk) { const k = fk.dataset.fk, v = fk.dataset.fv, s = state.facets[k] || (state.facets[k] = new Set()); s.has(v) ? s.delete(v) : s.add(v); return refilter(true); }
+  if (e.target.closest("[data-bmore]")) { brandsOpen = !brandsOpen; return renderFilters(); }
+  if (e.target.closest("[data-fclear]")) return clearFilters();
+  if (e.target.closest("[data-fclose]")) return closeFilters();
+});
+fltPanel.addEventListener("change", (e) => {
+  const t = e.target;
+  if (t.dataset.flag) { state.flags[t.dataset.flag] = t.checked; if (t.dataset.flag === "deal" && !t.checked) state.dealsOnly = false; return refilter(true); }
+  if (t.dataset.brand) { t.checked ? state.brands.add(t.dataset.brand) : state.brands.delete(t.dataset.brand); return refilter(true); }
+  if (t.id === "flMin" || t.id === "flMax") { state.minPrice = Math.max(0, +$("#flMin").value || 0); state.maxPrice = +$("#flMax").value > 0 ? +$("#flMax").value : MAX_PRICE; return refilter(true); }
+});
+fltPanel.addEventListener("input", (e) => {
+  const t = e.target;
+  if (t.id === "flBrandQ") {
+    brandQ = t.value; const pos = t.selectionStart;
+    renderFilters(); const ni = $("#flBrandQ"); if (ni) { ni.focus(); ni.setSelectionRange(pos, pos); }
+    return;
+  }
+  if (t.id === "flA" || t.id === "flB") {
+    let a = +$("#flA").value, b = +$("#flB").value;
+    if (a > b) [a, b] = t.id === "flA" ? [b, b] : [a, a];
+    const hi = +t.max;
+    state.minPrice = a; state.maxPrice = b >= hi ? MAX_PRICE : b;
+    t.parentElement.style.setProperty("--a", (a / hi) * 100 + "%"); t.parentElement.style.setProperty("--b", (b / hi) * 100 + "%");
+    $("#flMin").value = a || ""; $("#flMax").value = b >= hi ? "" : b;
+    clearTimeout(fltT); fltT = setTimeout(() => renderProducts(), 220);
+  }
+});
+$("#fltChips").addEventListener("click", (e) => {
+  if (e.target.closest("[data-clear]")) return clearFilters(true);
+  const r = e.target.closest("[data-rm]"); if (!r) return;
+  const k = r.dataset.rm;
+  if (k === "cat") return setCat("all");
+  if (k === "price") { state.minPrice = 0; state.maxPrice = MAX_PRICE; }
+  else if (k.startsWith("flag:")) { const f = k.slice(5); state.flags[f] = false; if (f === "deal") state.dealsOnly = false; }
+  else if (k.startsWith("brand:")) state.brands.delete(k.slice(6));
+  else if (k.startsWith("f:")) { const [fk, v] = k.slice(2).split("\u0000"); state.facets[fk] && state.facets[fk].delete(v); }
+  refilter(true);
+});
+$("#sortPills").addEventListener("click", (e) => { const b = e.target.closest("[data-sort]"); if (b) { state.sort = b.dataset.sort; sfx("tap"); refilter(true); } });
+function clearFilters(withCat) {
+  state.brands.clear(); state.minPrice = 0; state.maxPrice = MAX_PRICE; state.dealsOnly = false;
+  Object.keys(state.flags).forEach((f) => (state.flags[f] = false)); state.facets = {}; brandQ = "";
+  if (withCat) state.cat = "all";
+  renderCategories(); renderProducts();
+}
+// Telefonda: filtr paneli pastdan chiqadigan oyna
+function openFilters() { fltPanel.classList.add("open"); document.body.classList.add("lock"); $("#fltShade").classList.add("show"); }
+function closeFilters() { fltPanel.classList.remove("open"); document.body.classList.remove("lock"); $("#fltShade").classList.remove("show"); }
+$("#fltOpen").addEventListener("click", openFilters);
+$("#fltShade").addEventListener("click", closeFilters);
+$("#fltApply").addEventListener("click", () => { closeFilters(); $("#products").scrollIntoView({ behavior: "smooth" }); });
+$("#sortPills").innerHTML = SORTS.map(([k, t]) => `<button type="button" data-sort="${k}" class="${state.sort === k ? "on" : ""}">${t}</button>`).join("");
+
 
 // ---------- Products ----------
 const haystack = (p) => (p.name + " " + p.brand + " " + ((catOf(p) || {}).name || "") + " " + Object.values(p.specs || {}).join(" ")).toLowerCase();
@@ -445,24 +663,6 @@ function search(q0) {
   });
   scored.sort((a, b) => (cheap ? a.p.price - b.p.price : b.score - a.score));
   return scored.map((x) => x.p);
-}
-
-function filtered() {
-  let list = search(state.query).filter((p) =>
-    (state.cat === "all" || p.cat === state.cat) &&
-    (state.maxPrice >= MAX_PRICE || p.price <= state.maxPrice) && // eng o'ngda — cheklanmagan
-    (!state.dealsOnly || p.old)
-  );
-  const sorters = {
-    popular: (a, b) => b.popular - a.popular,
-    cheap: (a, b) => a.price - b.price,
-    expensive: (a, b) => b.price - a.price,
-    rating: (a, b) => b.rating - a.rating,
-    discount: (a, b) => discount(b) - discount(a),
-  };
-  // Qidiruvda "Ommabop" saralash — mos kelish darajasi bo'yicha qoladi
-  if (state.query.trim() && state.sort === "popular") return list;
-  return list.sort(sorters[state.sort]);
 }
 
 function productCard(p, i) {
@@ -516,7 +716,7 @@ function renderProducts() {
   const list = filtered();
   const grid = $("#productGrid");
   grid.innerHTML = list.map(productCard).join("");
-  const sig = [state.cat, state.query, state.maxPrice, state.sort, state.dealsOnly].join("|");
+  const sig = [state.cat, state.query, state.minPrice, state.maxPrice, state.sort, state.dealsOnly, [...state.brands].join(), JSON.stringify(state.flags), Object.entries(state.facets).map(([k, v]) => k + [...v]).join()].join("|");
   if (sig !== lastSig && !reduceMotion) {
     const cols = getComputedStyle(grid).gridTemplateColumns.split(" ").length || 1;
     $$(".card", grid).forEach((c, i) => {
@@ -533,8 +733,10 @@ function renderProducts() {
     else { im.addEventListener("load", done); im.addEventListener("error", done); }
   });
   $("#emptyState").hidden = list.length > 0;
-  const catName = state.cat === "all" ? "Barcha mahsulotlar" : CATEGORIES.find((c) => c.id === state.cat).name;
-  $("#resultInfo").textContent = `${state.dealsOnly ? "Chegirmadagi mahsulotlar" : catName} — ${list.length} ta topildi`;
+  const catName = state.cat === "all" ? "Barcha mahsulotlar" : (CATEGORIES.find((c) => c.id === state.cat) || {}).name || "Mahsulotlar";
+  $("#resultInfo").innerHTML = `${esc(state.dealsOnly ? "Chegirmadagi mahsulotlar" : catName)} · <b>${list.length}</b> ta topildi`;
+  $("#fltApply").textContent = `Natijalarni ko'rsatish (${list.length})`;
+  renderFilters();
 }
 
 $("#productGrid").addEventListener("click", (e) => {
@@ -610,25 +812,17 @@ suggest.addEventListener("click", (e) => {
 document.addEventListener("click", (e) => { if (!e.target.closest("#searchBox")) suggest.hidden = true; });
 
 // ---------- Filters ----------
-const range = $("#priceRange");
-range.max = MAX_PRICE;
-range.value = state.maxPrice;
-const updatePriceLabel = () => ($("#priceLabel").textContent = +range.value >= MAX_PRICE ? "Cheklanmagan" : fmt(+range.value));
-updatePriceLabel();
-range.addEventListener("input", () => { state.maxPrice = +range.value; updatePriceLabel(); renderProducts(); });
-$("#sortSelect").addEventListener("change", (e) => { state.sort = e.target.value; renderProducts(); });
-$("[data-filter-deal]").addEventListener("click", () => {
-  setCat("all");
+$("[data-filter-deal]") && $("[data-filter-deal]").addEventListener("click", () => {
+  state.cat = "all"; state.facets = {};
   state.dealsOnly = true;
   state.sort = "discount";
-  $("#sortSelect").value = "discount";
-  renderProducts();
+  renderCategories(); renderProducts();
+  $("#products").scrollIntoView({ behavior: "smooth" });
 });
 $("#resetFilters").addEventListener("click", () => {
   state.query = ""; searchInput.value = "";
-  state.maxPrice = MAX_PRICE; range.value = MAX_PRICE; updatePriceLabel();
-  state.sort = "popular"; $("#sortSelect").value = "popular";
-  setCat("all");
+  state.sort = "popular";
+  clearFilters(true);
 });
 
 // ---------- Product modal ----------
