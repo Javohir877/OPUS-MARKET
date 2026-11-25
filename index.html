@@ -17,19 +17,18 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=49" />
-  <link rel="stylesheet" href="premium.css?v=2" />
+  <link rel="stylesheet" href="premium.css?v=3" />
 </head>
 <body>
   <!-- Loader -->
-  <div id="loader">
-    <div class="boot" aria-hidden="true">
-      <p style="--i:0">OPUS BIOS v2.8 · POWER-ON SELF TEST</p>
-      <p style="--i:1">CPU .......... <b>OK</b></p>
-      <p style="--i:2">MEMORY ....... <b>OK</b></p>
-      <p style="--i:3">GPU .......... <b>OK</b></p>
-      <p style="--i:4">STORAGE ...... <b>OK</b></p>
+  <div id="loader" aria-hidden="true">
+    <div class="ld-center">
+      <svg class="ld-mark" viewBox="0 0 48 48"><rect x="1" y="1" width="46" height="46" rx="13" /><circle class="ld-ring" cx="24" cy="24" r="10.5" /></svg>
+      <div class="ld-word"><span class="w1"><i style="--i:0">O</i><i style="--i:1">P</i><i style="--i:2">U</i><i style="--i:3">S</i></span><span class="w2"><i style="--i:0">M</i><i style="--i:1">A</i><i style="--i:2">R</i><i style="--i:3">K</i><i style="--i:4">E</i><i style="--i:5">T</i></span></div>
+      <p class="ld-sub">Kompyuterlar va aksessuarlar</p>
     </div>
-    <div class="loader-logo">OPUS<span>MARKET</span></div>
+    <div class="ld-foot"><span>Toshkent · 2026</span><b id="ldPct">0</b></div>
+    <div class="ld-line"><i></i></div>
   </div>
 
   <!-- Scroll progress + elektr sxemasi -->
@@ -701,7 +700,7 @@
   </script>
   <script src="fx-emoji.js?v=1"></script>
   <script src="ui-select.js?v=3"></script>
-  <script src="app.js?v=46"></script>
+  <script src="app.js?v=47"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="showcase.js?v=33"></script>
   <script src="scrollfx.js?v=33"></script>
