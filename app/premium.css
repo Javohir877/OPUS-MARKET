@@ -96,3 +96,11 @@ html, body { -webkit-font-smoothing: antialiased; }
 .dk-b { background: var(--card) !important; }
 .dk-img { background: var(--card2); }
 .dk-img img { object-fit: cover; padding: 0; }
+
+/* Fonsiz (studiya) mahsulot rasmlari */
+.pc-img.cut { background: radial-gradient(80% 75% at 50% 35%, #26262c 0%, #17171a 60%, #131315 100%); }
+.pc-img.cut img { object-fit: contain; padding: 10%; filter: drop-shadow(0 12px 14px rgba(0,0,0,.55)); }
+.dk-img:has(img[src*="img/cut/"]) { background: radial-gradient(80% 75% at 50% 40%, #26262c, #141416); }
+.dk-img img[src*="img/cut/"] { object-fit: contain; padding: 12%; filter: drop-shadow(0 14px 16px rgba(0,0,0,.55)); }
+.gal img[src*="img/cut/"] { object-fit: contain; padding: 10%; }
+.gal .gs:has(img[src*="img/cut/"]) > i { opacity: .25; }
