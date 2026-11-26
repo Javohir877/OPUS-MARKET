@@ -622,3 +622,81 @@ img.fx.stkx { width: 1.4em; height: 1.4em; vertical-align: -0.32em; }
   .fs-tab small { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .fs-slide.on .fs-art img { animation: none; } }
+
+
+/* =====================================================================
+   Tayyor to'plamlar — yorliqli ko'rgazma paneli
+   ===================================================================== */
+.bx-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 26px; flex-wrap: wrap; }
+.bx-head h2 { font-family: "Archivo", "Inter", sans-serif; font-weight: 900; font-size: clamp(30px, 4vw, 52px); letter-spacing: -1.3px; line-height: 1; margin-top: 14px; }
+.bx-head p { color: var(--muted); max-width: 380px; font-size: 15px; }
+.bs-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+.bs-tabs button { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 16px; border: 1px solid var(--line); text-align: left; transition: background .25s, border-color .25s; }
+.bs-tabs em { font-style: normal; font-family: "Archivo", sans-serif; font-weight: 900; font-size: 26px; color: #3f3f46; transition: color .25s; }
+.bs-tabs span { display: flex; flex-direction: column; }
+.bs-tabs b { font-size: 15px; }
+.bs-tabs small { font-size: 12.5px; color: var(--muted); }
+.bs-tabs button:hover { border-color: var(--line2); }
+.bs-tabs button.on { background: #151518; border-color: rgba(255,255,255,.16); }
+.bs-tabs button.on em { color: #e10f2a; }
+.bs-panel { display: grid; grid-template-columns: 1.05fr 1fr; border-radius: 24px; overflow: hidden; background: #111113; border: 1px solid rgba(255,255,255,.07); }
+.bs-panel.swap .bs-photo img, .bs-panel.swap .bs-info > * { animation: accRise .55s cubic-bezier(.2,.8,.2,1) both; }
+.bs-panel.swap .bs-info > *:nth-child(2) { animation-delay: .05s; } .bs-panel.swap .bs-info > *:nth-child(3) { animation-delay: .1s; } .bs-panel.swap .bs-info > *:nth-child(4) { animation-delay: .15s; } .bs-panel.swap .bs-info > *:nth-child(5) { animation-delay: .2s; }
+.bs-photo { position: relative; min-height: 420px; cursor: pointer; overflow: hidden; }
+.bs-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 1s cubic-bezier(.2,.8,.2,1); }
+.bs-photo:hover img { transform: scale(1.04); }
+.bs-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 60%, #111113), linear-gradient(0deg, rgba(17,17,19,.6), transparent 40%); pointer-events: none; }
+.bs-lvl { position: absolute; left: 20px; bottom: 20px; z-index: 1; display: flex; align-items: center; gap: 5px; padding: 8px 14px; border-radius: 99px; background: rgba(11,11,12,.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.12); }
+.bs-lvl i { width: 18px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.18); }
+.bs-lvl i.on { background: #e10f2a; }
+.bs-lvl b { margin-left: 6px; font-size: 13px; }
+.bs-info { padding: 34px 36px; display: flex; flex-direction: column; gap: 12px; }
+.bs-kicker { font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #71717a; }
+.bs-info h3 { font-family: "Archivo", sans-serif; font-weight: 900; font-size: clamp(26px, 2.8vw, 36px); letter-spacing: -.8px; line-height: 1.05; }
+.bs-info > p { color: var(--muted); font-size: 15px; }
+.bs-specs { margin: 6px 0 4px; display: grid; grid-template-columns: 1fr 1fr; gap: 1px; border-radius: 14px; overflow: hidden; background: var(--line); border: 1px solid var(--line); }
+.bs-specs div { background: #131316; padding: 11px 14px; }
+.bs-specs dt { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #71717a; }
+.bs-specs dd { margin: 3px 0 0; font-size: 13.5px; font-weight: 600; line-height: 1.35; }
+.bs-buy { display: flex; align-items: center; gap: 10px; margin-top: auto; padding-top: 12px; }
+.bs-buy > div { flex: 1; display: flex; flex-direction: column; }
+.bs-buy small { font-size: 12px; color: #71717a; } .bs-buy s { color: #71717a; }
+.bs-buy b { font-family: "Archivo", sans-serif; font-weight: 900; font-size: 28px; letter-spacing: -.6px; line-height: 1.1; }
+.bs-buy em { font-style: normal; font-size: 12.5px; color: var(--muted); }
+@media (max-width: 980px) {
+  .bs-panel { grid-template-columns: 1fr; }
+  .bs-photo { min-height: 260px; }
+  .bs-photo::after { background: linear-gradient(0deg, #111113, transparent 50%); }
+  .bs-info { padding: 22px; }
+}
+@media (max-width: 640px) {
+  .bs-tabs { gap: 6px; }
+  .bs-tabs button { padding: 10px; gap: 8px; flex-direction: column; align-items: flex-start; }
+  .bs-tabs em { font-size: 18px; }
+  .bs-tabs b { font-size: 13px; }
+  .bs-specs { grid-template-columns: 1fr; }
+  .bs-buy { flex-wrap: wrap; }
+  .bs-buy > div { flex-basis: 100%; }
+  .bs-buy .btn { flex: 1; }
+}
+
+
+/* Afzalliklar slaydi: stiker o'rniga ma'nosiga mos foto */
+.fs-slide { grid-template-columns: 46% 1fr; padding: 0 56px 0 0; gap: 44px; }
+.fs-photo { position: relative; height: 100%; overflow: hidden; }
+.fs-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: saturate(.9) brightness(.85);
+  transform: scale(1.08); opacity: 0; transition: transform 1.4s cubic-bezier(.2,.8,.2,1), opacity .7s; animation: none !important; }
+.fs-slide.on .fs-photo img { transform: scale(1); opacity: 1; }
+.fs-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 55%, #111113), radial-gradient(120% 100% at 0% 100%, rgba(var(--c), .28), transparent 60%); pointer-events: none; }
+.fs-obj { display: grid; place-items: center; height: 100%; }
+.fs-obj img { width: 82%; max-width: 360px; filter: drop-shadow(0 30px 40px rgba(0,0,0,.6)); transform: perspective(900px) rotateY(18deg) rotateX(6deg) translateY(20px); opacity: 0; transition: transform 1.1s cubic-bezier(.2,.9,.25,1.1), opacity .6s; animation: none !important; }
+.fs-slide.on .fs-obj img { transform: perspective(900px) rotateY(-10deg) rotateX(4deg); opacity: 1; }
+.fs-stage { height: 330px; }
+@media (max-width: 980px) {
+  .fs-slide { grid-template-columns: 1fr; grid-template-rows: 170px 1fr; padding: 0 0 22px; gap: 14px; }
+  .fs-photo::after { background: linear-gradient(0deg, #111113, transparent 60%); }
+  .fs-txt { padding: 0 22px; }
+  .fs-stage { height: 420px; }
+  .fs-obj img { width: 46%; }
+}
+@media (max-width: 640px) { .fs-stage { height: 440px; } }
