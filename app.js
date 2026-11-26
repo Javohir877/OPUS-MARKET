@@ -101,7 +101,9 @@ const svgIcon = (name) => `<svg viewBox="0 0 24 24">${ICONS[name]}</svg>`;
 const stars = (r) => "★".repeat(Math.round(r)) + "☆".repeat(5 - Math.round(r));
 const discount = (p) => (p.old ? Math.round((1 - p.price / p.old) * 100) : 0);
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const pImg = (p, w = 600, h) => IMG(p.img, w, h);
+// Fonsiz (studiya) rasmi bo'lsa — o'sha; ro'yxat katalog sozlamasida: SETTINGS.cutIds
+const cutOf = (p) => (p && Array.isArray(SETTINGS.cutIds) && SETTINGS.cutIds.includes(p.id) ? "img/cut/p" + p.id + ".webp" : null);
+const pImg = (p, w = 600, h) => cutOf(p) || IMG(p.img, w, h);
 const img = (p, w, h, cls = "") =>
   `<img src="${pImg(p, w, h)}" alt="${escapeHtml(p.name)}" loading="lazy" class="${cls}" data-icon="${catOf(p).icon}" onload="this.classList.add('loaded')" onerror="imgFail(this)" />`;
 
@@ -835,13 +837,16 @@ function openProduct(id) {
   let qty = 1;
   let months = 12;
   // Asosiy rasm + qo'shimcha haqiqiy fotolar (agar bo'lsa)
-  const sources = [p.img, ...(p.gallery || [])];
+  const cutSrc = cutOf(p);
+  // Fonsiz rasm birinchi, asl foto esa ikkinchi ko'rinish bo'lib qoladi
+  const sources = cutSrc ? [p.img, p.img, ...(p.gallery || [])] : [p.img, ...(p.gallery || [])];
   const views = sources.map((s) => IMG(s, 960));
+  if (cutSrc) views[0] = cutSrc;
   const credits = sources.map(CREDIT);
   $("#productModalBody").innerHTML = `<div class="pm">
     <div class="pm-gallery">
       <div class="pm-main" id="pmMain"><img src="${views[0]}" alt="${escapeHtml(p.name)}" data-icon="${c.icon}" onerror="imgFail(this)" /></div>
-      ${views.length > 1 ? `<div class="pm-thumbs">${sources.map((s, i) => `<button class="${i === 0 ? "active" : ""}" data-v="${i}"><img src="${IMG(s, 250)}" alt="" /></button>`).join("")}</div>` : ""}
+      ${views.length > 1 ? `<div class="pm-thumbs">${sources.map((s, i) => `<button class="${i === 0 ? "active" : ""}" data-v="${i}"><img src="${i === 0 && cutSrc ? cutSrc : IMG(s, 250)}" alt="" /></button>`).join("")}</div>` : ""}
       ${credits[0] ? `<a class="pm-credit" id="pmCredit" href="${credits[0]}" target="_blank" rel="noopener">📷 Foto: Wikimedia Commons — muallif va litsenziya</a>` : ""}
       <div class="pm-pay">${PAYMENTS.map(payLogo).join("")}</div>
     </div>
