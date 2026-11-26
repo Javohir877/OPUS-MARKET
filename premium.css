@@ -734,3 +734,13 @@ img.fx.stkx { width: 1.4em; height: 1.4em; vertical-align: -0.32em; }
 .fs-tabs { margin-top: 14px; } .fs-tab { padding: 18px 20px; } .fs-tab img { width: 44px; height: 44px; } .fs-tab b { font-size: 15.5px; }
 @media (max-width: 980px) { .fs-stage { height: 500px; } .fs-slide { grid-template-rows: 210px 1fr; padding: 0 0 24px; gap: 16px; } .fs-txt p { font-size: 15.5px; } .uz-card { width: min(300px, 72%); padding: 18px 20px; } .uz-big { font-size: 54px; } }
 @media (max-width: 640px) { .fs-stage { height: 520px; } .fs-slide { grid-template-rows: 190px 1fr; } .fs-txt h3 { font-size: 34px; } .fs-tab { padding: 12px; } .fs-tab img { width: 32px; height: 32px; } }
+
+/* ---------- Fonsiz (studiya) mahsulot rasmlari ---------- */
+.card-img:has(img[src*="img/cut/"]), .qz-img:has(img[src*="img/cut/"]), .bs-photo:has(img[src*="img/cut/"]), .pm-main:has(img[src*="img/cut/"]) {
+  background: radial-gradient(75% 70% at 50% 35%, #26262c 0%, #17171a 55%, #111113 100%); }
+.card-img img[src*="img/cut/"], .qz-img img[src*="img/cut/"], .sg-item img[src*="img/cut/"], .aw-row img[src*="img/cut/"] {
+  object-fit: contain; padding: 9%; filter: drop-shadow(0 16px 18px rgba(0,0,0,.55)); }
+.card:hover .card-img img[src*="img/cut/"] { transform: scale(1.06) translateY(-4px); }
+.bs-photo img[src*="img/cut/"] { object-fit: contain; padding: 8% 12%; filter: drop-shadow(0 30px 34px rgba(0,0,0,.6)); }
+.pm-main img[src*="img/cut/"] { object-fit: contain; padding: 6%; filter: drop-shadow(0 26px 30px rgba(0,0,0,.55)); }
+.pm-thumbs img[src*="img/cut/"] { object-fit: contain; background: #1b1b1f; }
