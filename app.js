@@ -2449,14 +2449,14 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) site
 // =====================================================================
 // Yig'ish g'oyalari — katalogdagi haqiqiy tayyor kompyuterlar
 // =====================================================================
+let buildTab = 0;
 function renderBuilds() {
   const box = $("#buildGrid"); if (!box) return;
   const T = [
-    { ids: [145, 144], tag: "Boshlang'ich", title: "Arzon o'yin kompyuteri" },
-    { ids: [7, 59], tag: "Esports", title: "Pro gaming to'plami" },
-    { ids: [6, 60], tag: "Creator elite", title: "Striming va montaj stansiyasi" },
+    { ids: [145, 144], tag: "Boshlang'ich", lvl: 1, title: "Arzon o'yin kompyuteri", note: "Ofis, o'qish va yengil o'yinlar uchun — eng tejamkor kirish nuqtasi." },
+    { ids: [7, 59], tag: "Esports", lvl: 2, title: "Pro gaming to'plami", note: "Zamonaviy o'yinlar yuqori sozlamalarda — raqobatbardosh o'yinchilar uchun." },
+    { ids: [6, 60], tag: "Ijodkor", lvl: 3, title: "Striming va montaj stansiyasi", note: "4K montaj, striming va eng og'ir o'yinlar — kelajak zaxirasi bilan." },
   ];
-  const pc = PRODUCTS.filter((p) => p.cat === "pc" && (p.stock ?? 0) > 0);
   const used = new Set();
   const L = T.map((t) => {
     const p = t.ids.map(byId).find((x) => x && (x.stock ?? 0) > 0 && !used.has(x.id)) || null;
@@ -2464,17 +2464,34 @@ function renderBuilds() {
     return p && { ...t, p };
   }).filter(Boolean);
   if (L.length < 2) { box.closest("section").hidden = true; return; }
-  box.innerHTML = L.map(({ tag, title, p }) => {
-    const s = p.specs || {};
-    const line = [s.Videokarta || s.Grafika, s.Protsessor, s["Operativ xotira"]].filter(Boolean).map((x) => String(x).split("(")[0].trim()).join(" + ");
-    return `<article class="bi-card" data-open-b="${p.id}">
-      <div class="bi-img"><img src="${pImg(p, 700)}" alt="" loading="lazy" onerror="imgFail(this)" data-icon="pc" /><span class="bi-price">${fmt(p.price)}</span><span class="bi-tag"><i></i>${esc(tag)}</span></div>
-      <div class="bi-body"><h3>${esc(title)}</h3><p>${esc(line)}</p><small>${esc(p.name)}</small>
-      <button type="button" class="bi-btn">To'plamni ko'rish</button></div>
-    </article>`;
-  }).join("");
+  buildTab = Math.min(buildTab, L.length - 1);
+  const { tag, lvl, title, note, p } = L[buildTab];
+  const inCart = state.cart.some((x) => x.id === p.id);
+  box.innerHTML = `
+    <div class="bs-tabs" role="tablist">${L.map((x, k) => `<button type="button" role="tab" class="${k === buildTab ? "on" : ""}" data-bt="${k}"><em>0${k + 1}</em><span><b>${esc(x.tag)}</b><small>${fmt(x.p.price)}</small></span></button>`).join("")}</div>
+    <div class="bs-panel" data-pid="${p.id}">
+      <div class="bs-photo"><img src="${pImg(p, 900)}" alt="${esc(p.name)}" onerror="imgFail(this)" data-icon="pc" /><span class="bs-lvl">${[1, 2, 3].map((n) => `<i class="${n <= lvl ? "on" : ""}"></i>`).join("")}<b>${esc(tag)}</b></span></div>
+      <div class="bs-info">
+        <small class="bs-kicker">${esc(p.name)}</small>
+        <h3>${esc(title)}</h3>
+        <p>${esc(note)}</p>
+        <dl class="bs-specs">${Object.entries(p.specs || {}).slice(0, 6).map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
+        <div class="bs-buy">
+          <div><small>${p.old > p.price ? `<s>${fmt(p.old)}</s>` : "Narxi"}</small><b>${fmt(p.price)}</b><em>${fmt(p.price / 12)}/oy · 0%</em></div>
+          <button type="button" class="btn btn-ghost" data-bopen>Batafsil</button>
+          <button type="button" class="btn btn-primary" data-badd>${inCart ? "Savatda ✓" : "Savatga"}</button>
+        </div>
+      </div>
+    </div>`;
 }
-$("#buildGrid") && $("#buildGrid").addEventListener("click", (e) => { const c = e.target.closest("[data-open-b]"); if (c) openProduct(+c.dataset.openB); });
+$("#buildGrid") && $("#buildGrid").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-bt]");
+  if (t) { buildTab = +t.dataset.bt; sfx("tab"); renderBuilds(); const pn = $("#buildGrid .bs-panel"); pn && pn.classList.add("swap"); return; }
+  const pn = e.target.closest(".bs-panel"); if (!pn) return;
+  const id = +pn.dataset.pid;
+  if (e.target.closest("[data-badd]")) { addToCart(id, 1, e.target.closest("[data-badd]")); setTimeout(renderBuilds, 400); return; }
+  if (e.target.closest("[data-bopen]") || e.target.closest(".bs-photo")) openProduct(id);
+});
 renderBuilds();
 
 // =====================================================================
