@@ -244,7 +244,7 @@ const fallbackIcon = (p) => `<span class="fb"><svg viewBox="0 0 24 24">${ICONS[c
 function card(p, o) {
   const d = disc(p), q = inCart(p.id), out = (p.stock || 0) <= 0, drop = S.drops && S.drops[p.id] > p.price;
   return `<article class="pc${out ? " out" : ""}" data-pid="${p.id}">
-    <div class="pc-img">${fallbackIcon(p)}<img src="${esc(hi(p.img, 330))}" alt="" loading="lazy" decoding="async" onload="this.classList.add('ld')" onerror="imgErr(this)" />
+    <div class="pc-img${pcut(p) ? " cut" : ""}">${fallbackIcon(p)}<img src="${esc(pimg(p, 330))}" alt="" loading="lazy" decoding="async" onload="this.classList.add('ld')" onerror="imgErr(this)" />
       <button class="fav${S.fav.includes(p.id) ? " on" : ""}" data-fav="${p.id}" aria-label="Saralanganga">${heartSvg}</button>
       <div class="tags">${d ? `<span class="tag">−${d}%</span>` : ""}${drop ? `<span class="tag drop">📉 Arzonladi</span>` : ""}${p.badge === "Yangi" ? `<span class="tag new">Yangi</span>` : p.badge === "Xit" ? `<span class="tag hit">Xit</span>` : ""}</div>
     </div>
@@ -601,6 +601,7 @@ function openProduct(id) {
   S.recent = [p.id, ...S.recent.filter((x) => x !== p.id)].slice(0, 30); store.set("recent", S.recent);
   if (S.drops[p.id]) { delete S.drops[p.id]; store.set("app_drops", S.drops); }
   const imgs = [p.img, ...(p.gallery || [])].filter(Boolean);
+  if (pcut(p)) imgs.unshift(pcut(p)); // fonsiz rasm birinchi
   const d = disc(p), stock = p.stock || 0;
   const similar = sortList(S.products.filter((x) => x.cat === p.cat && x.id !== p.id && (x.stock || 0) > 0), "popular").slice(0, 10);
   const together = complementary(p, 10);
@@ -1483,6 +1484,9 @@ window.__opusBack = () => {
 // =====================================================================
 // Wikimedia'dagi asl fotoning aniq versiyasi (standart o'lchamlar: 330 / 500 / 960). Yuklanmasa — lokal nusxa (imgErr).
 const WM_W = [330, 500, 960];
+// Fonsiz (studiya) rasmi bo'lsa — o'sha (sayt bilan umumiy: SETTINGS.cutIds)
+function pcut(p) { return p && Array.isArray(S.settings.cutIds) && S.settings.cutIds.includes(p.id) ? "../img/cut/p" + p.id + ".webp" : null; }
+const pimg = (p, w) => pcut(p) || hi(p.img, w);
 function hi(id, w = 330) {
   if (!id || !id.startsWith("wm:")) return pic(id);
   const path = id.slice(3), i = path.lastIndexOf("/"), dir = path.slice(0, i), name = path.slice(i + 1);
@@ -2451,7 +2455,7 @@ function dealStack() {
   if (L.length < 2) return "";
   return `<div class="sec"><div class="sec-h"><h2>🃏 Kun kartalari</h2><small class="muted">suring yoki bosing</small></div>
     <div class="dstack" id="dstack">${L.map((p, i) => `<div class="dk" data-dk="${p.id}" style="--i:${i}">
-      <div class="dk-img"><img src="${esc(hi(p.img, 500))}" alt="" onerror="imgErr(this)" draggable="false" /></div>
+      <div class="dk-img"><img src="${esc(pimg(p, 500))}" alt="" onerror="imgErr(this)" draggable="false" /></div>
       <div class="dk-b"><span class="tag">−${disc(p)}%</span><b>${esc(p.name)}</b><div><s>${num(p.old)}</s><strong>${fmt(p.price)}</strong></div></div></div>`).join("")}</div></div>`;
 }
 function initStack(root) {
