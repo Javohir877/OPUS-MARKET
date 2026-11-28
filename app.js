@@ -1710,6 +1710,9 @@ window.__opusBack = () => {
   const top = PRODUCTS.slice().sort((a, b) => b.popular - a.popular);
   $("#ipCards").innerHTML = top.slice(0, 6).map((p) =>
     `<div class="ip-card"><img src="${pImg(p, 300)}" alt="" loading="lazy" /><div><i>${fmt(Math.round(p.price / 12)).replace(" so'm", "")} so'm/oy</i><b>${escapeHtml(p.name)}</b><span>${fmt(p.price)}</span></div></div>`).join("");
+  // Telefon ortidagi polaroid suratlar
+  const pol = top.filter((p) => cutOf(p)).slice(0, 2);
+  pol.forEach((p, i) => { const im = $("#ipPol" + (i + 1)); if (im) im.src = cutOf(p); });
   $("#ipStories").innerHTML = top.slice(6, 12).map((p) => `<span><img src="${pImg(p, 120)}" alt="" loading="lazy" /></span>`).join("");
   // Kalendar ikonkasida bugungi sana
   const now = new Date();
